@@ -120,7 +120,7 @@ test("UI-4: the what-if panel says the gate reads only the committed file, shows
   const moved = await whatIfView(get, evaluation, { min_pairwise_accuracy: "0.99" });
   assert.ok(text(moved).includes("nothing would ship"));
   assert.ok(moved.split('class="label red">fail<').length > committed.split('class="label red">fail<').length);
-  assert.ok(moved.includes('class="label ochre">moved<') && !committed.includes('class="label ochre">moved<'));
+  assert.ok(moved.includes('class="label amber">moved<') && !committed.includes('class="label amber">moved<'));
   assert.ok(asked.every((url) => url.startsWith("/api/")));
   assert.deepEqual(readFileSync("eval/thresholds.json"), before.thresholds);
   assert.deepEqual(readFileSync("eval/results/verdict.json"), before.verdict);
@@ -183,6 +183,45 @@ test("UI-6: for a game whose tag contradicts its description, the page shows the
     const cells = mechanics.split("<td>").slice(1);
     assert.equal(cells.length, VERSIONS.length);
     assert.ok((cells[VERSIONS.indexOf("table")] ?? "").includes("conflicting"));
-    if (record.conflict?.model_reading_used === true) assert.ok((cells[VERSIONS.indexOf("model_where_thin")] ?? "").includes('class="label plum"'));
+    if (record.conflict?.model_reading_used === true) assert.ok((cells[VERSIONS.indexOf("model_where_thin")] ?? "").includes('class="tag model"'));
   }
+});
+
+test("UI-7: a quote is marked where it sits in the record's own text, and a bar is as long as the number the response carries", () => {
+  const brand = brands[0] as string;
+  const marksIn = (html: string): string[] => [...html.matchAll(/<mark>(.*?)<\/mark>/g)].map((match) => match[1] as string);
+  let quotesSeen = 0;
+  for (const game of games) {
+    const response = JSON.parse(route(service, "GET", `/api/inspect?game=${game}&brand=${brand}&version=model_everywhere`).body) as Recommendation;
+    const anchor = response.trace?.anchor;
+    assert.ok(anchor, `${game}: no record in the trace`);
+    const html = renderTrace(response);
+    const contexts = [...html.matchAll(/<p class="copy">(.*?)<\/p>/g)].map((match) => match[1] as string);
+    const model = [...anchor.steps.model.themes, ...anchor.steps.model.mechanics];
+    for (const field of ["title", "description"] as const) {
+      const quotes = model.filter((entry) => entry.source_field === field).map((entry) => entry.quote);
+      if (quotes.length === 0) continue;
+      const text = anchor.steps.cleaned[field];
+      assert.ok(typeof text === "string", `${game}: a quote names a ${field} the record does not have`);
+      // The words in place are the record's own text, with nothing added but the marks.
+      const context = contexts.find((candidate) => candidate.replaceAll(/<\/?mark>/g, "") === esc(text));
+      assert.ok(context !== undefined, `${game}: the cleaned ${field} is not shown with its quotes in place`);
+      for (const quote of quotes) assert.ok(marksIn(context).some((marked) => marked.includes(esc(quote))), `${game}: "${quote}" is not marked in the ${field}`);
+      quotesSeen += quotes.length;
+    }
+    assert.ok(!html.includes("not found in this text"), `${game}: a stored quote could not be placed`);
+  }
+  assert.ok(quotesSeen > 0, "no model quote was checked");
+
+  // A quote that is not in the text is said, not dropped; and a bar follows the number in the response.
+  const busy = games.map((id) => JSON.parse(route(service, "GET", `/api/inspect?game=${id}&brand=${brand}&version=model_everywhere`).body) as Recommendation).find((response) => response.results.length > 0 && (response.trace?.anchor?.steps.model.mechanics.length ?? 0) > 0);
+  assert.ok(busy?.trace?.anchor && busy.trace.scores[0] !== undefined && busy.trace.anchor.steps.model.mechanics[0] !== undefined);
+  busy.trace.anchor.steps.model.mechanics[0].source_field = "description";
+  busy.trace.anchor.steps.model.mechanics[0].quote = "words that are nowhere in this record";
+  busy.trace.scores[0].score = 0.4321;
+  busy.trace.floor = 0.1234;
+  const changed = renderTrace(busy);
+  assert.ok(text(changed).includes("1 not found in this text"));
+  assert.ok(changed.includes('style="width:43.21%"'), "the bar is not as long as the score");
+  assert.ok(changed.includes('style="left:12.34%"'), "the tick is not at the floor");
 });
