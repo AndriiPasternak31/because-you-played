@@ -133,7 +133,7 @@ Gaps and formats are properties of the studio, not random noise per field: one s
 
 ## Limits
 
-- The truth text is model-written. A sample was read after generation; it was not independently labelled. Code checks that each quote is verbatim, not that it is good evidence, and it cannot check that a description avoids themes the plan did not assign. Numbers in the copy are checked against the facts only where they are written in digits.
+- The truth text is model-written. A sample was read after generation; it was not independently labelled. Code checks that each quote is verbatim, not that it is good evidence, and it cannot check that a description avoids themes the plan did not assign. Numbers in the copy are checked against the facts only where they are written in digits, and a stated volatility only under the words "volatility" and "variance".
 - "Recoverable" in the truth is mechanical: a quote survived, a tag survived, or the writing model said the title states the theme. It is a diagnostic, not a reference label.
 - Descriptions are easier than real supplier copy: they state every planned mechanic plainly, and one model wrote all of them.
 - Rates of mess are chosen to exercise the pipeline. They are not estimates of how often each defect occurs in real feeds.

@@ -402,7 +402,7 @@ export function validateTruthText(candidate: unknown, slotPlan: SlotPlan, expect
   if (words < 60 || words > 130) reject(`description has ${words} words, expected 60 to 130`);
   if (!/^[\x20-\x7E]+$/.test(text.description)) reject("description contains non-ASCII or control characters");
   if (/[<>%$€£]|\bRTP\b/i.test(text.description)) reject("description contains markup, a percentage, a currency or RTP");
-  if (!slotPlan.copyMentionsFacts && /volatil|max(?:imum)? win/i.test(text.description)) {
+  if (!slotPlan.copyMentionsFacts && (VOLATILITY_WORD.test(text.description) || /max(?:imum)? win/i.test(text.description))) {
     reject("description mentions volatility or maximum win, which the brief did not ask for");
   }
   // The copy may restate a fact of record, never set one: every number in it is one the brief
@@ -469,11 +469,14 @@ function numbersIn(text: string): number[] {
   return (text.match(/\d[\d.,]*\d|\d/g) ?? []).map((token) => Number(token.replace(/[.,]/g, "")));
 }
 
+/** Volatility under either of its trade names. Any other paraphrase, such as "low-risk", is not recognised. */
+const VOLATILITY_WORD = /volatil|varian/i;
+
 /** The volatility bands named in the sentences of an English description that speak of volatility. */
 function statedVolatility(description: string): VolatilityBand[] {
   const sentences = description
     .split(/(?<=[.!?])\s+/)
-    .filter((sentence) => /volatil/i.test(sentence))
+    .filter((sentence) => VOLATILITY_WORD.test(sentence))
     .join(" ")
     .toLowerCase();
   // "very high" is tried first, so that it is not also read as "high".
@@ -515,8 +518,17 @@ export function responseFileName(slot: number): string {
   return `slot-${String(slot).padStart(3, "0")}.json`;
 }
 
+/** Parses JSON that was read from `source`; a failure names the source, which `JSON.parse` cannot. */
+function parseStoredJson(text: string, source: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${source} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+}
+
 export function readResponseFile(path: string): ResponseFile {
-  const parsed = ResponseFileSchema.safeParse(JSON.parse(readFileSync(path, "utf8")));
+  const parsed = ResponseFileSchema.safeParse(parseStoredJson(readFileSync(path, "utf8"), path));
   if (!parsed.success) throw new Error(`${path} is not a valid response file: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
 }
@@ -549,11 +561,12 @@ export function readRetired(path: string): Retired[] {
   if (!existsSync(path)) return [];
   return readFileSync(path, "utf8")
     .split("\n")
-    .filter((line) => line.length > 0)
-    .map((line, index) => {
-      const parsed = RetiredSchema.safeParse(JSON.parse(line));
-      if (!parsed.success) throw new Error(`${path} line ${index + 1}: ${z.prettifyError(parsed.error)}`);
-      return parsed.data;
+    .flatMap((line, index) => {
+      if (line.length === 0) return [];
+      const source = `${path} line ${index + 1}`;
+      const parsed = RetiredSchema.safeParse(parseStoredJson(line, source));
+      if (!parsed.success) throw new Error(`${source}: ${z.prettifyError(parsed.error)}`);
+      return [parsed.data];
     });
 }
 

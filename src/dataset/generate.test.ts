@@ -59,8 +59,12 @@ function rebuild(dataDir: string, ...extraArgs: string[]): { status: number | nu
   );
 }
 
-/** A stand-in for model output that satisfies every rule for the slot. */
-function fakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): TruthText {
+/**
+ * A stand-in for model output that satisfies every rule for the slot. The two wordings share no
+ * title, sentence or quote, and differ in length, so that anything derived from the text differs.
+ */
+function fakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>, wording: "first" | "second" = "first"): TruthText {
+  if (wording === "second") return secondFakeText(slotPlan, texts);
   const expectation = expectationFor(slotPlan, texts);
   // Two letters that are unique per slot, so no two stand-in titles share a word.
   const tag = `${"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[slotPlan.slot % 26]}${"abcdefghij"[Math.floor(slotPlan.slot / 26)]}`;
@@ -82,11 +86,32 @@ function fakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): Tr
   };
 }
 
-function fakeCatalogue(count: number) {
+function secondFakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): TruthText {
+  const expectation = expectationFor(slotPlan, texts);
+  const tag = `${"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[slotPlan.slot % 26]}${"abcdefghij"[Math.floor(slotPlan.slot / 26)]}`;
+  const terms = [...slotPlan.themes, ...slotPlan.mechanics];
+  const sentences = terms.map((term) => `Here the ${term} quality is plain to see.`);
+  const filler = Array.from({ length: 9 }, (_, index) => `Padding line ${"abcdefghi"[index]} sits right here.`);
+  const german = terms.map((term) => `Hier ist die Eigenschaft ${term} gut zu sehen.`);
+  const germanFiller = Array.from({ length: 7 }, () => "Noch eine Zeile fuellt den Absatz ein wenig auf.");
+  return {
+    title: expectation.requiredTitle ?? `${slotPlan.titleInitial}${tag.toLowerCase()}moorland ${tag}hollow Deep`,
+    description: [...filler, ...sentences].join(" "),
+    description_de: expectation.germanCopy ? [...germanFiller, ...german].join(" ") : null,
+    evidence: terms.map((term) => ({
+      term,
+      span: `the ${term} quality is plain`,
+      span_de: expectation.germanCopy ? `die Eigenschaft ${term} gut` : null,
+    })),
+    title_theme_terms: slotPlan.titleStyle === "thematic" ? [slotPlan.themes[0] ?? "fantasy"] : [],
+  };
+}
+
+function fakeCatalogue(count: number, wording: "first" | "second" = "first") {
   const plan = buildPlan(count, DEFAULT_SEED);
   const texts = new Map<number, TruthText>();
   for (const slotPlan of plan) {
-    const text = fakeText(slotPlan, texts);
+    const text = fakeText(slotPlan, texts, wording);
     validateTruthText(text, slotPlan, expectationFor(slotPlan, texts));
     texts.set(slotPlan.slot, text);
   }
@@ -140,19 +165,38 @@ test("DS-2: copy that states a number or a volatility the brief did not supply i
   );
   assert.throws(() => validateTruthText(withSentence("It plays on 9 reels."), slotPlan, expectation), /states 9, a number the brief did not supply/);
   const otherBand = facts.volatility === "low" ? "very_high" : "low";
+  for (const sentence of [`Volatility is ${band(otherBand)}.`, `It is a ${band(otherBand)}-variance game.`]) {
+    assert.throws(
+      () => validateTruthText(withSentence(sentence), slotPlan, expectation),
+      new RegExp(`states the volatility as ${otherBand}, but the brief says ${facts.volatility}`),
+    );
+  }
+
+  const silent = plan.find((candidate) => !candidate.copyMentionsFacts && candidate.relation.kind === "none");
+  assert.ok(silent);
+  const silentText = fakeText(silent, new Map());
   assert.throws(
-    () => validateTruthText(withSentence(`Volatility is ${band(otherBand)}.`), slotPlan, expectation),
-    new RegExp(`states the volatility as ${otherBand}, but the brief says ${facts.volatility}`),
+    () => validateTruthText({ ...silentText, description: `${silentText.description} Variance is low.` }, silent, expectationFor(silent, new Map())),
+    /mentions volatility or maximum win, which the brief did not ask for/,
   );
 });
 
-test("DS-2: facts and offerings stay the same when the text changes", () => {
-  const { plan, texts, catalogue } = fakeCatalogue(100);
-  const rewritten = new Map(
-    [...texts].map(([slot, text]) => [slot, { ...text, description: text.description.replaceAll("Filler sentence", "Padding line") }]),
-  );
-  const other = degrade(plan, rewritten, DEFAULT_SEED);
-  assert.notDeepEqual(other.truthGames.map((game) => game.description), catalogue.truthGames.map((game) => game.description));
+test("DS-2: facts and offerings stay the same when every title, description and quote changes", () => {
+  const { catalogue, texts } = fakeCatalogue(100);
+  const { catalogue: other, texts: otherTexts } = fakeCatalogue(100, "second");
+
+  // The proof is only as good as the difference between the two texts: nothing a fact could be derived from may match.
+  const wordsOf = (text: string): number => text.split(" ").length;
+  for (const [slot, text] of texts) {
+    const otherText = otherTexts.get(slot);
+    assert.ok(otherText);
+    assert.notEqual(otherText.title, text.title);
+    assert.notEqual(otherText.title.length, text.title.length);
+    assert.notEqual(otherText.description.length, text.description.length);
+    assert.notEqual(wordsOf(otherText.description), wordsOf(text.description));
+    assert.notDeepEqual(otherText.evidence.map((entry) => entry.span), text.evidence.map((entry) => entry.span));
+    if (text.description_de !== null) assert.notEqual(otherText.description_de?.length, text.description_de.length);
+  }
 
   const factsOfRecord = ({ payload }: (typeof catalogue.rawRecords)[number]) => {
     const { name: _name, description: _description, features: _features, themes: _themes, tags: _tags, ...facts } = payload;
@@ -405,6 +449,22 @@ test("DS-5: a stored response that no longer passes validation stops the build",
     const emptyAnswer = { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "{}" }] }] };
     writeFileSync(path, JSON.stringify({ ...file, attempts: file.attempts.map((attempt) => ({ ...attempt, body: emptyAnswer })) }));
   }, /slot 5 .*the committed response no longer passes validation/);
+});
+
+test("DS-5: a stored response that is cut short stops the build, and the file is named", () => {
+  assertRebuildStops((path) => {
+    writeFileSync(path, readFileSync(path, "utf8").slice(0, 300));
+  }, /generation\/responses\/slot-005\.json is not valid JSON/);
+});
+
+test("DS-5: a damaged line in the retired attempts stops the build, and the file and line are named", () => {
+  assertRebuildStops((path) => {
+    const retiredPath = join(path, "..", "..", "retired-attempts.jsonl");
+    const lines = readFileSync(retiredPath, "utf8").split("\n");
+    assert.ok(lines[6]);
+    lines[6] = lines[6].slice(0, 40);
+    writeFileSync(retiredPath, lines.join("\n"));
+  }, /generation\/retired-attempts\.jsonl line 7 is not valid JSON/);
 });
 
 test("DS-5: a missing stored response stops a build that has no key", () => {
