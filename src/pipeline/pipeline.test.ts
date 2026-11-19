@@ -11,7 +11,7 @@ import { MECHANICS, THEMES } from "../dataset/vocabulary.ts";
 import { assembleRecord, paths, runBuild } from "./build.ts";
 import { FACT_KEYS, canonicaliseCatalogue, readRawCatalogue, type CanonicalRecord } from "./canonical.ts";
 import { Budget, PRICES, SpendLimitReached, type Live, type Transport } from "./costs.ts";
-import { BYTES_PER_VECTOR, DIMENSIONS, EMBEDDING_MODEL, embeddingPath, obtainEmbeddings, readEmbeddingFile } from "./embed.ts";
+import { BYTES_PER_VECTOR, DIMENSIONS, EMBEDDING_MODEL, embeddingPath, obtainEmbeddings, readEmbeddingFile, shareVectors } from "./embed.ts";
 import {
   ENRICHMENT_MODEL,
   PROMPT_VERSION,
@@ -24,7 +24,7 @@ import {
   type ModelOutput,
 } from "./enrich.ts";
 import { loadIndex, sealManifest, type Index, type IndexRecord, type Manifest } from "./index-store.ts";
-import { readText, sha256 } from "./io.ts";
+import { readText, sealed, sha256 } from "./io.ts";
 import { buildReport, storedSpend } from "./report.ts";
 import { applyTable, labelsInTable, type Label } from "./synonyms.ts";
 import { THIN_RULE, VERSIONS, type Version } from "./versions.ts";
@@ -125,6 +125,8 @@ function liveWith(transport: Transport, maxUsd = 5, alreadySpent = 0): Live {
 }
 
 const quiet = (): void => {};
+/** For a report built in a test from records alone: no vector was shared. */
+const NONE_TAKEN = { raw: 0, table: 0, model_where_thin: 0, model_everywhere: 0 };
 const NO_LABELS: ModelOutput = { outcome: "accepted", themes: [], mechanics: [], stripped: [] };
 
 function modelLabel(label: Label["label"], quote: string, sourceField: Label["source_field"]): Label {
@@ -264,7 +266,7 @@ test("PL-2: a label outside the list, a quote that is not in the record and a re
     ],
   );
   // Counted: the report adds them up by reason.
-  const report = buildReport(1, [assembleRecord(record, { outcome: "accepted", themes: result.themes, mechanics: result.mechanics, stripped: result.stripped })], new Map());
+  const report = buildReport(1, [assembleRecord(record, { outcome: "accepted", themes: result.themes, mechanics: result.mechanics, stripped: result.stripped })], new Map(), NONE_TAKEN);
   assert.deepEqual(report.enrichment.labels_stripped, { label_outside_list: 2, invented_quote: 4, duplicate_label: 1 });
   assert.equal(report.enrichment.labels_kept, 3);
 });
@@ -389,7 +391,7 @@ test("PL-3: rejected answers and API errors are stored and counted apart, and af
     assert.ok(!readFileSync(path, "utf8").includes(STAND_IN), "a key echoed in an error message must not reach the disk");
 
     // Counted under each outcome, and the record is listed as having no accepted answer.
-    const report = buildReport(1, [assembleRecord(record, output)], new Map([[record.game_id, file]]));
+    const report = buildReport(1, [assembleRecord(record, output)], new Map([[record.game_id, file]]), NONE_TAKEN);
     assert.deepEqual(report.enrichment.calls_by_outcome, { ok: 0, invalid_output: 0, refusal: 1, incomplete: 1, api_error: 1 });
     assert.deepEqual(report.enrichment.records_without_an_accepted_answer, ["tst-1"]);
 
@@ -549,6 +551,20 @@ test("PL-4: loading fails, naming the fault, on each kind of corrupted copy of t
       },
     },
     {
+      name: "one text given two vectors, with the hashes brought up to date",
+      expect: /have the same text and different vectors/,
+      corrupt: (dir) => {
+        const records = readFileSync(join(dir, "records.jsonl"), "utf8").split("\n").filter((line) => line.length > 0).map((line) => JSON.parse(line) as IndexRecord);
+        const row = records.findIndex((record, position) => position > 0 && record.versions.table.text_sha256 === record.versions.model_where_thin.text_sha256);
+        assert.ok(row > 0);
+        // A real, usable vector, only not the one this text has in the table version.
+        const bytes = readFileSync(join(dir, "vectors.model_where_thin.f32"));
+        bytes.copy(bytes, row * BYTES_PER_VECTOR, 0, BYTES_PER_VECTOR);
+        writeFileSync(join(dir, "vectors.model_where_thin.f32"), bytes);
+        reseal(dir);
+      },
+    },
+    {
       name: "a text changed without its hash",
       expect: /the raw text does not match its hash/,
       corrupt: (dir) => {
@@ -626,7 +642,7 @@ test("PL-5: a tag the table does not know is listed and counted and gives no lab
     { tag: "Hot", source_field: "tags", reason: "merchandising" },
     { tag: "Free Spins", source_field: "tags", reason: "merchandising" },
   ]);
-  const report = buildReport(1, [assembleRecord(record, NO_LABELS)], new Map());
+  const report = buildReport(1, [assembleRecord(record, NO_LABELS)], new Map(), NONE_TAKEN);
   assert.equal(report.table.unknown, 4);
   assert.deepEqual(report.table.unknown_tags.map((entry) => `${entry.tag}@${entry.game_ids.join()}`), [
     "Egypt themed@tst-1",
@@ -825,35 +841,73 @@ test("PL-7: in the built index a disputed field is empty in the table version an
 test("PL-8: all four versions of every game have an embedding of 1,536 dimensions from the same model", async () => {
   const { manifest, records, vectors } = await currentIndex();
   assert.equal(records.length, 100);
+  // The vector the index should hold for each text: the stored answer of the first version on the ladder to embed it.
+  const expectedFor = new Map<string, Buffer>();
   for (const version of VERSIONS) {
     const stored = readEmbeddingFile(embeddingPath(COMMITTED.responses, version));
     assert.deepEqual([stored.version, stored.model, stored.dimensions], [version, EMBEDDING_MODEL, DIMENSIONS], version);
-    // The stored vector of each text, found here by game and text hash.
-    const storedVector = new Map<string, Buffer>();
+    // This version's own stored answer for each of its texts, found here by game and text hash.
+    const own = new Map<string, Buffer>();
     for (const call of stored.calls) {
       const body = call.body as { model: string; data: { index: number; embedding: string }[] };
       assert.equal(body.model, manifest.models.embedding, version);
       assert.equal(body.data.length, call.inputs.length, version);
       call.inputs.forEach((input, row) => {
         const entry = body.data.find((candidate) => candidate.index === row);
-        storedVector.set(`${input.game_id} ${input.text_sha256}`, Buffer.from(entry?.embedding ?? "", "base64"));
+        own.set(`${input.game_id} ${input.text_sha256}`, Buffer.from(entry?.embedding ?? "", "base64"));
       });
     }
     records.forEach((record, row) => {
+      const hash = record.versions[version].text_sha256;
+      // Every version embedded every one of its own texts: that is the cost the ledger charges it.
+      const mine = own.get(`${record.game_id} ${hash}`);
+      assert.ok(mine, `${version} ${record.game_id}: no stored embedding of its current text`);
+      if (!expectedFor.has(hash)) expectedFor.set(hash, mine);
+      const expected = expectedFor.get(hash) ?? assert.fail();
+
       const vector = vectors[version].subarray(row * DIMENSIONS, (row + 1) * DIMENSIONS);
       assert.equal(vector.length, DIMENSIONS);
       const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
       assert.ok(Math.abs(norm - 1) < 1e-3, `${version} row ${row} has length ${norm}`);
-      // The index holds exactly the stored answer for this game's current text.
-      const expected = storedVector.get(`${record.game_id} ${record.versions[version].text_sha256}`);
-      assert.ok(expected, `${version} ${record.game_id}: no stored embedding of its current text`);
-      assert.deepEqual([expected.readFloatLE(0), expected.readFloatLE(BYTES_PER_VECTOR - 4)], [vector[0], vector[DIMENSIONS - 1]], `${version} ${record.game_id}`);
+      assert.ok(Buffer.from(vector.buffer, vector.byteOffset, vector.byteLength).equals(expected), `${version} ${record.game_id}: not the stored vector of its text`);
     });
   }
   // The versions are different texts, so their vectors must differ somewhere.
   assert.notDeepEqual(vectors.raw, vectors.table);
   assert.notDeepEqual(vectors.table, vectors.model_where_thin);
   assert.notDeepEqual(vectors.model_where_thin, vectors.model_everywhere);
+});
+
+test("PL-8: a text has one vector: wherever two versions or two games hold the same text, they hold the same bytes", async () => {
+  const { records, vectors, report } = await currentIndex();
+  const first = new Map<string, { bytes: Buffer; where: string }>();
+  const shared: Record<string, number> = {};
+  for (const version of VERSIONS) {
+    shared[version] = 0;
+    records.forEach((record, row) => {
+      const view = vectors[version].subarray(row * DIMENSIONS, (row + 1) * DIMENSIONS);
+      const bytes = Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+      const where = `${version} ${record.game_id}`;
+      const seen = first.get(record.versions[version].text_sha256);
+      if (seen === undefined) first.set(record.versions[version].text_sha256, { bytes, where });
+      else {
+        assert.ok(seen.bytes.equals(bytes), `${where} has the same text as ${seen.where} and another vector`);
+        shared[version] = (shared[version] ?? 0) + 1;
+      }
+    });
+  }
+  // Not an empty claim: most of the later versions' texts are ones an earlier version already holds.
+  assert.ok((shared["model_where_thin"] ?? 0) > 50 && (shared["model_everywhere"] ?? 0) > 50, JSON.stringify(shared));
+  assert.deepEqual(report.vectors_taken_from_an_earlier_text, shared);
+
+  // The rule itself, on vectors that all differ: the first version on the ladder to hold a text gives it its vector.
+  const block = (...seeds: number[]): Buffer => Buffer.concat(seeds.map((seed) => Buffer.alloc(BYTES_PER_VECTOR, seed)));
+  const own = { raw: block(1, 2), table: block(3, 4), model_where_thin: block(5, 6), model_everywhere: block(7, 8) };
+  const hashes = { raw: ["a", "b"], table: ["a", "c"], model_where_thin: ["a", "c"], model_everywhere: ["d", "c"] };
+  const result = shareVectors(hashes, own);
+  assert.deepEqual(result.taken, { raw: 0, table: 1, model_where_thin: 2, model_everywhere: 1 });
+  assert.ok(result.vectors.raw.equals(block(1, 2)) && result.vectors.table.equals(block(1, 4)));
+  assert.ok(result.vectors.model_where_thin.equals(block(1, 4)) && result.vectors.model_everywhere.equals(block(7, 4)));
 });
 
 test("PL-8: when a text changes, only that text is embedded again and every other vector keeps its bytes", async () => {
@@ -890,7 +944,7 @@ test("PL-8: when a text changes, only that text is embedded again and every othe
     // Two stored vectors for one text: nothing says which is right, so neither is used.
     const stored = readEmbeddingFile(path);
     stored.calls.push(stored.calls[1] ?? assert.fail());
-    writeFileSync(path, JSON.stringify(stored));
+    writeFileSync(path, JSON.stringify(sealed(stored)));
     await assert.rejects(run(after, false), (error: Error) => error.message === `${path} holds two embeddings for the same text of b; call 3 repeats an earlier one`);
   } finally {
     rmSync(dataDir, { recursive: true });
@@ -909,7 +963,8 @@ test("PL-8: embeddings answered by another model, or of the wrong size, stop the
       const path = embeddingPath(paths(dataDir).responses, "table");
       const stored = readEmbeddingFile(path);
       breakIt(stored.calls[0]?.body as { model: string; data: { embedding: string }[] });
-      writeFileSync(path, JSON.stringify(stored));
+      // Sealed again, so that the check of the vectors has to catch it and not the seal.
+      writeFileSync(path, JSON.stringify(sealed(stored)));
       const result = rebuild(dataDir);
       assert.equal(result.status, 1, result.stderr);
       assert.match(result.stderr, expect);
@@ -1000,7 +1055,7 @@ test("PL-11: a stored response that is stale, damaged or missing stops the rebui
         const part = body.output.find((item) => item.type === "message")?.content?.[0];
         assert.ok(part?.text);
         part.text = JSON.stringify({ ...(JSON.parse(part.text) as object), rtp: "99%" });
-        writeFileSync(enrichmentFile(dataDir), JSON.stringify(stored));
+        writeFileSync(enrichmentFile(dataDir), JSON.stringify(sealed(stored)));
       },
     },
     {
@@ -1016,7 +1071,7 @@ test("PL-11: a stored response that is stale, damaged or missing stops the rebui
       breakIt: (dataDir) => {
         const stored = readEmbeddingFile(embeddingFile(dataDir));
         (stored.calls[0]?.inputs[0] ?? assert.fail()).text_sha256 = "0".repeat(64);
-        writeFileSync(embeddingFile(dataDir), JSON.stringify(stored));
+        writeFileSync(embeddingFile(dataDir), JSON.stringify(sealed(stored)));
       },
     },
     {
@@ -1033,6 +1088,72 @@ test("PL-11: a stored response that is stale, damaged or missing stops the rebui
       const result = rebuild(dataDir);
       assert.equal(result.status, 1, `${name}: ${result.stderr}`);
       assert.match(result.stderr, expect, name);
+      assert.ok(result.stderr.includes(file(dataDir)), `${name}: stderr must name ${file(dataDir)}, got: ${result.stderr}`);
+      assert.ok(!existsSync(paths(dataDir).index), `${name}: nothing may be written`);
+    } finally {
+      rmSync(dataDir, { recursive: true });
+    }
+  }
+});
+
+test("PL-11: a stored response edited by hand is refused, whatever the edit, and the file is named", () => {
+  const [first] = canonicaliseCatalogue(readRawCatalogue(COMMITTED.catalogue));
+  assert.ok(first);
+  const enrichmentFile = (dataDir: string): string => join(enrichmentDir(paths(dataDir).responses), `${first.game_id}.json`);
+  const embeddingFile = (version: Version) => (dataDir: string): string => embeddingPath(paths(dataDir).responses, version);
+  type Stored = Record<string, unknown> & { calls: { inputs: unknown[]; body: { data: { embedding: string }[] } }[]; attempts: { usage: { output_tokens: number }; body: { output: { type: string; content?: { text?: string }[] }[] } }[] };
+  const edit = (path: string, change: (stored: Stored) => void): void => {
+    // Edited as a person would: read, change, write back. The seal is left as it was.
+    const stored = JSON.parse(readFileSync(path, "utf8")) as Stored;
+    change(stored);
+    writeFileSync(path, `${JSON.stringify(stored, null, 1)}\n`);
+  };
+  const cases: { name: string; file: (dataDir: string) => string; change: (stored: Stored) => void; expect?: RegExp }[] = [
+    {
+      name: "two games' entries swapped in the list of what was embedded",
+      file: embeddingFile("raw"),
+      change: (stored) => {
+        const inputs = stored.calls[0]?.inputs ?? assert.fail();
+        [inputs[0], inputs[1]] = [inputs[1], inputs[0]];
+      },
+    },
+    {
+      name: "two vectors swapped in the response body",
+      file: embeddingFile("table"),
+      change: (stored) => {
+        const data = stored.calls[0]?.body.data ?? assert.fail();
+        const [a, b] = [data[0] ?? assert.fail(), data[1] ?? assert.fail()];
+        [a.embedding, b.embedding] = [b.embedding, a.embedding];
+      },
+    },
+    {
+      name: "a model answer edited into another answer that would pass every check",
+      file: enrichmentFile,
+      change: (stored) => {
+        const part = stored.attempts[0]?.body.output.find((item) => item.type === "message")?.content?.[0];
+        assert.ok(part?.text);
+        part.text = JSON.stringify({ themes: [], mechanics: [] });
+      },
+    },
+    {
+      name: "the tokens a call reported, edited",
+      file: enrichmentFile,
+      change: (stored) => void ((stored.attempts[0] ?? assert.fail()).usage.output_tokens = 1),
+    },
+    {
+      name: "the seal removed",
+      file: embeddingFile("model_everywhere"),
+      change: (stored) => void delete stored["seal_sha256"],
+      expect: /carries no seal/,
+    },
+  ];
+  for (const { name, file, change, expect } of cases) {
+    const dataDir = scratchData();
+    try {
+      edit(file(dataDir), change);
+      const result = rebuild(dataDir);
+      assert.equal(result.status, 1, `${name}: the rebuild must stop. ${result.stderr}`);
+      assert.match(result.stderr, expect ?? /does not match its seal/, name);
       assert.ok(result.stderr.includes(file(dataDir)), `${name}: stderr must name ${file(dataDir)}, got: ${result.stderr}`);
       assert.ok(!existsSync(paths(dataDir).index), `${name}: nothing may be written`);
     } finally {

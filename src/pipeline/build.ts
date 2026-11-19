@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicaliseCatalogue, readRawCatalogue, type CanonicalRecord } from "./canonical.ts";
 import { Budget, httpTransport, type Live } from "./costs.ts";
-import { obtainEmbeddings, type EmbeddingFile } from "./embed.ts";
+import { obtainEmbeddings, shareVectors, type EmbeddingFile } from "./embed.ts";
 import { instructions, obtainEnrichment, type EnrichmentFile, type ModelOutput } from "./enrich.ts";
 import { loadIndex, writeIndex, type IndexRecord, type Manifest } from "./index-store.ts";
 import { readBytes, sha256 } from "./io.ts";
@@ -107,17 +107,20 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   });
   if (options.limit !== undefined) return { manifest: null, records, ledger: null, report: null };
 
-  const vectors = {} as Record<Version, Buffer>;
+  const ownVectors = {} as Record<Version, Buffer>;
+  const textHashes = {} as Record<Version, string[]>;
   const embeddingFiles = {} as Record<Version, EmbeddingFile>;
   for (const version of VERSIONS) {
     const items = records.map((record) => ({ game_id: record.game_id, text: record.versions[version].text }));
     const { bytes, file } = await obtainEmbeddings(version, items, { responsesDir: responses, live: options.live, log: options.log });
-    vectors[version] = bytes;
+    ownVectors[version] = bytes;
+    textHashes[version] = records.map((record) => record.versions[version].text_sha256);
     embeddingFiles[version] = file;
   }
+  const { vectors, taken } = shareVectors(textHashes, ownVectors);
 
   const ledger = buildLedger(records, enrichmentFiles, embeddingFiles, responses);
-  const report = buildReport(rows.length, records, enrichmentFiles);
+  const report = buildReport(rows.length, records, enrichmentFiles, taken);
   const manifest = writeIndex(index, {
     catalogue: { sha256: sha256(readBytes(catalogue)), raw_rows: rows.length },
     promptSha256: sha256(instructions()),

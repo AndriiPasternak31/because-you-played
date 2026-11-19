@@ -5,7 +5,12 @@
  * form (little-endian 32-bit floats), beside a list of what was embedded: the game
  * and the hash of its text, in request order. A text is looked up by that pair, so
  * a rebuild without a key yields the same bytes, and when some texts change only
- * those are embedded again while every other vector stays as it was.
+ * those are embedded again while every other vector stays as it was. A stored file
+ * carries a seal over its whole content; one that was edited afterwards is refused.
+ *
+ * Each version embeds all of its own texts, which is what it would cost to build alone.
+ * The provider does not return the same bytes for the same text twice, so the index
+ * does not take them as they come: `shareVectors` gives every text one vector.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,8 +25,8 @@ import {
   tokensAtMost,
   type Live,
 } from "./costs.ts";
-import { parseJsonFrom, readText, sha256 } from "./io.ts";
-import type { Version } from "./versions.ts";
+import { parseJsonFrom, readText, sealed, sha256, unseal } from "./io.ts";
+import { VERSIONS, type Version } from "./versions.ts";
 
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const DIMENSIONS = 1536;
@@ -60,7 +65,7 @@ export function embeddingPath(responsesDir: string, version: Version): string {
 }
 
 export function readEmbeddingFile(path: string): EmbeddingFile {
-  const parsed = EmbeddingFileSchema.safeParse(parseJsonFrom(readText(path), path));
+  const parsed = EmbeddingFileSchema.safeParse(unseal(parseJsonFrom(readText(path), path), path));
   if (!parsed.success) throw new Error(`${path} is not a valid embedding response file: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
 }
@@ -162,7 +167,7 @@ export async function obtainEmbeddings(
     const { call, vectors } = await embed(version, missing.map((item) => item.text), options.live, options.log);
     file.calls.push({ ...call, inputs: missing.map(({ game_id, text_sha256 }) => ({ game_id, text_sha256 })) });
     mkdirSync(join(options.responsesDir, "embeddings"), { recursive: true });
-    writeFileSync(path, `${JSON.stringify(file, null, 1)}\n`);
+    writeFileSync(path, `${JSON.stringify(sealed(file), null, 1)}\n`);
     missing.forEach((item, row) => stored.set(keyOf(item.game_id, item.text_sha256), vectors[row] as Buffer));
   }
 
@@ -206,4 +211,38 @@ async function embed(
     await sleep(live.retryDelayMs * (apiErrors + 1));
   }
   throw new Error(`the embedding call for version "${version}" kept failing`);
+}
+
+/**
+ * One vector per text. Where a text occurs more than once, in several versions or for several
+ * games, every occurrence gets the vector of the first: the earliest version on the ladder, and
+ * within it the earliest row. Without this the same text would sit at slightly different points
+ * in different versions, and a comparison between versions would measure that noise.
+ *
+ * `textHashes[version][row]` names the text of `own[version]` at that row. Returns the shared
+ * vectors and, per version, how many rows took their vector from an earlier occurrence.
+ */
+export function shareVectors(
+  textHashes: Record<Version, readonly string[]>,
+  own: Record<Version, Buffer>,
+): { vectors: Record<Version, Buffer>; taken: Record<Version, number> } {
+  const first = new Map<string, Buffer>();
+  const vectors = {} as Record<Version, Buffer>;
+  const taken = {} as Record<Version, number>;
+  for (const version of VERSIONS) {
+    taken[version] = 0;
+    vectors[version] = Buffer.concat(
+      textHashes[version].map((hash, row) => {
+        const earlier = first.get(hash);
+        if (earlier !== undefined) {
+          taken[version] += 1;
+          return earlier;
+        }
+        const mine = own[version].subarray(row * BYTES_PER_VECTOR, (row + 1) * BYTES_PER_VECTOR);
+        first.set(hash, mine);
+        return mine;
+      }),
+    );
+  }
+  return { vectors, taken };
 }

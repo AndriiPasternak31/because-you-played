@@ -210,6 +210,12 @@ export interface BuildReport {
     labels_stripped: Record<(typeof STRIP_REASONS)[number], number>;
     fields_abstained: { themes: number; mechanics: number };
   };
+  /**
+   * Per version: rows whose vector is the one an earlier occurrence of the same text already had,
+   * in an earlier version or an earlier row. Each version still embedded all of its own texts,
+   * and the ledger charges it for that.
+   */
+  vectors_taken_from_an_earlier_text: Record<Version, number>;
   /** Per version: labels in the text, and fields that add nothing to it. */
   versions: Record<Version, { labels: number; fields_abstained: number; fields_in_conflict: number } | null>;
 }
@@ -218,6 +224,7 @@ export function buildReport(
   rawRows: number,
   records: readonly IndexRecord[],
   enrichmentFiles: ReadonlyMap<string, EnrichmentFile>,
+  vectorsTaken: Record<Version, number>,
 ): BuildReport {
   const count = <T>(items: readonly T[], test: (item: T) => boolean): number => items.filter(test).length;
   const tableOutputs = records.map((record) => record.table);
@@ -292,6 +299,7 @@ export function buildReport(
         mechanics: count(records, (record) => record.model.outcome === "accepted" && record.model.mechanics.length === 0),
       },
     },
+    vectors_taken_from_an_earlier_text: vectorsTaken,
     versions: Object.fromEntries(
       VERSIONS.map((version) => [
         version,
