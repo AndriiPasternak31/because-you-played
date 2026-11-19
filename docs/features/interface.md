@@ -71,19 +71,19 @@ No build step and no framework.
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| UI-1 | Everything the console shows for a request comes from the service's response to that request. The console asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | - |
-| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure. A link that names an unknown game reaches that decline | `npm test -- "UI-2:"` | - |
-| UI-3 | The page is served, and for every brand and game in its pickers the trace renders without an error, in every version | `npm test -- "UI-3:"` | - |
-| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | - |
-| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | - |
-| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | - |
-| UI-7 | A quote is marked where it sits in the record's own text, the one phrase shown alone is a quote of a label the model added, a quote that cannot be placed is said and not dropped, and a bar is as long as the number the response carries | `npm test -- "UI-7:"` | - |
-| UI-8 | The result or the decline comes first in the page, stated in a sentence, with the evidence beneath it in a fixed order and the detail folded away, each under a control with its own name | `npm test -- "UI-8:"` | - |
-| UI-9 | What a result is said to have in common with the game played is held by both records, and is never offered as the cause of the score | `npm test -- "UI-9:"` | - |
-| UI-10 | Beside the result, what the other versions return is counted as the service answered, the measured quality and cost are the report's, and a different list is not called a better one | `npm test -- "UI-10:"` | - |
-| UI-11 | The path shows the trace's own counts in the trace's order, availability first, as three different things; says what the floor is; names a game that cleared the floor and is not shown; and points out a game at the step that removed it | `npm test -- "UI-11:"` | - |
-| UI-12 | The examples are found in the data, each shows what it says, no game is named in the console's files, and the examples change or say "none" when the data changes | `npm test -- "UI-12:"` | - |
-| UI-13 | At 1280 by 900 and at 390 by 844, the landing page and every example show what the page is, the sentence stating the outcome, and the first result or the decline, without scrolling | `node tools/console-check.ts --first-screens` | - |
+| UI-1 | Everything the console shows for a request comes from the service's response to that request. The console asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | `32c8926` |
+| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure. A link that names an unknown game reaches that decline | `npm test -- "UI-2:"` | `32c8926` |
+| UI-3 | The page is served, and for every brand and game in its pickers the trace renders without an error, in every version | `npm test -- "UI-3:"` | `32c8926` |
+| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | `32c8926` |
+| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | `32c8926` |
+| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | `32c8926` |
+| UI-7 | A quote is marked where it sits in the record's own text, the one phrase shown alone is a quote of a label the model added, a quote that cannot be placed is said and not dropped, and a bar is as long as the number the response carries | `npm test -- "UI-7:"` | `32c8926` |
+| UI-8 | The result or the decline comes first in the page, stated in a sentence, with the evidence beneath it in a fixed order and the detail folded away, each under a control with its own name | `npm test -- "UI-8:"` | `32c8926` |
+| UI-9 | What a result is said to have in common with the game played is held by both records, and is never offered as the cause of the score | `npm test -- "UI-9:"` | `32c8926` |
+| UI-10 | Beside the result, what the other versions return is counted as the service answered, the measured quality and cost are the report's, and a different list is not called a better one | `npm test -- "UI-10:"` | `32c8926` |
+| UI-11 | The path shows the trace's own counts in the trace's order, availability first, as three different things; says what the floor is; names a game that cleared the floor and is not shown; and points out a game at the step that removed it | `npm test -- "UI-11:"` | `32c8926` |
+| UI-12 | The examples are found in the data, each shows what it says, no game is named in the console's files, and the examples change or say "none" when the data changes | `npm test -- "UI-12:"` | `32c8926` |
+| UI-13 | At 1280 by 900 and at 390 by 844, the landing page and every example show what the page is, the sentence stating the outcome, and the first result or the decline, without scrolling | `node tools/console-check.ts --first-screens` | `32c8926` |
 
 What each proof does:
 
