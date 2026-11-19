@@ -10,7 +10,7 @@ import { VERSIONS } from "../pipeline/versions.ts";
 import { route } from "../service/http.ts";
 import type { Recommendation } from "../service/recommend.ts";
 import { loadService } from "../service/state.ts";
-import { compareView, esc, findExamples, gameOptions, renderEvaluation, renderExamples, renderTrace, traceView, versionName, whatIfView } from "./view.js";
+import { addressRequest, brandOptions, compareView, esc, findExamples, gameOptions, renderEvaluation, renderExamples, renderTabs, renderTrace, SECTIONS, traceView, turns, versionName, versionOptions, whatIfView } from "./view.js";
 
 const service = loadService();
 const games = service.index.records.map((record) => record.game_id);
@@ -121,7 +121,9 @@ test("UI-3: the page is served, and for every brand and game in its pickers the 
   const report = service.report as { owner_check: { status: string; questions: unknown[] }; reviewer: { held_back: number } };
   if (report.owner_check.status === "outstanding") {
     assert.ok(evaluation.includes("data-held-back") && text(evaluation).includes(`${report.reviewer.held_back} of the reviewer's`));
-    assert.ok(text(evaluation).includes("not in the repository and not in any count on this page"));
+    // They are out of the working tree, not out of the repository: the page says the first and never the second.
+    assert.ok(text(evaluation).includes("held out of the working tree, not erased from the repository's history, and are in no count on this page"));
+    assert.ok(!text(evaluation).includes("not in the repository"));
     assert.ok(!evaluation.includes("The owner's check</caption>"));
   }
 });
@@ -268,38 +270,54 @@ test("UI-7: a quote is marked where it sits in the record's own text, and a bar 
   assert.ok(changed.includes('style="left:12.34%"'), "the tick is not at the floor");
 });
 
-test("UI-8: the result or the decline comes first, said in a sentence, and the evidence comes beneath it with the detail folded away", async () => {
+test("UI-8: the page is four sections in a fixed order, one open at a time; each states its question, why it matters and a sentence that answers it, with the detail folded away", async () => {
   const { get } = getter();
   const evaluation = await get("/api/evaluation");
+  assert.deepEqual(SECTIONS.map((section) => section.id), ["shown", "added", "removed", "worth"]);
   let results = 0;
   let declines = 0;
   for (const brand of brands) {
-    for (const game of games) {
+    for (const game of [...games, "no-such-game"]) {
       const html = await traceView(get, { game, brand, version: service.served.version, served: service.served.version, versions: VERSIONS, evaluation });
-      const at = (marker: string): number => html.indexOf(marker);
-      assert.equal(at('<section id="outcome"'), 0, `${game} on ${brand}: the page does not start with the outcome`);
-      const answer = html.slice(0, at("</section>"));
-      if (answer.includes("data-results")) {
-        results += 1;
-        assert.match(text(answer), /Given .+ on .+, the service returns \d+ related games? that (is|are) live there, best match first\./, `${game} on ${brand}`);
-        assert.ok(at('id="outcome"') < at('id="enrichment"') && at('id="enrichment"') < at('id="removals"'), `${game} on ${brand}: the evidence is out of order`);
-      } else {
+      // The first section is the outcome, and it is the one open unless another is asked for.
+      assert.equal(html.indexOf('<section id="outcome"'), 0, `${game} on ${brand}: the page does not start with the outcome`);
+      const panes = html.split(/(?=<section id="[a-z]+" class="pane")/);
+      assert.deepEqual(panes.map((pane) => /data-section="([a-z]+)"/.exec(pane)?.[1]), ["shown", "added", "removed", "worth"], `${game} on ${brand}`);
+      for (const [index, pane] of panes.entries()) {
+        const section = SECTIONS[index];
+        assert.ok(section !== undefined);
+        assert.equal(/^<section [^>]*hidden>/.test(pane), index !== 0, `${game} on ${brand}: ${section.id} is ${index === 0 ? "hidden" : "open"} on arrival`);
+        assert.ok(pane.includes(`<h2 data-question>${esc(section.question)}</h2>`) && pane.includes(esc(section.why)), `${game} on ${brand}: ${section.id} does not state its question`);
+        const answer = /<div class="says" data-answer>(.*?)<\/div>/s.exec(pane)?.[1] ?? "";
+        assert.ok(text(answer).trim().length > 40, `${game} on ${brand}: ${section.id} has no sentence that answers its question`);
+        // The question comes before its answer.
+        assert.ok(pane.indexOf("data-question") < pane.indexOf("data-answer"));
+      }
+      const first = panes[0] ?? "";
+      if (first.includes("data-results")) results += 1;
+      else {
         declines += 1;
-        assert.ok(answer.includes("data-decline"), `${game} on ${brand}: neither a result nor a decline comes first`);
-        assert.match(text(answer), /Given .+ on .+, the service recommends nothing, and says why\./);
+        assert.ok(first.includes("data-decline"), `${game} on ${brand}: neither a result nor a decline`);
+        assert.match(text(first), /Given .+ on .+, the service recommends nothing, and says why\./);
       }
       // What is true and not first is on the page, closed, each under its own named control.
-      for (const drawer of ["raw-record", "steps", "scores", "provenance"]) {
-        if (at(`id="${drawer}"`) === -1) continue;
-        assert.ok(html.includes(`<details id="${drawer}" class="drawer"><summary>`), `${game} on ${brand}: ${drawer} is not folded away`);
-      }
-      assert.ok(!html.includes("<details open") && !/<details[^>]* open/.test(html), `${game} on ${brand}: a drawer starts open`);
+      assert.ok(!/<details[^>]* open/.test(html), `${game} on ${brand}: a drawer starts open`);
+      // A reader never sees the word for the program's own part: it is "the page".
+      assert.ok(!/\bconsole\b/i.test(text(html)), `${game} on ${brand}: the page calls itself a console`);
     }
   }
   assert.ok(results > 0 && declines > 0);
+  // Asked for another section, that one is open and no other.
+  const third = await traceView(get, { game: games[0] as string, brand: home, served: service.served.version, section: "removed" });
+  assert.deepEqual([...third.matchAll(/<section id="[a-z]+" class="pane" data-section="([a-z]+)"[^>]*?( hidden)?>/g)].filter((match) => match[2] === undefined).map((match) => match[1]), ["removed"]);
   const summaries = [...(await traceView(get, { game: games[0] as string, brand: home, served: service.served.version })).matchAll(/<summary>(.*?)<\/summary>/g)].map((match) => text(match[1] as string).trim());
   assert.equal(new Set(summaries).size, summaries.length, "two controls carry the same name");
   for (const summary of summaries) assert.ok(summary.length > 20 && !/^(show )?(more|details)$/i.test(summary), `"${summary}" does not say what it opens`);
+  // The links that switch sections carry the request and the section, so the address opens the same view.
+  const tabs = renderTabs("added", { game: "a b", brand: home, version: "raw" });
+  assert.deepEqual([...tabs.matchAll(/href="([^"]+)" data-tab="([a-z]+)"( aria-current="true")?/g)].map((match) => [match[1], match[2], match[3] !== undefined]), SECTIONS.map((section) => [`/?game=a+b&amp;brand=${home}&amp;version=raw&amp;section=${section.id}`, section.id, section.id === "added"]));
+  for (const section of SECTIONS) assert.equal(addressRequest(`?game=x&brand=${home}&section=${section.id}`, await get("/api/catalogue")).section, section.id);
+  assert.equal(addressRequest("?section=nonsense", await get("/api/catalogue")).section, "shown");
 });
 
 test("UI-9: what a result is said to have in common with the game played is held by both, and it is never offered as the cause of the score", async () => {
@@ -333,7 +351,8 @@ test("UI-10: beside the result, the other versions' answers are counted as the s
   for (const game of games) {
     const html = await traceView(get, { game, brand: home, version: service.served.version, served: service.served.version, versions: VERSIONS, evaluation });
     const aside = html.slice(html.indexOf("<aside"), html.indexOf("</aside>"));
-    assert.ok(aside.length > 0 && html.indexOf("<aside") < html.indexOf("</section>"), `${game}: the model's value is not beside the result`);
+    const worth = html.slice(html.indexOf('<section id="worth"'));
+    assert.ok(aside.length > 0 && worth.includes("<aside") && worth.indexOf("data-answer") < worth.indexOf("<aside"), `${game}: the measured numbers are not in the fourth section, under its answer`);
     const mine = ask(`/api/recommendations?game=${game}&brand=${home}`).results.map((entry) => entry.game_id);
     const lines = (aside.split("data-others>")[1] ?? "").split("</ul>")[0]?.split("<li>").slice(1) ?? [];
     const others = VERSIONS.filter((version) => version !== service.served.version);
@@ -417,7 +436,7 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   const examples = await findExamples(get, catalogue, evaluation);
   assert.ok(asked.every((url) => /^\/api\/(catalogue|recommendations|inspect|evaluation)(\?|$)/.test(url)));
   assert.deepEqual(examples.map((example) => example.kind), ["thin", "plain", "conflict", "filter", "decline", "versions", "failure"]);
-  for (const example of examples) assert.ok(example.found && example.note.length > 20 && example.href?.startsWith("/?game="), `${example.kind}: ${example.note}`);
+  for (const example of examples) assert.ok(example.found && example.note.length > 20 && example.href?.startsWith("/?game=") && SECTIONS.some((section) => example.href?.endsWith(`section=${section.id}`) || example.href?.includes(`section=${section.id}&`)), `${example.kind}: ${example.note}`);
   const of = (kind: string) => {
     const example = examples.find((entry) => entry.kind === kind);
     assert.ok(example?.game !== undefined && example.brand !== undefined);
@@ -462,10 +481,147 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   const none = await findExamples(get, { ...catalogue, games: catalogue.games.filter((game) => !game.thin) }, evaluation);
   const missing = none.find((example) => example.kind === "thin");
   assert.ok(missing !== undefined && !missing.found && missing.href === undefined);
-  const drawn = renderExamples(none, "");
+  const drawn = renderExamples(none);
   assert.ok(drawn.includes('<li class="missing">') && text(drawn).includes("No game in this catalogue shows it."));
   // The open example is marked, and its line is shown above the result.
-  assert.equal(renderExamples(examples, thin.href?.slice(1)).split('aria-current="true"').length - 1, 1);
-  const pointed = renderTrace(thin.response, { look: { note: thin.note, target: "enrichment" } });
-  assert.ok(pointed.includes("data-look") && pointed.includes(esc(thin.note)) && pointed.includes('href="#enrichment"'));
+  assert.equal(renderExamples(examples, { game: thin.game, brand: thin.brand }).split('aria-current="true"').length - 1, 1);
+  assert.equal(thin.section, "added");
+  const pointed = renderTrace(thin.response, { look: { note: thin.note, section: thin.section } });
+  const where = pointed.slice(pointed.indexOf('<section id="enrichment"'), pointed.indexOf('<section id="removals"'));
+  assert.equal(pointed.split("data-look").length - 1, 1);
+  assert.ok(where.includes("data-look") && where.includes(esc(thin.note)), "the example's line is not in the section that shows it");
+});
+
+test("UI-14: the sentence over the results claims only what the service guarantees: live on the brand and above the floor, never that the games are related", async () => {
+  const { get } = getter();
+  const catalogue = (await get("/api/catalogue")) as { games: { game_id: string; status: Record<string, string> }[] };
+  const evaluation = (await get("/api/evaluation")) as { report: { check_games: { brand: string; results: Record<string, { anchor: string; results: { grade: string }[] }[]> } } };
+  const status = new Map(catalogue.games.map((game) => [game.game_id, game.status]));
+  let pages = 0;
+  for (const brand of brands) {
+    for (const game of games) {
+      const response = ask(`/api/recommendations?game=${game}&brand=${brand}&trace=1`);
+      if (response.outcome !== "results") continue;
+      const first = renderTrace(response, { evaluation }).split('<section id="enrichment"')[0] ?? "";
+      const said = text(first);
+      assert.match(said, /Given .+ on .+, the service returns \d+ games? that (is|are) live there and cleared the similarity floor, highest score first\. It promises nothing more about them\./, `${game} on ${brand}`);
+      assert.ok(!/\brelated\b|\bbest match\b/i.test(said.replace(/a failure the evaluation found.*$/i, "")), `${game} on ${brand}: the first section calls its results related`);
+      // What the sentence does claim is true of every game under it.
+      for (const result of response.results) {
+        assert.equal(status.get(result.game_id)?.[brand], "live", `${result.game_id} is shown on ${brand} and is not live there`);
+        assert.ok(response.trace !== undefined && result.score >= response.trace.floor, `${result.game_id} is shown below the floor`);
+      }
+      pages += 1;
+    }
+  }
+  assert.ok(pages > 100);
+  // The evaluation's own rule grades some served results weak or unrelated, which is why "related" cannot be claimed.
+  const grades = (evaluation.report.check_games.results[service.served.version] ?? []).flatMap((entry) => entry.results.map((result) => result.grade));
+  assert.ok(grades.some((grade) => grade === "unrelated" || grade === "weak"), "no served result is graded weak or unrelated, so this proof has nothing to stand on");
+});
+
+test("UI-15: every sentence about what happened to a record follows from that record's own data, in every version", () => {
+  let lookedAt = 0;
+  let tableFoundAndNotHeld = 0;
+  for (const version of VERSIONS) {
+    for (const game of games) {
+      const response = ask(`/api/inspect?game=${game}&brand=${home}&version=${version}`);
+      const anchor = response.trace?.anchor;
+      if (!anchor || anchor.fields === null) continue;
+      const story = text(/<p class="lede" data-story>(.*?)<\/p>/s.exec(renderTrace(response))?.[1] ?? "");
+      assert.ok(story.length > 0, `${game} in ${version}: no sentence`);
+      const found = anchor.steps.table.themes.length + anchor.steps.table.mechanics.length;
+      const fromModel = held(response).filter((label) => label.method === "model").length;
+      const fromTable = held(response).length - fromModel;
+      const where = `${game} in ${version}: "${story}"`;
+      if (anchor.steps.conflict === null) {
+        assert.equal(story.includes("gave the lookup table no usable label"), found === 0, where);
+        if (found > 0) assert.ok(story.includes(`The lookup table read ${found} label`), where);
+        if (found > 0 && fromTable === 0) {
+          tableFoundAndNotHeld += 1;
+          assert.ok(story.includes("this version holds none of them"), where);
+        }
+      }
+      assert.equal(story.includes("counts as thin"), anchor.thin && anchor.steps.conflict === null, where);
+      const added = /added (\d+) labels?/.exec(story)?.[1];
+      assert.equal(added === undefined ? 0 : Number(added), fromModel, where);
+      assert.equal(story.includes("The model is not used for this record in this version."), fromModel === 0 && !anchor.steps.model.used, where);
+      lookedAt += 1;
+    }
+  }
+  assert.ok(lookedAt > 200);
+  assert.ok(tableFoundAndNotHeld > 0, "no record has table labels that its version does not hold, so that sentence was not checked");
+});
+
+test("UI-16: a failure the evaluation found is said only where it was found: in that version, and on that brand when it is about a request", async () => {
+  const { get } = getter();
+  const evaluation = (await get("/api/evaluation")) as { report: { check_games: { brand: string }; gallery: { real: { game_id: string; what: string; version?: string; detail?: { brand?: string; result?: { game_id: string } } }[] } } };
+  let shownSomewhere = 0;
+  let withheldSomewhere = 0;
+  for (const entry of evaluation.report.gallery.real) {
+    for (const brand of brands) {
+      for (const version of VERSIONS) {
+        const response = ask(`/api/inspect?game=${entry.game_id}&brand=${brand}&version=${version}`);
+        const html = renderTrace(response, { evaluation });
+        const said = html.includes("data-failure") && html.includes(esc(entry.what));
+        const about = entry.detail?.brand ?? (entry.detail?.result ? evaluation.report.check_games.brand : null);
+        const here = version === entry.version && (about === null || about === brand) && (entry.detail?.result === undefined || response.results.some((result) => result.game_id === entry.detail?.result?.game_id));
+        assert.equal(said, here, `${entry.game_id} on ${brand} in ${version}: the failure is ${said ? "said" : "not said"}`);
+        if (said) shownSomewhere += 1;
+        else withheldSomewhere += 1;
+        // A failure about a decline is never said beside a decline for another reason.
+        if (said && entry.detail?.brand !== undefined && response.outcome === "declined") assert.equal(response.decline?.reason, ask(`/api/inspect?game=${entry.game_id}&brand=${entry.detail.brand}&version=${entry.version ?? version}`).decline?.reason);
+      }
+    }
+  }
+  assert.ok(shownSomewhere >= evaluation.report.gallery.real.length && withheldSomewhere > 0);
+  // Without the evaluation the page says nothing of the kind.
+  assert.ok(!renderTrace(ask(`/api/recommendations?game=${evaluation.report.gallery.real[0]?.game_id}&brand=${home}&trace=1`)).includes("data-failure"));
+});
+
+test("UI-17: an answer that arrives after a newer request began is not the latest, so the page does not show it", async () => {
+  const begin = turns();
+  const place = {};
+  const shown: string[] = [];
+  // The page's own rule: write the answer only if no later work began for the same place.
+  const show = async (answer: string, after: number): Promise<void> => {
+    const latest = begin(place);
+    await new Promise((resolve) => setTimeout(resolve, after));
+    if (latest()) shown.push(answer);
+  };
+  // The first request is slow and the second is fast: the first answer arrives last.
+  await Promise.all([show("first request", 30), show("second request", 5)]);
+  assert.deepEqual(shown, ["second request"]);
+  // Work for another place does not make this one stale.
+  const one = begin(place);
+  const other = begin({});
+  assert.ok(one() && other());
+});
+
+test("UI-18: a brand or a version an address names is sent as written, so the service says what is wrong with it; a brand with no game is kept", async () => {
+  const { get, asked } = getter();
+  const catalogue = (await get("/api/catalogue")) as { brands: { brand: string }[]; versions: string[]; served: { version: string } };
+  const loud = home.toUpperCase();
+  assert.notEqual(loud, home);
+  // A brand in the wrong case: the picker keeps it, the request carries it, and the service names it.
+  const wrongBrand = addressRequest(`?game=${games[0]}&brand=${loud}`, catalogue);
+  assert.deepEqual([wrongBrand.game, wrongBrand.brand, wrongBrand.version], [games[0], loud, catalogue.served.version]);
+  assert.deepEqual(brandOptions(catalogue, loud)[0], { value: loud, text: `${loud} · not a brand of this catalogue` });
+  assert.equal(brandOptions(catalogue, home).length, catalogue.brands.length);
+  await assert.rejects(traceView(get, { game: wrongBrand.game as string, brand: wrongBrand.brand as string, version: wrongBrand.version as string, served: catalogue.served.version }), (error: Error) => error.message.includes("unknown brand") && error.message.includes(loud) && !error.message.includes("is required"));
+  assert.ok(asked.at(-1)?.includes(`brand=${loud}`));
+  // A version in the wrong case, the same way.
+  const wrongVersion = addressRequest(`?game=${games[0]}&brand=${home}&version=RAW`, catalogue);
+  assert.equal(wrongVersion.version, "RAW");
+  assert.deepEqual(versionOptions(catalogue, "RAW")[0], { value: "RAW", text: "RAW · not a version of this index" });
+  assert.equal(versionOptions(catalogue, "raw").length, catalogue.versions.length);
+  await assert.rejects(traceView(get, { game: games[0] as string, brand: home, version: "RAW", served: catalogue.served.version }), (error: Error) => error.message.includes("unknown version") && !error.message.includes("is required"));
+  // A brand and no game: the brand is kept, and the game is the first the picker offers for it.
+  const other = catalogue.brands.at(-1)?.brand as string;
+  const brandOnly = addressRequest(`?brand=${other}`, catalogue);
+  assert.equal(brandOnly.brand, other);
+  assert.equal(brandOnly.game, gameOptions(catalogue, other, null)[0]?.value);
+  // A game and no brand keeps the game. An address that names no request names none.
+  assert.equal(addressRequest(`?game=${games[3]}`, catalogue).game, games[3]);
+  assert.deepEqual([addressRequest("", catalogue).game, addressRequest("?section=worth", catalogue).game], [null, null]);
 });
