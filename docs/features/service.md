@@ -183,22 +183,22 @@ The owner's check: run `npm run owner-check`, answer y, n or u to each question,
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| SV-1 | Availability is filtered before ranking: for every game on every brand, no result is a game that is not live on that brand, and no such game is ever scored | `npm test -- "SV-1:"` | `aee8e18` |
-| SV-2 | Serving a request makes no model call: it opens no connection, and the service runs from a tree with no hidden truth and no model response | `npm test -- "SV-2:"` | `aee8e18` |
-| SV-3 | At most one result comes from the anchor game's own family, and a duplicate of the anchor is never returned | `npm test -- "SV-3:"` | `aee8e18` |
-| SV-4 | When nothing eligible is good enough, the response is a decline with one of four reason codes and no results, not a weaker list. Every result clears the floor | `npm test -- "SV-4:"` | `aee8e18` |
-| SV-5 | The service refuses to start on an invalid index, and without a passing verdict bound to that index's hash, to the committed pass marks and to the floor it judged. It serves the version the verdict chose, and a what-if changes none of that | `npm test -- "SV-5:"` | `aee8e18` |
-| SV-6 | A game withdrawn in the offerings file is gone after a restart, and other results are still served. A malformed offerings file stops the start | `npm test -- "SV-6:"` | `aee8e18` |
-| SV-7 | A trace carries the record, what each step added with its quote, what each filter removed, the scores, the floor, the outcome and per-stage timings | `npm test -- "SV-7:"` | `aee8e18` |
-| SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered | `npm test -- "SV-8:"` | `aee8e18` |
-| EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report and verdict byte for byte, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `aee8e18` |
-| EV-2 | Every pass mark is read from the owner's file. None is defined in code, and a file the gate does not fully understand is refused | `npm test -- "EV-2:"` | `aee8e18` |
-| EV-3 | The ship rule picks the simplest passing version within the margin of the best passing one, and nothing when none passes | `npm test -- "EV-3:"` | `aee8e18` |
-| EV-4 | Each measure is the plan's: precision, recovery, recovery without tags, missed abstentions, invalid quotes, the grade of a pair, pairwise accuracy. Counts stand beside rates | `npm test -- "EV-4:"` | `aee8e18` |
-| EV-5 | The reviewer is asked the plan's own question text, never told who asserted a label, and its "yes" counts only with a word-for-word quote; otherwise it is recorded as unclear. The control is reported as a count | `npm test -- "EV-5:"` | `aee8e18` |
-| EV-6 | With no owner's answers the evaluation still reaches its verdict, says the check is outstanding, and withholds the reviewer's answers to his six questions | `npm test -- "EV-6:"` | `aee8e18` |
-| EV-7 | A live reviewer call is refused before it could pass the spend limit of $1.00, every attempt is stored, and the key reaches no file | `npm test -- "EV-7:"` | `aee8e18` |
-| EV-8 | The gallery holds three to five real failures from the system's own output, apart from the mess that was planted | `npm test -- "EV-8:"` | `aee8e18` |
+| SV-1 | Availability is filtered before ranking: for every game on every brand, no result is a game that is not live on that brand, and no such game is ever scored | `npm test -- "SV-1:"` | `ca56274` |
+| SV-2 | Serving a request makes no model call: it opens no connection, and the service runs from a tree with no hidden truth and no model response | `npm test -- "SV-2:"` | `ca56274` |
+| SV-3 | At most one result comes from the anchor game's own family, and a duplicate of the anchor is never returned | `npm test -- "SV-3:"` | `ca56274` |
+| SV-4 | When nothing eligible is good enough, the response is a decline with one of four reason codes and no results, not a weaker list. Every result clears the floor | `npm test -- "SV-4:"` | `ca56274` |
+| SV-5 | The service refuses to start on an invalid index, and without a passing verdict bound to that index's hash, to the committed pass marks and to the floor it judged. It serves the version the verdict chose, and a what-if changes none of that | `npm test -- "SV-5:"` | `ca56274` |
+| SV-6 | A game withdrawn in the offerings file is gone after a restart, and other results are still served. A malformed offerings file stops the start | `npm test -- "SV-6:"` | `ca56274` |
+| SV-7 | A trace carries the record, what each step added with its quote, what each filter removed, the scores, the floor, the outcome and per-stage timings | `npm test -- "SV-7:"` | `ca56274` |
+| SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered | `npm test -- "SV-8:"` | `ca56274` |
+| EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report and verdict byte for byte, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `ca56274` |
+| EV-2 | Every pass mark is read from the owner's file. None is defined in code, and a file the gate does not fully understand is refused | `npm test -- "EV-2:"` | `ca56274` |
+| EV-3 | The ship rule picks the simplest passing version within the margin of the best passing one, and nothing when none passes | `npm test -- "EV-3:"` | `ca56274` |
+| EV-4 | Each measure is the plan's: precision, recovery, recovery without tags, missed abstentions, invalid quotes, the grade of a pair, pairwise accuracy. Counts stand beside rates | `npm test -- "EV-4:"` | `ca56274` |
+| EV-5 | The reviewer is asked the plan's own question text, never told who asserted a label, and its "yes" counts only with a word-for-word quote; otherwise it is recorded as unclear. The control is reported as a count | `npm test -- "EV-5:"` | `ca56274` |
+| EV-6 | With no owner's answers the evaluation still reaches its verdict, says the check is outstanding, and withholds the reviewer's answers to his six questions | `npm test -- "EV-6:"` | `ca56274` |
+| EV-7 | A live reviewer call is refused before it could pass the spend limit of $1.00, every attempt is stored, and the key reaches no file | `npm test -- "EV-7:"` | `ca56274` |
+| EV-8 | The gallery holds three to five real failures from the system's own output, apart from the mess that was planted | `npm test -- "EV-8:"` | `ca56274` |
 
 What each proof does:
 
@@ -208,7 +208,7 @@ What each proof does:
 - **SV-4** finds one request for each of the four reasons by asking, checks every request for floor, order and counts, and recomputes the floor from all pairs.
 - **SV-5** breaks a scratch copy ten ways: no verdict, unreadable, malformed, failed, failed but still naming a version, contradicting itself, another index, other pass marks, another floor, another report. It breaks the index two ways and runs the command to see exit 1 and the reason.
 - **SV-6** withdraws one game in a scratch offerings file, loads again, and asks every game on that brand.
-- **EV-1** runs the command twice with no key and compares the report and the verdict with the committed files. It removes the stored answers, the answer key and the pass marks in turn, and makes one stored answer stale. It then scrambles every vector of a scratch index, re-seals it, runs the command on it to exit 1, and starts the service on the verdict that run wrote, which refuses.
+- **EV-1** runs the command twice with no key and compares the report and the verdict with the committed files. It removes the stored answers, the answer key and the pass marks in turn, and makes one stored answer stale. It then gives every text of a scratch index the vector of another text, so the index stays valid and its matching is noise, re-seals it, runs the command on it to exit 1, and starts the service on the verdict that run wrote, which refuses.
 - **EV-2** moves each of the seven marks, one at a time, just past what was measured, in a copy of the file, and expects exactly that mark to fail.
 - **EV-4** grades seven constructed pairs both ways round, scores a five-game toy index whose answer is known, then changes the real index in memory four ways: an invented quote, a quote cut from inside a word, a label on a field that should be silent, every label removed. It recounts recovery by hand.
 - **EV-5** gives the reviewer's reader a true quote, two stitched phrases, an empty quote, other capitals, a piece of a word and the label's own meaning.

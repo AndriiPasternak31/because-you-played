@@ -1,11 +1,11 @@
 {
   "format_version": 1,
-  "index_hash": "ee88d4282ea6bf37be6dbe5cab9ab83b6f81629c71e3df29cdd855d45b784d03",
+  "index_hash": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a",
   "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
   "prompt_version": "enrich-v1",
   "report": {
     "path": "enrich-v1/report.json",
-    "sha256": "3605059381e88841d39cc38d14200c5988ebd836671ac1301dbe35093175a65a"
+    "sha256": "f3ddd7ef804d1d4b3c88ac1c056f6bc5106f6ff4ff2f64b5e7fe875dd2dd4168"
   },
   "serving": {
     "floor_rule": "floor-p90-v1",
@@ -13,7 +13,7 @@
       "raw": 0.579259,
       "table": 0.587831,
       "model_where_thin": 0.59806,
-      "model_everywhere": 0.596795
+      "model_everywhere": 0.596894
     }
   },
   "passed": true,

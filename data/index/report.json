@@ -80,6 +80,12 @@
       "mechanics": 8
     }
   },
+  "vectors_taken_from_an_earlier_text": {
+    "raw": 0,
+    "table": 7,
+    "model_where_thin": 72,
+    "model_everywhere": 94
+  },
   "versions": {
     "raw": null,
     "table": {

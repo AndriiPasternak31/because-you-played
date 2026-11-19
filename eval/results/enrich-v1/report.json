@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "index_hash": "ee88d4282ea6bf37be6dbe5cab9ab83b6f81629c71e3df29cdd855d45b784d03",
+  "index_hash": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a",
   "prompt_version": "enrich-v1",
   "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
   "seed": "evaluation-v1",
@@ -1833,7 +1833,7 @@
           "rate": 0.805002
         },
         "per_game": {
-          "mean": 0.827658,
+          "mean": 0.827645,
           "games": 100,
           "games_without_a_pair": 0
         }
@@ -1847,7 +1847,7 @@
             "rate": 0.809398
           },
           "per_game": {
-            "mean": 0.833068,
+            "mean": 0.833045,
             "games": 63,
             "games_without_a_pair": 0
           },
@@ -1860,7 +1860,7 @@
             "rate": 0.799434
           },
           "per_game": {
-            "mean": 0.817501,
+            "mean": 0.817503,
             "games": 30,
             "games_without_a_pair": 0
           },
@@ -1901,7 +1901,7 @@
             "rate": 0.814315
           },
           "per_game": {
-            "mean": 0.830663,
+            "mean": 0.830643,
             "games": 69,
             "games_without_a_pair": 0
           },
@@ -1934,7 +1934,7 @@
           "rate": 0.800859
         },
         "per_game": {
-          "mean": 0.821173,
+          "mean": 0.821174,
           "games": 100,
           "games_without_a_pair": 0
         }
@@ -1943,12 +1943,12 @@
       "by_condition": {
         "description": {
           "pooled": {
-            "count": 39208,
+            "count": 39210,
             "of": 48714,
-            "rate": 0.804861
+            "rate": 0.804902
           },
           "per_game": {
-            "mean": 0.827477,
+            "mean": 0.827499,
             "games": 63,
             "games_without_a_pair": 0
           },
@@ -1956,12 +1956,12 @@
         },
         "tags_only": {
           "pooled": {
-            "count": 23589,
+            "count": 23587,
             "of": 29666,
-            "rate": 0.795153
+            "rate": 0.795085
           },
           "per_game": {
-            "mean": 0.807688,
+            "mean": 0.807644,
             "games": 30,
             "games_without_a_pair": 0
           },
@@ -1989,7 +1989,7 @@
             "rate": 0.784611
           },
           "per_game": {
-            "mean": 0.821387,
+            "mean": 0.821398,
             "games": 31,
             "games_without_a_pair": 0
           },
@@ -2002,7 +2002,7 @@
             "rate": 0.80809
           },
           "per_game": {
-            "mean": 0.821077,
+            "mean": 0.821074,
             "games": 69,
             "games_without_a_pair": 0
           },
@@ -2020,7 +2020,7 @@
         },
         "declined": 0
       },
-      "floor": 0.596795,
+      "floor": 0.596894,
       "cost": {
         "estimated_usd": 0.390763,
         "model_calls": 100,
@@ -2793,7 +2793,7 @@
               "game_id": "thr-86641",
               "title": "The Expedition of Rellavern",
               "rank": 2,
-              "score": 0.631171,
+              "score": 0.631151,
               "grade": "related",
               "shared_in_plan": "adventure, free spins",
               "question_id": null,
@@ -2804,7 +2804,7 @@
               "game_id": "thr-85077",
               "title": "The Expedition of Cevrath",
               "rank": 3,
-              "score": 0.622314,
+              "score": 0.622379,
               "grade": "related",
               "shared_in_plan": "adventure, paylines, free spins",
               "question_id": null,
@@ -2888,7 +2888,7 @@
               "game_id": "thr-86641",
               "title": "The Expedition of Rellavern",
               "rank": 4,
-              "score": 0.618048,
+              "score": 0.618054,
               "grade": "related",
               "shared_in_plan": "mythology, cluster pays, free spins",
               "question_id": null,
@@ -2923,7 +2923,7 @@
               "game_id": "wex-21348",
               "title": "Javrek the Explorer 2",
               "rank": 1,
-              "score": 0.95468,
+              "score": 0.954743,
               "grade": "strong",
               "shared_in_plan": "adventure, paylines, free spins, pick bonus",
               "question_id": null,
@@ -2934,7 +2934,7 @@
               "game_id": "wex-63391",
               "title": "Zavrek the Cave Explorer",
               "rank": 2,
-              "score": 0.788739,
+              "score": 0.788823,
               "grade": "related",
               "shared_in_plan": "adventure, free spins",
               "question_id": null,
@@ -2945,7 +2945,7 @@
               "game_id": "thr-85077",
               "title": "The Expedition of Cevrath",
               "rank": 3,
-              "score": 0.716312,
+              "score": 0.716386,
               "grade": "related",
               "shared_in_plan": "adventure, paylines, free spins",
               "question_id": null,
@@ -2956,7 +2956,7 @@
               "game_id": "thr-78724",
               "title": "Javren the Leopard",
               "rank": 4,
-              "score": 0.69252,
+              "score": 0.692539,
               "grade": "weak",
               "shared_in_plan": "adventure",
               "question_id": null,
@@ -2967,7 +2967,7 @@
               "game_id": "wex-33128",
               "title": "Vampires of Eldrevik",
               "rank": 5,
-              "score": 0.653643,
+              "score": 0.653634,
               "grade": "related",
               "shared_in_plan": "adventure, paylines, free spins",
               "question_id": null,
@@ -3048,7 +3048,7 @@
               "game_id": "wex-68783",
               "title": "Drelveth the Wizard",
               "rank": 1,
-              "score": 0.816037,
+              "score": 0.816002,
               "grade": "related",
               "shared_in_plan": "fantasy, cluster pays, cascading reels",
               "question_id": null,
@@ -3059,7 +3059,7 @@
               "game_id": "wex-27347",
               "title": "Felvarn the Wizard",
               "rank": 2,
-              "score": 0.676574,
+              "score": 0.676495,
               "grade": "related",
               "shared_in_plan": "fantasy, hold and respin",
               "question_id": null,
@@ -3070,7 +3070,7 @@
               "game_id": "qfi-66698",
               "title": "Elves of Lethavren",
               "rank": 3,
-              "score": 0.675508,
+              "score": 0.675494,
               "grade": "strong",
               "shared_in_plan": "fantasy, cascading reels, hold and respin",
               "question_id": null,
@@ -3081,7 +3081,7 @@
               "game_id": "wex-25660",
               "title": "The Wand of Zelvorith",
               "rank": 4,
-              "score": 0.666972,
+              "score": 0.666919,
               "grade": "related",
               "shared_in_plan": "fantasy, cluster pays, hold and respin",
               "question_id": null,
@@ -3092,7 +3092,7 @@
               "game_id": "wex-16097",
               "title": "Rune Forgers of Tharnovel",
               "rank": 5,
-              "score": 0.648474,
+              "score": 0.648443,
               "grade": "weak",
               "shared_in_plan": "fantasy",
               "question_id": null,
@@ -3111,7 +3111,7 @@
               "game_id": "ulv-89770",
               "title": "Ovrandel's Treasure Trail Winter Edition",
               "rank": 1,
-              "score": 0.639662,
+              "score": 0.639664,
               "grade": "related",
               "shared_in_plan": "adventure, paylines, free spins",
               "question_id": null,
@@ -3122,7 +3122,7 @@
               "game_id": "thr-86641",
               "title": "The Expedition of Rellavern",
               "rank": 2,
-              "score": 0.634584,
+              "score": 0.634552,
               "grade": "related",
               "shared_in_plan": "adventure, free spins",
               "question_id": null,
@@ -3133,7 +3133,7 @@
               "game_id": "thr-85077",
               "title": "The Expedition of Cevrath",
               "rank": 3,
-              "score": 0.622389,
+              "score": 0.622379,
               "grade": "related",
               "shared_in_plan": "adventure, paylines, free spins",
               "question_id": null,
@@ -3144,7 +3144,7 @@
               "game_id": "wex-30732",
               "title": "Farnelu Temple Expedition",
               "rank": 4,
-              "score": 0.602787,
+              "score": 0.602773,
               "grade": "strong",
               "shared_in_plan": "adventure, free spins, expanding wilds",
               "question_id": null,
@@ -3155,7 +3155,7 @@
               "game_id": "qfi-99178",
               "title": "Saelvyr's Dragon Hoard",
               "rank": 5,
-              "score": 0.599589,
+              "score": 0.599544,
               "grade": "unrelated",
               "shared_in_plan": "free spins",
               "question_id": "recommendation.okk-50023.qfi-99178",
@@ -3285,7 +3285,7 @@
               "game_id": "thr-78724",
               "title": "Javren the Leopard",
               "rank": 4,
-              "score": 0.692725,
+              "score": 0.692539,
               "grade": "weak",
               "shared_in_plan": "adventure",
               "question_id": null,
@@ -3334,7 +3334,7 @@
               "game_id": "okk-34630",
               "title": "Veskrith's Vampire Keep",
               "rank": 1,
-              "score": 0.619813,
+              "score": 0.619867,
               "grade": "weak",
               "shared_in_plan": "horror",
               "question_id": null,
@@ -3345,7 +3345,7 @@
               "game_id": "qfi-99178",
               "title": "Saelvyr's Dragon Hoard",
               "rank": 2,
-              "score": 0.619231,
+              "score": 0.619316,
               "grade": "weak",
               "shared_in_plan": "ways, mystery symbols, free spins",
               "question_id": null,
@@ -3356,7 +3356,7 @@
               "game_id": "ulv-99151",
               "title": "Krevvick the Ghost Barker",
               "rank": 3,
-              "score": 0.610678,
+              "score": 0.610699,
               "grade": "related",
               "shared_in_plan": "horror, free spins",
               "question_id": null,
@@ -3367,7 +3367,7 @@
               "game_id": "thr-86641",
               "title": "The Expedition of Rellavern",
               "rank": 4,
-              "score": 0.596803,
+              "score": 0.596916,
               "grade": "related",
               "shared_in_plan": "mythology, free spins",
               "question_id": null,
@@ -4447,7 +4447,7 @@
       ],
       [
         "okk-34630",
-        1240,
+        1241,
         1769
       ],
       [
@@ -4547,7 +4547,7 @@
       ],
       [
         "okk-91732",
-        399,
+        398,
         510
       ],
       [
@@ -4712,7 +4712,7 @@
       ],
       [
         "thr-85077",
-        875,
+        874,
         960
       ],
       [
@@ -4882,7 +4882,7 @@
       ],
       [
         "wex-87930",
-        811,
+        812,
         912
       ]
     ],
@@ -4904,7 +4904,7 @@
       ],
       [
         "drw-43988",
-        843,
+        842,
         1173
       ],
       [
@@ -4974,7 +4974,7 @@
       ],
       [
         "okk-50023",
-        1094,
+        1095,
         1278
       ],
       [
@@ -5034,7 +5034,7 @@
       ],
       [
         "okk-73233",
-        564,
+        565,
         576
       ],
       [
@@ -5049,7 +5049,7 @@
       ],
       [
         "okk-91732",
-        399,
+        398,
         510
       ],
       [
@@ -5094,7 +5094,7 @@
       ],
       [
         "qfi-31730",
-        751,
+        752,
         1024
       ],
       [
@@ -5129,7 +5129,7 @@
       ],
       [
         "qfi-76450",
-        1187,
+        1186,
         1554
       ],
       [
@@ -5194,7 +5194,7 @@
       ],
       [
         "thr-60491",
-        952,
+        951,
         1368
       ],
       [
@@ -5204,7 +5204,7 @@
       ],
       [
         "thr-78724",
-        1083,
+        1084,
         1380
       ],
       [
@@ -5214,7 +5214,7 @@
       ],
       [
         "thr-85077",
-        878,
+        877,
         960
       ],
       [
@@ -5384,7 +5384,7 @@
       ],
       [
         "wex-87930",
-        813,
+        814,
         912
       ]
     ]

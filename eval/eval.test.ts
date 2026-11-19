@@ -115,20 +115,39 @@ test("EV-1: a missing or stale input stops the evaluation with exit 1 and names 
   assert.match(raised.stderr, /--max-usd must be above 0 and at most 1/);
 });
 
-/** A copy of the data in which every vector belongs to another game: the index is valid and its matching is noise. */
+/**
+ * A copy of the data in which every text holds the vector of another text: the index is valid and its
+ * matching is noise. The swap is made per text, not per row, because the loader refuses an index in
+ * which one text sits at two points.
+ */
 function scrambledFixture(): { dataDir: string } {
   const dataDir = scratch("ev1-bad-fixture");
   for (const part of ["index", "generation", "catalogue.raw.jsonl", "offerings.jsonl"]) cpSync(join("data", part), join(dataDir, part), { recursive: true });
   const manifestPath = join(dataDir, "index", "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Manifest;
   const bytesPerVector = manifest.dimensions * 4;
+  const records = readFileSync(join(dataDir, "index", "records.jsonl"), "utf8")
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as IndexRecord);
+  const files = Object.fromEntries(VERSIONS.map((version) => [version, readFileSync(join(dataDir, "index", `vectors.${version}.f32`))])) as Record<Version, Buffer>;
+  // Every distinct text, in order of first appearance, with the vector it holds now.
+  const texts: string[] = [];
+  const vectorOf = new Map<string, Buffer>();
+  for (const version of VERSIONS) {
+    records.forEach((record, row) => {
+      const hash = record.versions[version].text_sha256;
+      if (vectorOf.has(hash)) return;
+      texts.push(hash);
+      vectorOf.set(hash, Buffer.from(files[version].subarray(row * bytesPerVector, (row + 1) * bytesPerVector)));
+    });
+  }
+  // Text j takes the vector of the text half the list away: a fixed swap with no pattern the plan shares.
+  const swapped = new Map(texts.map((hash, position) => [hash, vectorOf.get(texts[(position + Math.floor(texts.length / 2)) % texts.length] as string) as Buffer]));
   for (const version of VERSIONS) {
     const name = `vectors.${version}.f32`;
-    const original = readFileSync(join(dataDir, "index", name));
-    const count = original.length / bytesPerVector;
-    const moved = Buffer.alloc(original.length);
-    // Game i gets the vector of game (i * 37 + 11) mod n: a fixed permutation with no pattern the plan shares.
-    for (let row = 0; row < count; row += 1) original.copy(moved, row * bytesPerVector, (((row * 37 + 11) % count) * bytesPerVector), (((row * 37 + 11) % count) + 1) * bytesPerVector);
+    const moved = Buffer.concat(records.map((record) => swapped.get(record.versions[version].text_sha256) as Buffer));
+    assert.notDeepEqual(moved, files[version]);
     writeFileSync(join(dataDir, "index", name), moved);
     manifest.files[name] = { sha256: sha256(moved), bytes: moved.length };
   }
