@@ -58,8 +58,8 @@ function sharedLabels(anchor, neighbour) {
 const pct = (value) => (value === null || value === undefined ? "–" : `${(value * 100).toFixed(1)}%`);
 
 /**
- * The model's value, beside the result: what the other versions return for this request, and what the
- * evaluation measured over every game. A different list is not called a better one; only the measured numbers are.
+ * The model's value, beside the result: what the evaluation measured over every game, and what the
+ * other versions return for this request. A different list is not called a better one; only the measured numbers are.
  */
 function worth(response, { versions, evaluation }) {
   if (versions === undefined && evaluation === undefined) return "";
@@ -81,7 +81,7 @@ function worth(response, { versions, evaluation }) {
         return `<li><span>${esc(versionName(version))}${built}</span><span class="num">${returns}</span></li>`;
       })
       .join("");
-    here = `<h3>This request in the other versions</h3><ul class="others" data-others>${lines}</ul><p class="small">A different list is not a better list. Whether the model's lists are better is measured, over every game:</p>`;
+    here = `<h3>This request in the other versions</h3><ul class="others" data-others>${lines}</ul><p class="small">A different list is not a better list.${evaluation === undefined ? "" : " Whether the model's lists are better is what the numbers above measure, over every game."}</p>`;
   }
   let measured = "";
   if (evaluation !== undefined) {
@@ -103,7 +103,7 @@ function worth(response, { versions, evaluation }) {
       `<h3>Measured over the whole catalogue</h3><table class="mini-race" data-measured><thead><tr><th scope="col">Version</th><th scope="col" class="num">Ranked right</th><th scope="col" class="num">Cost to build</th></tr></thead><tbody>${rows}</tbody></table>` +
       `<p class="small">Ranked right: how often a related game scores above an unrelated one, against the answer key of this fictional catalogue. It shows direction, not how real players would judge a list. <a href="#evaluation">The evidence behind it</a></p>`;
   }
-  return `<aside class="worth" aria-label="Was the model worth it, in short"><p class="kicker">Was the model worth it? In short</p>${here}${measured}</aside>`;
+  return `<aside class="worth" aria-label="Was the model worth it, in short"><p class="kicker">Was the model worth it? In short</p>${measured}${here}</aside>`;
 }
 
 function answer(response, extras) {
@@ -152,7 +152,7 @@ function answer(response, extras) {
       `<p class="lede">${label("green", "result")} Given <strong>${title}</strong> on <strong>${brand}</strong>, the service returns ${plural(response.results.length, "related game that is", "related games that are")} live there, best match first.</p>` +
       `<ol class="results" data-results>${cards}</ol>${failures}${pointer}${reading}`;
   }
-  return `<section id="outcome" class="block answer">${head}<div class="split"><div class="main">${main}</div>${worth(response, extras)}</div></section>`;
+  return `<section id="outcome" class="block answer"><div class="split"><div class="main">${head}${main}</div>${worth(response, extras)}</div></section>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,7 +567,7 @@ export async function findExamples(get, catalogue, evaluation) {
       }
       if (best === null) return null;
       const { entry, fromModel } = best;
-      return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `${entry.title}: the supplier's tags gave no label, and the model added ${fromModel} from the text.` };
+      return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `The supplier's tags gave no label, and the model added ${fromModel} from the text.` };
     },
     async filter() {
       let asked = 0;
@@ -586,7 +586,7 @@ export async function findExamples(get, catalogue, evaluation) {
             focus: best.game_id,
             href: link({ game: entry.game_id, brand: home, focus: best.game_id }),
             target: "removals",
-            note: `${best.title} is the best match for ${entry.title} on ${other}, and is ${words(removed.why)} on ${home}.`,
+            note: `${best.title} is its best match on ${other}, and is ${words(removed.why)} on ${home}.`,
           };
         }
       }
@@ -600,7 +600,7 @@ export async function findExamples(get, catalogue, evaluation) {
       for (const entry of catalogue.games.filter((entry) => liveOn(entry, home)).sort((a, b) => order(a) - order(b))) {
         if ((asked += 1) > SEARCH_LIMIT) break;
         const response = await recommend(entry.game_id, home, false);
-        if (response.outcome === "declined") return { game: entry.game_id, brand: home, href: link({ game: entry.game_id, brand: home }), note: `${entry.title}: declined, ${words(response.decline.reason)}.` };
+        if (response.outcome === "declined") return { game: entry.game_id, brand: home, href: link({ game: entry.game_id, brand: home }), note: `The service declines to recommend: ${words(response.decline.reason)}.` };
       }
       return null;
     },
@@ -608,7 +608,7 @@ export async function findExamples(get, catalogue, evaluation) {
       const listed = (evaluation?.report.conflict_games.games ?? []).filter((entry) => liveOn(byId.get(entry.game_id), home));
       const pick = listed.find((entry) => entry.mechanics[served]?.status === "asserted") ?? listed[0];
       if (pick === undefined) return null;
-      return { game: pick.game_id, brand: home, target: "enrichment", href: link({ game: pick.game_id, brand: home, show: "added" }), note: `${pick.title}: the tag says ${words(pick.tag_asserts)}, the description says ${pick.description_states.map(words).join(", ")}.` };
+      return { game: pick.game_id, brand: home, target: "enrichment", href: link({ game: pick.game_id, brand: home, show: "added" }), note: `The tag says ${words(pick.tag_asserts)}, the description says ${pick.description_states.map(words).join(", ")}.` };
     },
     /** Among the evaluation's check games, the one whose list changes most between the first version and the served one. */
     async versions() {
@@ -628,7 +628,7 @@ export async function findExamples(get, catalogue, evaluation) {
         brand: check.brand,
         target: "versions",
         href: link({ game: best.anchor, brand: check.brand, show: "versions" }),
-        note: `${byId.get(best.anchor).title}: ${plural(best.first, "game", "games")} from ${versionName(names[0])}, ${best.mine} from ${versionName(served)}, not all the same.`,
+        note: `${plural(best.first, "game", "games")} from ${versionName(names[0])}, ${best.mine} from ${versionName(served)}, not all the same.`,
       };
     },
     /** A record the supplier described well: the table's labels were enough, and this version holds none from the model. */
@@ -640,7 +640,7 @@ export async function findExamples(get, catalogue, evaluation) {
         const response = await recommend(entry.game_id, home, true);
         const held = heldLabels(response.trace?.anchor);
         if (response.outcome === "results" && held.length > 0 && held.every((label) => label.method !== "model")) {
-          return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `${entry.title}: the supplier's tags already gave ${plural(held.length, "label", "labels")}; the model adds nothing.` };
+          return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `The supplier's tags already gave ${plural(held.length, "label", "labels")}; the model adds nothing.` };
         }
       }
       return null;
@@ -652,7 +652,7 @@ export async function findExamples(get, catalogue, evaluation) {
       if (pick === undefined) return null;
       const brand = liveOn(byId.get(pick.game_id), home) ? home : (catalogue.brands.find((entry) => liveOn(byId.get(pick.game_id), entry.brand))?.brand ?? home);
       const version = pick.version && pick.version !== served ? { version: pick.version } : {};
-      return { game: pick.game_id, brand, href: link({ game: pick.game_id, brand, ...version }), note: `${byId.get(pick.game_id).title}: ${String(pick.what).split(". ")[0].replace(/\.$/, "")}.` };
+      return { game: pick.game_id, brand, href: link({ game: pick.game_id, brand, ...version }), note: `${String(pick.what).split(". ")[0].replace(/\.$/, "")}.` };
     },
   };
 

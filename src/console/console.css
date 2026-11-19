@@ -57,7 +57,7 @@ header .lede { color: var(--text); opacity: 0.88; max-width: 80ch; }
 
 /* Blocks: one question each, ruled apart */
 .block { border-top: 1px solid var(--line); padding: 32px 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.block > .kicker { color: var(--green); }
+.block > .kicker, .main > .kicker { color: var(--green); }
 .block > .lede { font-size: 0.98rem; }
 #trace { display: flex; flex-direction: column; min-width: 0; }
 #trace:empty { display: none; }
@@ -82,7 +82,7 @@ ol.examples a, ol.examples li.missing { flex: 1; display: flex; flex-direction: 
 ol.examples a:hover { border-color: var(--mint); }
 ol.examples a[aria-current="true"] { border-color: var(--green); background: var(--panel-2); }
 ol.examples a[aria-current="true"] strong { color: var(--mint); }
-ol.examples .small { font-size: 0.78rem; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+ol.examples .small { font-size: 0.78rem; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 ol.examples li.missing { border-style: dashed; color: var(--muted); }
 button.icon { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; background: var(--panel-2); vertical-align: middle; }
 button.icon svg { transition: transform 0.5s cubic-bezier(.2,.7,.2,1); }
@@ -307,7 +307,9 @@ ul.per-version .label { align-self: flex-start; }
   header .lede { font-size: 0.92rem; }
   .hint { display: none; }
   .serving { display: none; }
+  /* Only the open example says what it shows; the others are their names. */
   ol.examples .small { display: none; }
+  ol.examples a[aria-current="true"] .small { display: -webkit-box; }
   ol.examples a, ol.examples li.missing { padding: 8px 12px; }
   form#picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
   .field { min-width: 0; }
@@ -315,7 +317,7 @@ ul.per-version .label { align-self: flex-start; }
   select { width: 100%; }
   /* The examples run sideways in their own strip, so the result stays on the first screen. */
   ol.examples { display: flex; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 4px; }
-  ol.examples li { flex: 0 0 auto; max-width: 70%; scroll-snap-align: start; }
+  ol.examples li { flex: 0 0 auto; max-width: 82%; scroll-snap-align: start; }
   .block { padding: 24px 0; }
   ol.results li { grid-template-columns: 1.6rem minmax(0, 1fr); padding: 8px 12px; }
   ol.results .score { grid-column: 2; }
