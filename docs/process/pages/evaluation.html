@@ -1,0 +1,485 @@
+<title>Because You Played Evaluation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column of four numbered decisions, each with its evidence above its choice; a live summary at the end. Same dark look as the status page. */
+:root {
+  color-scheme: dark;
+  --bg: #090c0a; --panel: #0f1411; --panel-2: #141b17; --line: #1b2620; --line-strong: #2b3b33;
+  --text: #e4ede7; --muted: #8fa197;
+  --green: #35d07f; --green-deep: #123524; --mint: #a8f0c6;
+  --amber: #e8b44a; --amber-deep: #3a2c0f; --red: #f0806f; --blue: #7fb6e8;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 60px; }
+h1, h2, h3, p, ol, ul, pre { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.1rem, 6vw, 3.4rem); line-height: 1.04; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 700; font-size: clamp(1.4rem, 3.4vw, 1.8rem); line-height: 1.15; letter-spacing: -0.01em; text-wrap: balance; }
+h3 { font-size: 1.02rem; font-weight: 600; line-height: 1.3; }
+.label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 66ch; }
+section { display: flex; flex-direction: column; gap: 22px; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; }
+header { display: flex; flex-direction: column; gap: 22px; }
+.hero { display: flex; flex-direction: column; gap: 14px; }
+.hero .lede { color: var(--text); opacity: 0.88; font-size: 1.06rem; }
+.dn { font-family: var(--mono); font-size: 0.78rem; color: var(--green); letter-spacing: 0.08em; text-transform: uppercase; }
+.two { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.card { background: var(--panel); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; border-top: 2px solid var(--line-strong); }
+.card.g { border-top-color: var(--green); }
+.card p { color: var(--muted); font-size: 0.95rem; }
+.note { color: var(--muted); font-size: 0.9rem; max-width: 72ch; }
+.note b, .lede b { color: var(--text); font-weight: 600; }
+.callout { border-left: 2px solid var(--amber); background: var(--panel); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.callout p { max-width: 72ch; }
+
+/* Bars */
+.bars { display: flex; flex-direction: column; gap: 7px; }
+.bar { display: grid; grid-template-columns: minmax(0, 10.5rem) minmax(0, 1fr) 2rem; gap: 10px; align-items: center; font-size: 0.9rem; }
+.bar .t { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar .f { display: block; height: 100%; width: calc(var(--v) / var(--max, 70) * 100%); background: var(--green); border-radius: 2px; }
+.bar.weak .f { background: var(--amber); }
+.bar.rare .f { background: var(--blue); }
+.bar .v { font-family: var(--mono); font-size: 0.8rem; text-align: right; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.84rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.split { display: flex; height: 22px; border-radius: 2px; overflow: hidden; }
+.split i { display: block; height: 100%; flex: var(--k) 0 0; min-width: 2px; }
+.keyfacts { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.kf { display: flex; flex-direction: column; gap: 2px; }
+.kf b { font-family: var(--display); font-weight: 700; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.kf span { color: var(--muted); font-size: 0.9rem; }
+.rules3 { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.rules3 li { display: grid; grid-template-columns: 1fr; gap: 2px 20px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.rules3 li span { color: var(--muted); }
+
+/* Choices */
+.choices { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.choice { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; padding: 14px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--green); background: var(--panel-2); }
+.choice:has(input:focus-visible) { outline: 2px solid var(--green); outline-offset: 2px; }
+.choice input { accent-color: var(--green); margin: 4px 0 0; width: 16px; height: 16px; }
+.choice .ct { font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.choice .cd { grid-column: 2; color: var(--muted); font-size: 0.93rem; }
+.rec { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); background: var(--green-deep); padding: 1px 7px; border-radius: 999px; font-weight: 400; }
+
+/* Sliders */
+.marks { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.mark { display: grid; grid-template-columns: 1fr; gap: 6px 24px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.mark .mh { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.mark output { font-family: var(--display); font-weight: 700; font-size: 1.5rem; color: var(--green); font-variant-numeric: tabular-nums; }
+.mark input[type=range] { width: 100%; accent-color: var(--green); }
+.mark .means { color: var(--text); font-size: 0.95rem; }
+.mark .why { color: var(--muted); font-size: 0.9rem; max-width: 72ch; }
+.mark.fixed output { color: var(--muted); }
+
+/* Output */
+.out { background: var(--panel); border-top: 2px solid var(--green); padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.sum { display: flex; flex-direction: column; }
+.sum li { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 0.94rem; }
+.sum li span:first-child { color: var(--muted); }
+pre { background: var(--bg); border: 1px solid var(--line); padding: 12px; font-family: var(--mono); font-size: 0.82rem; line-height: 1.5; overflow-x: auto; user-select: all; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button { background: var(--green); color: #04130b; border: 0; border-radius: 4px; padding: 9px 16px; font: 600 0.95rem var(--body); cursor: pointer; }
+button.sec { background: transparent; color: var(--text); border: 1px solid var(--line-strong); }
+button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+#copied { color: var(--mint); font-size: 0.9rem; min-height: 1.4em; }
+footer { border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 0.9rem; }
+
+.wrapit { white-space: pre-wrap; user-select: text; }
+.qa { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.qa li { display: grid; grid-template-columns: 1fr; gap: 2px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.93rem; }
+.qa .ans { font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.qa .ans.yes { color: var(--green); } .qa .ans.no { color: var(--muted); } .qa .ans.flag { color: var(--amber); }
+.qa .q { color: var(--muted); }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 4px; cursor: pointer; }
+.check input { accent-color: var(--green); width: 16px; height: 16px; margin: 4px 0 0; }
+.check span:last-child { grid-column: 2; color: var(--muted); font-size: 0.93rem; }
+.check b { font-weight: 600; }
+.ladder { display: flex; flex-direction: column; counter-reset: rung; }
+.ladder li { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); gap: 2px 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ladder li:first-child { border-top: 1px solid var(--line); }
+.ladder li::before { counter-increment: rung; content: counter(rung); grid-row: span 2; font-family: var(--display); font-weight: 700; font-size: 1.6rem; line-height: 1; color: var(--green); }
+.ladder .cost { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); font-weight: 400; margin-left: 8px; }
+.ladder span.d { color: var(--muted); font-size: 0.94rem; }
+.wow { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.gear { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--panel-2); vertical-align: middle; }
+.preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.preview .track { position: relative; flex: 1 1 220px; height: 6px; background: var(--line); border-radius: 3px; }
+.preview .track .tick { position: absolute; left: 62%; top: -5px; width: 2px; height: 16px; background: var(--muted); }
+.preview .track .knob { position: absolute; left: 78%; top: -5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--green); }
+@media (min-width: 760px) {
+  .wow { grid-template-columns: repeat(3, 1fr); }
+  .qa li { grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 1.4fr); align-items: baseline; }
+  .two { grid-template-columns: 1fr 1fr; }
+  .keyfacts { grid-template-columns: repeat(3, 1fr); }
+  .rules3 li { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); }
+  .mark { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .mark .mh, .mark .why { grid-column: 1; }
+  .mark .ctl { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 6px; }
+}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="label">Because You Played · evaluation</span>
+    <div class="hero">
+      <h1>Four decisions before the evaluation runs</h1>
+      <p class="lede">A pass mark only means something if it is fixed before the results exist. These four choices are yours: the agents are blocked from writing the file that holds them. Each section shows the evidence, then the choice. The last section collects your answers.</p>
+    </div>
+    <div class="two">
+      <div class="card g"><span class="label">Question one</span><h3>Is enrichment safe to automate?</h3><p>Are the labels it adds right, can each be traced to a quote, and does it stay silent when the record gives it nothing to go on?</p></div>
+      <div class="card g"><span class="label">Question two</span><h3>Does it earn its place?</h3><p>Do recommendations built on enriched records rank related games better than recommendations built on the raw text alone?</p></div>
+    </div>
+  </header>
+
+  <section aria-labelledby="h-d1">
+    <div class="sec-head">
+      <span class="dn">Decision 1</span>
+      <h2 id="h-d1">The list of labels</h2>
+      <p class="lede">Enrichment may only pick from a fixed list of 12 themes and 12 mechanics. The catalogue was generated around this list, so changing it means regenerating the catalogue.</p>
+    </div>
+    <div class="two">
+      <div class="card">
+        <span class="label">Themes · games carrying each, of 100</span>
+        <div class="bars">
+          <div class="bar"><span>animals</span><span class="t"><i class="f" style="--v:24"></i></span><span class="v">24</span></div>
+          <div class="bar weak"><span>adventure</span><span class="t"><i class="f" style="--v:17"></i></span><span class="v">17</span></div>
+          <div class="bar"><span>fantasy</span><span class="t"><i class="f" style="--v:16"></i></span><span class="v">16</span></div>
+          <div class="bar"><span>mythology</span><span class="t"><i class="f" style="--v:11"></i></span><span class="v">11</span></div>
+          <div class="bar"><span>classic fruit</span><span class="t"><i class="f" style="--v:10"></i></span><span class="v">10</span></div>
+          <div class="bar"><span>East Asian</span><span class="t"><i class="f" style="--v:10"></i></span><span class="v">10</span></div>
+          <div class="bar"><span>Irish luck</span><span class="t"><i class="f" style="--v:10"></i></span><span class="v">10</span></div>
+          <div class="bar"><span>horror</span><span class="t"><i class="f" style="--v:9"></i></span><span class="v">9</span></div>
+          <div class="bar"><span>sci-fi</span><span class="t"><i class="f" style="--v:7"></i></span><span class="v">7</span></div>
+          <div class="bar"><span>western</span><span class="t"><i class="f" style="--v:7"></i></span><span class="v">7</span></div>
+          <div class="bar"><span>ancient Egypt</span><span class="t"><i class="f" style="--v:6"></i></span><span class="v">6</span></div>
+          <div class="bar rare"><span>ocean and fishing</span><span class="t"><i class="f" style="--v:5"></i></span><span class="v">5</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <span class="label">Mechanics · games carrying each, of 100</span>
+        <div class="bars">
+          <div class="bar weak"><span>free spins</span><span class="t"><i class="f" style="--v:63"></i></span><span class="v">63</span></div>
+          <div class="bar weak"><span>paylines</span><span class="t"><i class="f" style="--v:52"></i></span><span class="v">52</span></div>
+          <div class="bar weak"><span>multipliers</span><span class="t"><i class="f" style="--v:42"></i></span><span class="v">42</span></div>
+          <div class="bar"><span>ways</span><span class="t"><i class="f" style="--v:37"></i></span><span class="v">37</span></div>
+          <div class="bar"><span>cascading reels</span><span class="t"><i class="f" style="--v:35"></i></span><span class="v">35</span></div>
+          <div class="bar"><span>hold and respin</span><span class="t"><i class="f" style="--v:26"></i></span><span class="v">26</span></div>
+          <div class="bar"><span>expanding wilds</span><span class="t"><i class="f" style="--v:20"></i></span><span class="v">20</span></div>
+          <div class="bar"><span>pick bonus</span><span class="t"><i class="f" style="--v:19"></i></span><span class="v">19</span></div>
+          <div class="bar"><span>sticky wilds</span><span class="t"><i class="f" style="--v:18"></i></span><span class="v">18</span></div>
+          <div class="bar"><span>mystery symbols</span><span class="t"><i class="f" style="--v:16"></i></span><span class="v">16</span></div>
+          <div class="bar"><span>cluster pays</span><span class="t"><i class="f" style="--v:11"></i></span><span class="v">11</span></div>
+          <div class="bar rare"><span>progressive jackpot</span><span class="t"><i class="f" style="--v:3"></i></span><span class="v">3</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--amber)"></i>weak at telling games apart</span>
+      <span><i style="background:var(--blue)"></i>rare: sharp, but few games to test on</span>
+      <span>Both charts share one scale, 0 to 70 games.</span>
+    </div>
+    <p class="note"><b>What the charts say.</b> Free spins is on 63 games and paylines on 52, so sharing them says little about whether two games are alike. Adventure is the vaguest theme and the hardest to support with a quote. Progressive jackpot appears on only 3 games. None of this breaks the evaluation. It limits how much the common labels can help matching, and that belongs in the README as a limitation.</p>
+    <div class="choices" role="radiogroup" aria-label="Decision 1">
+      <label class="choice"><input type="radio" name="d1" id="d1-accept" value="accept" checked><span class="ct">Accept the 24 labels <span class="rec">Recommended</span></span><span class="cd">Build on the catalogue as it is. State the weak labels as a limitation.</span></label>
+      <label class="choice"><input type="radio" name="d1" id="d1-change" value="change"><span class="ct">Change the list</span><span class="cd">Regenerate and re-review the catalogue: roughly 45 minutes and under a dollar in model calls. Tell me which labels.</span></label>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-d2">
+    <div class="sec-head">
+      <span class="dn">Decision 2</span>
+      <h2 id="h-d2">The answer key</h2>
+      <p class="lede">The evaluation needs something to score against. The generator already knows what every game is and exactly what evidence each raw row lost. That record can be the answer key, if it is used with care.</p>
+    </div>
+    <div class="card">
+      <span class="label">491 planned labels across the 104 raw rows</span>
+      <div class="split" role="img" aria-label="403 labels still in a tag, 51 only in the description or title, 37 with their evidence removed">
+        <i style="--k:403;background:var(--green)"></i><i style="--k:51;background:var(--mint)"></i><i style="--k:37;background:var(--amber)"></i>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>403 still present in a tag</span>
+        <span><i style="background:var(--mint)"></i>51 only in the description or the title</span>
+        <span><i style="background:var(--amber)"></i>37 with all evidence removed</span>
+      </div>
+    </div>
+    <ul class="rules3">
+      <li><b>454 recoverable labels</b><span>The evidence survives, so enrichment should find them. This is the denominator for recovery.</span></li>
+      <li><b>37 unknowable labels</b><span>The evidence was removed. These count neither for nor against the model: unknown is not wrong. They sit in 13 fields where the correct answer is to say nothing.</span></li>
+      <li><b>Labels the plan never assigned</b><span>If the model asserts one, it is either a mistake or a fair reading of the text. Only a person can tell, and that is the part that needs you.</span></li>
+    </ul>
+    <div class="sec-head">
+      <p class="label">The question, word for word, as a person would be asked it</p>
+    </div>
+    <pre class="wrapit">Here is the text a game supplier sent for one slot game.
+
+"{the description, tags and title exactly as delivered}"
+
+Label: {name}. It means: {one-sentence definition}.
+
+Does the text support this label? Answer yes, no or unclear. If yes, copy the exact words from the text that support it. Otherwise leave the quote empty.</pre>
+    <p class="note">The question never says whether the pipeline or the plan made the claim, and the list is shuffled. A second question of the same shape covers recommendations: "A player has just played this game. Would this other game be a reasonable 'you might also like'?"</p>
+    <div class="card">
+      <span class="label">Tried just now with the Luna model, on the game from the catalogue page</span>
+      <ul class="qa">
+        <li><b>East Asian</b><span class="ans yes">yes</span><span class="q">"red paper lanterns painted with Chinese dragon dancers". Word for word in the text.</span></li>
+        <li><b>Horror</b><span class="ans no">no</span><span class="q">No quote. Correct.</span></li>
+        <li><b>Cascading reels</b><span class="ans no">no</span><span class="q">No quote. Correct.</span></li>
+        <li><b>Adventure</b><span class="ans flag">yes, but</span><span class="q">It stitched two phrases together with "...", so the quote is not word for word. Code catches this and records the answer as unclear.</span></li>
+      </ul>
+      <p>Four calls, about five seconds each, a fraction of a cent. The last row is the vague label from decision 1 behaving as expected: the plan did not call this game an adventure, and a reader could argue either way.</p>
+    </div>
+    <div class="callout">
+      <span class="label">One thing to know before choosing the model as reviewer</span>
+      <p>The catalogue text, the enrichment and this reviewer would all come from the same vendor's models, and related models can share blind spots. The fix is cheap: you answer six of the same questions yourself, without seeing the model's answers, and the report states how often it agreed with you. Two minutes, and the reviewer has an anchor.</p>
+    </div>
+    <div class="card">
+      <span class="label">For matching: which games count as related · 4,950 pairs</span>
+      <div class="split" role="img" aria-label="137 strongly related pairs, 531 related, 841 weakly related, 3441 unrelated">
+        <i style="--k:137;background:var(--green)"></i><i style="--k:531;background:var(--mint)"></i><i style="--k:841;background:var(--blue)"></i><i style="--k:3441;background:var(--line-strong)"></i>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>137 strong: a shared theme and two shared features</span>
+        <span><i style="background:var(--mint)"></i>531 related: a shared theme and one shared feature or win system</span>
+        <span><i style="background:var(--blue)"></i>841 weak: a shared theme only, or two shared features</span>
+        <span><i style="background:var(--line-strong)"></i>3,441 unrelated</span>
+      </div>
+      <p>Relatedness is worked out by rule from the plan, not by reading. The test is simple: for a given game, a strong or related game should rank above an unrelated one.</p>
+    </div>
+    <div class="choices" role="radiogroup" aria-label="Decision 2">
+      <label class="choice"><input type="radio" name="d2" id="d2-judge" value="plan_plus_model_review" checked><span class="ct">The plan as answer key, with the Luna model reviewing disagreements <span class="rec">Your choice</span></span><span class="cd">No time from you beyond the optional check below. It can review every disagreement, not just twenty, plus a control sample where plan and pipeline agree. Answers are stored and committed, so the evaluation re-runs without a key. A "yes" without a word-for-word quote counts as unclear.</span></label>
+      <label class="choice"><input type="radio" name="d2" id="d2-plan-review" value="plan_plus_review"><span class="ct">The plan as answer key, with you reviewing disagreements</span><span class="cd">About 10 minutes of yours for about 20 questions. The most independent of the quick options.</span></label>
+      <label class="choice"><input type="radio" name="d2" id="d2-hand" value="blind_hand_labels"><span class="ct">Blind hand labels</span><span class="cd">About 25 minutes. You label 7 records and about 20 game pairs from scratch. More independent, but small, and it asks you to judge slot themes and mechanics unaided.</span></label>
+      <label class="choice"><input type="radio" name="d2" id="d2-plan-only" value="plan_only"><span class="ct">The plan only, no review</span><span class="cd">No time from you. Every disagreement counts against the model, even when the model read the text fairly. Circular, and reported as a rough diagnostic only.</span></label>
+    </div>
+    <label class="check"><input type="checkbox" id="calib" checked><b>Also answer six questions yourself, to measure the reviewer <span class="rec">Recommended</span></b><span>About two minutes. Applies when the Luna model is the reviewer. Without it, nobody has checked the checker, and the README has to say so.</span></label>
+  </section>
+
+  <section aria-labelledby="h-d3">
+    <div class="sec-head">
+      <span class="dn">Decision 3</span>
+      <h2 id="h-d3">The pass marks</h2>
+      <p class="lede">Move a slider to see what the mark means in plain counts. The starting positions are my recommendations.</p>
+    </div>
+    <div class="callout">
+      <span class="label">One recommendation changed after reading the data</span>
+      <p>I first suggested a recovery mark of 0.60. But 403 of the 454 recoverable labels, 89%, are still sitting in a tag, so a simple synonym table would pass 0.60 without reading a word. The mark is now 0.85 overall, with a separate mark for the 51 labels that can only be found by reading.</p>
+    </div>
+    <div class="card g">
+      <span class="label">The same sliders, inside the product</span>
+      <div class="preview">
+        <span class="gear" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#35d07f" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2" fill="#0f1411"/><circle cx="15" cy="12" r="2.2" fill="#0f1411"/><circle cx="8" cy="17" r="2.2" fill="#0f1411"/></svg></span>
+        <span class="track" aria-hidden="true"><span class="tick"></span><span class="knob"></span></span>
+      </div>
+      <p>The console gets this icon beside the evaluation result. It opens a panel with these sliders, set against the numbers the evaluation actually measured. Move one and each mark turns green or red at once, so anyone can see how much room a result had.</p>
+      <p><b style="color:var(--text)">The one constraint:</b> the sliders explore, they do not decide. The committed marks stay locked and show as a tick on each slider. The release gate reads only the committed file, and the panel says so. Otherwise a pass mark could be moved after the result is known, which is the thing the commit order exists to prevent.</p>
+    </div>
+    <div class="marks">
+      <div class="mark">
+        <div class="mh"><h3>Precision</h3></div>
+        <div class="ctl"><output id="o-precision" for="precision">0.85</output><input type="range" id="precision" min="0.70" max="1" step="0.01" value="0.85" aria-label="Minimum precision"><p class="means" id="m-precision"></p></div>
+        <p class="why">Of the labels enrichment gives, the share that are right. Counted after your review of disagreements.</p>
+      </div>
+      <div class="mark">
+        <div class="mh"><h3>Recovery, all labels</h3></div>
+        <div class="ctl"><output id="o-recovery" for="recovery">0.85</output><input type="range" id="recovery" min="0.50" max="1" step="0.01" value="0.85" aria-label="Minimum recovery"><p class="means" id="m-recovery"></p></div>
+        <p class="why">Of the 454 labels whose evidence survives, the share enrichment finds. Stops a model that plays safe by saying nothing.</p>
+      </div>
+      <div class="mark">
+        <div class="mh"><h3>Recovery, reading only</h3></div>
+        <div class="ctl"><output id="o-hard" for="hard">0.60</output><input type="range" id="hard" min="0.30" max="1" step="0.01" value="0.60" aria-label="Minimum recovery without tags"><p class="means" id="m-hard"></p></div>
+        <p class="why">The 51 labels with no tag to lean on: 29 in the description only, 16 in the title only, 6 in both. This is where a model earns its cost.</p>
+      </div>
+      <div class="mark">
+        <div class="mh"><h3>Missed abstentions</h3></div>
+        <div class="ctl"><output id="o-abstain" for="abstain">1</output><input type="range" id="abstain" min="0" max="4" step="1" value="1" aria-label="Maximum missed abstentions"><p class="means" id="m-abstain"></p></div>
+        <p class="why">There are 13 fields where the evidence is gone and the right answer is silence. Asserting anything there is the harmful error: a confident label with nothing behind it.</p>
+      </div>
+      <div class="mark fixed">
+        <div class="mh"><h3>Quotes not found in the source</h3></div>
+        <div class="ctl"><output>0</output><p class="means">Not adjustable. Every label must carry a quote that appears word for word in the record. A label without one is removed and counted, and any that reaches the index fails the build.</p></div>
+        <p class="why">Checked by code, not by judgement, so there is no reason to tolerate any.</p>
+      </div>
+      <div class="mark">
+        <div class="mh"><h3>Matching: related above unrelated</h3></div>
+        <div class="ctl"><output id="o-pairwise" for="pairwise">0.75</output><input type="range" id="pairwise" min="0.50" max="1" step="0.01" value="0.75" aria-label="Minimum pairwise accuracy"><p class="means" id="m-pairwise"></p></div>
+        <p class="why">Take a game, one related game and one unrelated game. How often does the related one rank higher? Guessing scores 0.50.</p>
+      </div>
+      <div class="mark">
+        <div class="mh"><h3>Wrongly shown games</h3></div>
+        <div class="ctl"><output id="o-wrong" for="wrong">0</output><input type="range" id="wrong" min="0" max="3" step="1" value="0" aria-label="Maximum wrongly shown games"><p class="means" id="m-wrong"></p></div>
+        <p class="why">Checked on what the service really returns for a few held-back games, not on scores. A game with nothing in common with the one played should not appear.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-d4">
+    <div class="sec-head">
+      <span class="dn">Decision 4</span>
+      <h2 id="h-d4">What gets compared, and what ships</h2>
+      <p class="lede">"Enriched against raw" is one comparison with a yes or no at the end. It cannot say why. Since 89% of the labels are already sitting in tags, the sharper question is: <b>what does each step add, and what does it cost?</b></p>
+    </div>
+    <div class="sec-head">
+      <p class="label">The ladder: four versions of every game's text, run through the same test</p>
+    </div>
+    <ol class="ladder">
+      <li><b>Raw text <span class="cost">no model · no code</span></b><span class="d">Title, description and tags exactly as delivered. The baseline everything has to beat.</span></li>
+      <li><b>Synonym table <span class="cost">no model · a short lookup</span></b><span class="d">Tags mapped onto the fixed labels by a plain table: "Locked Wilds" becomes sticky wilds. Shows how far ordinary code gets.</span></li>
+      <li><b>Model enrichment, every game <span class="cost">one model call per game</span></b><span class="d">The model reads the whole record and adds labels with quotes. The step the brief asks for.</span></li>
+      <li><b>Model enrichment, only where the record is thin <span class="cost">a call for roughly a third of games</span></b><span class="d">The table handles records with good tags. The model is called only for records where reading is needed. Cheaper, and closer to how this would run in production.</span></li>
+    </ol>
+    <div class="wow">
+      <div class="card g"><span class="label">In the console</span><h3>A race, not a verdict</h3><p>One chart: four bars for ranking quality, each with its cost beside it. The answer to "is the model worth it?" is visible in a glance, whichever way it falls.</p></div>
+      <div class="card g"><span class="label">In the console</span><h3>Where it helps</h3><p>The same result split by record condition: rich description, tags only, nearly empty. Enrichment should matter most where records are thin, and the split shows whether it does.</p></div>
+      <div class="card g"><span class="label">In the console</span><h3>Any game, side by side</h3><p>Pick a game and flip between versions. See which labels each step added, the quote behind each, and how the recommendations change.</p></div>
+    </div>
+    <div class="callout">
+      <span class="label">The rule that decides what ships, fixed in advance</span>
+      <p>Ship the simplest version that scores within a small margin of the best. If the synonym table matches the model, the table ships and the README says the model was not needed here. That is a result worth showing: the tool was judged on evidence, and the cheaper one won.</p>
+    </div>
+    <div class="choices" role="radiogroup" aria-label="Decision 4">
+      <label class="choice"><input type="radio" name="d4" id="d4-ladder" value="ladder" checked><span class="ct">The ladder, with the three console views <span class="rec">Recommended</span></span><span class="cd">Four versions, one test, simplest-within-margin ships. Roughly 40 extra minutes of agent work spread over the pipeline, evaluation and console, and a few cents in embeddings. No extra time from you.</span></label>
+      <label class="choice"><input type="radio" name="d4" id="d4-ladder-plus" value="ladder_plus_classifier"><span class="ct">The ladder, plus a second way of enriching</span><span class="cd">A fifth version: the Luna model answers 24 yes or no questions per game through OpenAI's Decisions API and returns a probability for each. Two enrichment methods judged by one gate. An extra 45 to 90 minutes, so it risks tomorrow morning. Better as a follow-up named in the README.</span></label>
+      <label class="choice"><input type="radio" name="d4" id="d4-rule" value="simple_rule"><span class="ct">Keep it simple: enriched against raw</span><span class="cd">Two versions. Ship enriched if it ranks at least as well, otherwise raw. No extra build, and no answer to why.</span></label>
+    </div>
+    <div class="marks">
+      <div class="mark">
+        <div class="mh"><h3>Margin for "as good as the best"</h3></div>
+        <div class="ctl"><output id="o-margin" for="margin">0.02</output><input type="range" id="margin" min="0" max="0.05" step="0.01" value="0.02" aria-label="Ship margin"><p class="means" id="m-margin"></p></div>
+        <p class="why">With about a hundred games, small differences are noise. The margin says how small a gap is treated as a tie, and a tie goes to the simpler version.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-out">
+    <div class="sec-head">
+      <h2 id="h-out">Your answers</h2>
+      <p class="lede">Copy the summary into the chat. The file below is what you commit yourself as <code style="font-family:var(--mono);font-size:.88em">eval/thresholds.json</code>, before any evaluation has run. The commit order is the proof that the marks came first.</p>
+    </div>
+    <div class="out">
+      <ul class="sum">
+        <li><span>Labels</span><span id="s-d1"></span></li>
+        <li><span>Answer key</span><span id="s-d2"></span></li>
+        <li><span>Pass marks</span><span id="s-d3"></span></li>
+        <li><span>Compared and shipped</span><span id="s-d4"></span></li>
+      </ul>
+      <pre id="json" tabindex="0" aria-label="Contents of eval/thresholds.json"></pre>
+      <div class="btns">
+        <button type="button" id="copy-sum">Copy summary for the chat</button>
+        <button type="button" id="copy-json" class="sec">Copy thresholds.json</button>
+        <button type="button" id="reset" class="sec">Back to recommendations</button>
+        <span id="copied" role="status"></span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Counts are read from the committed catalogue and include its 4 duplicate rows. "Recoverable" is mechanical: a quote, a tag or a title word survived the damage. The catalogue is easier than real supplier data, so these marks show direction and the absence of glaring failure, not production accuracy.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var SAVED_AS = 'byp-eval-decisions-v2';
+  var DEF = { d1: 'accept', d2: 'plan_plus_model_review', calib: true, d4: 'ladder', margin: 0.02, precision: 0.85, recovery: 0.85, hard: 0.60, abstain: 1, pairwise: 0.75, wrong: 0 };
+  var NAMES = {
+    accept: 'accept the 24 labels', change: 'change the list',
+    plan_plus_model_review: 'the plan, with the Luna model reviewing disagreements',
+    plan_plus_review: 'the plan, plus my review of disagreements', blind_hand_labels: 'blind hand labels', plan_only: 'the plan only, no review',
+    ladder: 'the ladder (raw, synonym table, model everywhere, model where thin) with the three console views',
+    ladder_plus_classifier: 'the ladder plus a Decisions API version',
+    simple_rule: 'enriched against raw only'
+  };
+  var state = Object.assign({}, DEF);
+  try { var saved = JSON.parse(localStorage.getItem(SAVED_AS) || 'null'); if (saved) Object.assign(state, saved); } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function need(total, share) { return Math.ceil(total * share - 1e-9); }
+  function f2(x) { return Number(x).toFixed(2); }
+
+  function render() {
+    ['d1', 'd2', 'd4'].forEach(function (n) {
+      Array.prototype.forEach.call(document.getElementsByName(n), function (el) { el.checked = (el.value === state[n]); });
+    });
+    ['precision', 'recovery', 'hard', 'pairwise'].forEach(function (k) { $(k).value = state[k]; $('o-' + k).textContent = f2(state[k]); });
+    ['abstain', 'wrong'].forEach(function (k) { $(k).value = state[k]; $('o-' + k).textContent = state[k]; });
+
+    var wrongPer20 = Math.floor(20 * (1 - state.precision) + 1e-9);
+    $('m-precision').textContent = 'Of every 20 labels it gives, at most ' + wrongPer20 + ' may be wrong.';
+    $('m-recovery').textContent = 'It must find at least ' + need(454, state.recovery) + ' of the 454 recoverable labels.';
+    $('m-hard').textContent = 'It must find at least ' + need(51, state.hard) + ' of the 51 labels that have no tag.';
+    $('m-abstain').textContent = state.abstain === 0 ? 'It must stay silent in all 13 fields.' : 'It may assert something in at most ' + state.abstain + ' of the 13 fields.';
+    var per20 = need(20, state.pairwise);
+    $('m-pairwise').textContent = 'The related game must rank higher in at least ' + per20 + ' of every 20 comparisons.';
+    $('m-wrong').textContent = state.wrong === 0 ? 'No unrelated game may appear in the checked results.' : 'At most ' + state.wrong + ' unrelated game' + (state.wrong > 1 ? 's' : '') + ' may appear in the checked results.';
+
+    $('calib').checked = !!state.calib;
+    $('margin').value = state.margin; $('o-margin').textContent = f2(state.margin);
+    $('m-margin').textContent = state.margin === 0 ? 'No ties: the top score ships, however small its lead.' : 'A version within ' + f2(state.margin) + ' of the best counts as tied with it, and the simpler one ships.';
+
+    $('s-d1').textContent = NAMES[state.d1];
+    $('s-d2').textContent = d2Text();
+    $('s-d3').textContent = marksText();
+    $('s-d4').textContent = NAMES[state.d4] + '; ship the simplest within ' + f2(state.margin) + ' of the best';
+    $('json').textContent = jsonText();
+    try { localStorage.setItem(SAVED_AS, JSON.stringify(state)); } catch (e) {}
+  }
+  function d2Text() {
+    if (state.d2 !== 'plan_plus_model_review') return NAMES[state.d2];
+    return NAMES[state.d2] + (state.calib ? ', and I answer six questions myself to measure it' : ', with no check of the reviewer');
+  }
+  function marksText() {
+    return 'precision ≥ ' + f2(state.precision) + ', recovery ≥ ' + f2(state.recovery) + ', recovery without tags ≥ ' + f2(state.hard) +
+      ', missed abstentions ≤ ' + state.abstain + ', invalid quotes = 0, related above unrelated ≥ ' + f2(state.pairwise) + ', wrongly shown ≤ ' + state.wrong;
+  }
+  function jsonText() {
+    return JSON.stringify({
+      decided_on: '2026-11-19',
+      enrichment: {
+        min_precision: Number(f2(state.precision)),
+        min_recovery: Number(f2(state.recovery)),
+        min_recovery_without_tags: Number(f2(state.hard)),
+        max_missed_abstentions: state.abstain,
+        max_invalid_quotes: 0
+      },
+      matching: {
+        min_pairwise_accuracy: Number(f2(state.pairwise)),
+        max_wrongly_shown_on_check_anchors: state.wrong
+      },
+      ship_rule: {
+        compare: state.d4,
+        ship: 'simplest_within_margin_of_best',
+        margin: Number(f2(state.margin))
+      }
+    }, null, 2);
+  }
+  function summaryText() {
+    return 'Evaluation decisions\n1. Labels: ' + NAMES[state.d1] + '\n2. Answer key: ' + d2Text() + '\n3. Pass marks: ' + marksText() + ' (also adjustable in the console as what-if sliders; the committed marks stay the gate)\n4. What is compared and what ships: ' + NAMES[state.d4] + '; ship the simplest within ' + f2(state.margin) + ' of the best';
+  }
+  function copy(text, what) {
+    var done = function () { $('copied').textContent = what + ' copied.'; };
+    var fail = function () { $('copied').textContent = 'Copy was blocked. Select the text and copy it by hand.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail); else fail();
+  }
+
+  ['d1', 'd2', 'd4'].forEach(function (n) {
+    Array.prototype.forEach.call(document.getElementsByName(n), function (el) {
+      el.addEventListener('change', function () { if (el.checked) { state[n] = el.value; render(); } });
+    });
+  });
+  ['precision', 'recovery', 'hard', 'pairwise'].forEach(function (k) { $(k).addEventListener('input', function () { state[k] = parseFloat($(k).value); render(); }); });
+  ['abstain', 'wrong'].forEach(function (k) { $(k).addEventListener('input', function () { state[k] = parseInt($(k).value, 10); render(); }); });
+  $('calib').addEventListener('change', function () { state.calib = $('calib').checked; render(); });
+  $('margin').addEventListener('input', function () { state.margin = parseFloat($('margin').value); render(); });
+  $('copy-sum').addEventListener('click', function () { copy(summaryText(), 'Summary'); });
+  $('copy-json').addEventListener('click', function () { copy(jsonText(), 'thresholds.json'); });
+  $('reset').addEventListener('click', function () { state = Object.assign({}, DEF); $('copied').textContent = 'Back to the recommended values.'; render(); });
+  render();
+})();
+</script>
