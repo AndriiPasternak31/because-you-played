@@ -133,18 +133,18 @@ A live run stops before any call that could take the total past `--max-usd` (def
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| PL-1 | Canonical facts are written by code only. A model answer has no place for a fact or an availability status, and one that carries either is rejected whole | `npm test -- "PL-1:"` | `e730aca` |
-| PL-2 | Every label is a term of its field's vocabulary and carries a quote found word for word in the field it names, as whole words, with its provenance. Anything else is stripped and counted | `npm test -- "PL-2:"` | `e730aca` |
-| PL-3 | A refusal, a cut-short answer, malformed output and an API error are each rejected and counted under their own name. None is repaired | `npm test -- "PL-3:"` | `e730aca` |
-| PL-4 | The index carries its version, model ids, prompt version, dimensions, catalogue hash and thin rule. Loading fails on a non-finite value, a wrong dimension, misaligned ids, a hash mismatch, an altered quote, a disputed field that trusts a tag, or another catalogue | `npm test -- "PL-4:"` | - |
-| PL-5 | The synonym table maps delivered tags onto the 24 labels by lookup. Non-attribute and merchandising tags are dropped. A tag it does not know is counted and listed, never guessed | `npm test -- "PL-5:"` | `e730aca` |
-| PL-6 | The model's answers do not reach the `raw` or `table` version, and reach `model_where_thin` on thin records only. A conflict makes a record thin. The thin rule is recorded in the index | `npm test -- "PL-6:"` | - |
-| PL-7 | Where a delivered tag contradicts the description, the `table` version adds nothing for that field. The two model versions carry only the model's labels quoted from the description or the title, never one backed by a tag list, and the record says the model's reading was used | `npm test -- "PL-7:"` | - |
-| PL-8 | All four versions of every game have an embedding of 1,536 dimensions from the same model. When a text changes, only that text is embedded again | `npm test -- "PL-8:"` | - |
-| PL-9 | Rebuilding with no key over the stored responses reproduces the committed index byte for byte | `npm test -- "PL-9:"` | - |
-| PL-10 | The pipeline never reads the hidden truth directory | `npm test -- "PL-10:"` | `e730aca` |
-| PL-11 | A stored response that is stale, damaged or missing stops the rebuild, names the file and writes nothing | `npm test -- "PL-11:"` | - |
-| PL-12 | The ledger reports calls, tokens, estimated cost and seconds per version, and a live run stops before the call that could pass the spend limit | `npm test -- "PL-12:"` | - |
+| PL-1 | Canonical facts are written by code only. A model answer has no place for a fact or an availability status, and one that carries either is rejected whole | `npm test -- "PL-1:"` | `f37d9f0` |
+| PL-2 | Every label is a term of its field's vocabulary and carries a quote found word for word in the field it names, as whole words, with its provenance. Anything else is stripped and counted | `npm test -- "PL-2:"` | `f37d9f0` |
+| PL-3 | A refusal, a cut-short answer, malformed output and an API error are each rejected and counted under their own name. None is repaired | `npm test -- "PL-3:"` | `f37d9f0` |
+| PL-4 | The index carries its version, model ids, prompt version, dimensions, catalogue hash and thin rule. Loading fails on a non-finite value, a wrong dimension, misaligned ids, a hash mismatch, an altered quote, a disputed field that trusts a tag, or another catalogue | `npm test -- "PL-4:"` | `f37d9f0` |
+| PL-5 | The synonym table maps delivered tags onto the 24 labels by lookup. Non-attribute and merchandising tags are dropped. A tag it does not know is counted and listed, never guessed | `npm test -- "PL-5:"` | `f37d9f0` |
+| PL-6 | The model's answers do not reach the `raw` or `table` version, and reach `model_where_thin` on thin records only. A conflict makes a record thin. The thin rule is recorded in the index | `npm test -- "PL-6:"` | `f37d9f0` |
+| PL-7 | Where a delivered tag contradicts the description, the `table` version adds nothing for that field. The two model versions carry only the model's labels quoted from the description or the title, never one backed by a tag list, and the record says the model's reading was used | `npm test -- "PL-7:"` | `f37d9f0` |
+| PL-8 | All four versions of every game have an embedding of 1,536 dimensions from the same model. When a text changes, only that text is embedded again | `npm test -- "PL-8:"` | `f37d9f0` |
+| PL-9 | Rebuilding with no key over the stored responses reproduces the committed index byte for byte | `npm test -- "PL-9:"` | `f37d9f0` |
+| PL-10 | The pipeline never reads the hidden truth directory | `npm test -- "PL-10:"` | `f37d9f0` |
+| PL-11 | A stored response that is stale, damaged or missing stops the rebuild, names the file and writes nothing | `npm test -- "PL-11:"` | `f37d9f0` |
+| PL-12 | The ledger reports calls, tokens, estimated cost and seconds per version, and a live run stops before the call that could pass the spend limit | `npm test -- "PL-12:"` | `f37d9f0` |
 
 The colon in the pattern matters: without it `PL-1` also matches PL-10 to PL-12.
 
