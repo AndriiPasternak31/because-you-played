@@ -1,0 +1,148 @@
+{
+  "question_id": "label.thr-85077.sci_fi",
+  "kind": "label",
+  "model": "gpt-6-luna",
+  "request_sha256": "04cd731d271f52b8f0083d1b2c9d84ce0e70d2c1bf802b68d249cfb7286ae0e6",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 1.78,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 131,
+        "output_tokens": 17,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "body": {
+        "access_programs": null,
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795122670,
+        "created_at": 1795122669,
+        "error": null,
+        "frequency_penalty": 0,
+        "id": "resp_01699124639277ea016aff65eccbd087d2b5c9bcc957aa0d70",
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": null,
+        "max_output_tokens": 2000,
+        "max_tool_calls": null,
+        "model": "gpt-6-luna",
+        "moderation": null,
+        "object": "response",
+        "output": [
+          {
+            "content": [
+              {
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"answer\":\"no\",\"quote\":\"\"}",
+                "type": "output_text"
+              }
+            ],
+            "id": "msg_01699124639277ea016aff65ee37fc87d290e3b15f96486752",
+            "phase": "final_answer",
+            "role": "assistant",
+            "status": "completed",
+            "type": "message"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "medium",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "status": "completed",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "description": null,
+            "name": "label_answer",
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": {
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unclear"
+                  ],
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer",
+                "quote"
+              ],
+              "type": "object"
+            },
+            "strict": true,
+            "type": "json_schema"
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 0.98,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 131,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 17,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 148
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}

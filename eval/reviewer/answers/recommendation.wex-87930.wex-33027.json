@@ -1,0 +1,155 @@
+{
+  "question_id": "recommendation.wex-87930.wex-33027",
+  "kind": "recommendation",
+  "model": "gpt-6-luna",
+  "request_sha256": "56527ca8c2a2f164e792ec7270f9bc0e95bced7026bbec00a0cb1c752a733a1a",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 2.074,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 172,
+        "output_tokens": 52,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "body": {
+        "id": "resp_0f82c79b3e0fd523016aff65d57bd487d2a6ae29479c409251",
+        "object": "response",
+        "created_at": 1795122645,
+        "status": "completed",
+        "access_programs": null,
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795122647,
+        "error": null,
+        "frequency_penalty": 0,
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": null,
+        "max_output_tokens": 2000,
+        "max_tool_calls": null,
+        "model": "gpt-6-luna",
+        "moderation": null,
+        "output": [
+          {
+            "id": "rs_0f82c79b3e0fd523016aff65d69fdc87d2b88ab6f202b38f90",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq_2XXEw2-TssbXjQ2_yzKEOC6j0Rmn3WngM-Tpi3Gn4-7esR-6x3I93D6cBXVf02kw03wcDstugkJtAJhU0yrXq5hrv63W83yR1uAlvRdI0-kp8FInNdQKT4oKOVBmhd7Oq8fLi5dSIhi4UYifyk63aQfkEZkqR-yeL9inXvvIKlEpBO6_07E_irQsAc5YHZPTqCN8I7jQU2wD74rI9ZfhA8NfEbNkdR5wreaLQZ2y7P3yXF6HLPDNSxrtzx5BKoQ0VadaymblKdXKHPu_4gFtCtPNaS3agbCfUVjVK8ph0qa2Jik82t8oQLHBPjtDIoGR4MUC53Th1w-7Zu1CFMAKpvwrGznb_lrMOXykVg9VIBMKa8gxgUS5KaVqTGNyl3wOXMPuY4f7bV5LJ3M7yWoxii-86OVBDX3r9dk9Hu4h--rB6VlzSbWUDNds5IZuqkL0LgArfqLJxpvXg2BsL0-wtR2DBdJonHsevvgWJpsfDemTvGIGQTFZwB2T7r3ke67FxIQznN-rflgIuXGeXrcUSs5__E8F4bk17scGHZ3QDQz58LlOuWjTECjEQn20K7krcVnlkuiqonOpPBWhxL0Jih_uhS3vRcYmDWanLgAeHeadbjE1f1mCdWZ7imcscECyAVCDJjB-dCYp-w1RrIxDdhacPlKRVg454rmlkhqFR83FfD8nm82itd1PBg8TjjgJ8f9BzAVxUy4-FrmlQryhIxtKzak0cuBCOz9aOnmFNMrbQzLS350svUrH1UJbfnblFsoPJgxRenXEXyaAf9PY1SD6jUNvWhUd878ndcsPmEFjPFOYyRLUoBO-SsUaBD85N5kzPu6kVMdLBYmukH00pDQ8wcnVdfLC6BrUPbu1m0bTDu0qdA37NXOUnPs7QQNNfmYS0PouEynG_tSPi8LD1DAOYFd-xBQXtkzbSlSD1sARooDzcwEPTCzH02EJVwuUp_tO1fv2SPLr7Kc7hTHywrNB07kaYC6oAgCu-PXTjLujRmD5x5YoO3Yat37kY361WpCKBQcDq7PEfoitF2YuK_CTRYfg2wH2KE2oGfUjlmz1xpq2QfMwUfAtPE64yeSFebdMHnCI5_Qr-NV-V1DQygDgzKQJlWo3lKvbxwgObKAUasVppfsiXM8ybn01E52V9KbN0zlGpfSWWD8ISs9nD2odB6hPCLPGApVCd8c2ClgtcBXL7De0n2Aw-HErz8bi8cMXq6U8BIVJrK59Lfl3OGS44SZTo2iMuHB1MNNmBk8rMxVTwxzkZwoRqZismEUAZt2IBTvd9mgUQ3u0ADnd9gdxkPUt-zq7iPLRmPmPCcImDInDeL0-yD9oLfijihv1GCRZW6U-_o7yVC9EgwoFnVTmWXZbExrV39BSd7FeiI43eRq-LokhdwwQ61owO4u5Y810vcD-sdi0CUNfywAxcbwUAloKhtsZDASl8uWNj5XMQifEk3cj5JmQYJ0cugUeRJ2RO8Ub_3EAwoiEWwJFVWFtz15YTHGsYQ_szj5IMpbnSJQ_NAESntdV-VtOxLp8DsVfv7W5gXY21-PTqqUBjV-9sfh6Klps2kHoz09i4OKMRBDbLH9d8sg38_n-dyn34zzkYIRmreAkQLoTXf7q8hTn11mAlSBS9a651kpLVjCfaP0k_4vONjbz6eXAUsp23DHtBwJefGNB2d3PMf_R0ftyjOkQ0Uk2ETXpoBXBrJM3fPvcXByDI5voYzqltctQVoggl2O9NjJzoRI2kcYE7G4K59QdfcgXUiFCFcQ8v_kF4rFv8ioaaxAM5Zrob52Y_V54XwBbLZvYCC6nk5u-Yq_rMI9y670IHu8brT0mkPnel7UicMfKGsALYWR3LVEyuTawu4wH33kl2iqXTG4zKXnH5U9gJG3YM7LISp32RkB4cw=",
+            "summary": []
+          },
+          {
+            "id": "msg_0f82c79b3e0fd523016aff65d6ea9087d2a6c310e699dffefc",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"answer\":\"yes\",\"in_common\":\"Paylines, RTP range, and Hot tag\"}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "medium",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "recommendation_answer",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unclear"
+                  ]
+                },
+                "in_common": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer",
+                "in_common"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 0.98,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 172,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 52,
+          "output_tokens_details": {
+            "reasoning_tokens": 23
+          },
+          "total_tokens": 224
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}

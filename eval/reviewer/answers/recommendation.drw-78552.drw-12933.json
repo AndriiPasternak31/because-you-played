@@ -1,0 +1,155 @@
+{
+  "question_id": "recommendation.drw-78552.drw-12933",
+  "kind": "recommendation",
+  "model": "gpt-6-luna",
+  "request_sha256": "418effc6a1a080587a8e89669b44530f6aab530f81f0807fae7ea8b3dca7b30b",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 3.6,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 421,
+        "output_tokens": 119,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "body": {
+        "id": "resp_052aa0d1e11a7dff016aff65cf5d8c87d29ad42cc5a11769a6",
+        "object": "response",
+        "created_at": 1795122639,
+        "status": "completed",
+        "access_programs": null,
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795122642,
+        "error": null,
+        "frequency_penalty": 0,
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": null,
+        "max_output_tokens": 2000,
+        "max_tool_calls": null,
+        "model": "gpt-6-luna",
+        "moderation": null,
+        "output": [
+          {
+            "id": "rs_052aa0d1e11a7dff016aff65d16efc87d29e3be721df628c00",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq_2XSZH8buCfPlYCcH1Z0dcgYt0I91Ryw7bJTOXF44DHhrryyICOlxOxRF_NmieJCIgb697ruvKiRQSRJv7-jaxIfeU7qzKGZIlbSsk5JJPR8afGkgFA7K0J-cmYFZiM-AMnkCyvUYFppRsb2s47HJb4QiYQ2CPoskpCodPXGayJIntB4UI0eVA3BH8aojBbszezqliinK2tRTOzokAz1Fm7tim7fu9x4TF8JG1KuYkLlUAXmbGnDA9Isuf8rXyD3Br1mwwXy8NWiRDhEhisB6gE3IlkiP7KTE8UYBCM63Xgc2c_yPrtkZiFeWU-pwux8n5ioEMYVieHCIJViwQE29tTLlf_GuHBQADZzFczEk7SWl7dZF9MIlQl-NT3lsWt1VLPJzmff7nRTem6jg2tFFFOrzHRMuZzxeAzqQaZ9RzNCNXZe1M6BhpxTzMRqAv_SYiuEFeg7D1uNfMauJneBV3z2n39hY_Tvv4qFyjUju0imTs0s3TpveftJ-pEfBk1HH48teow4Nm6dnNjWZm63n04cIzdSICwMK6VTfhERG7iIEF8poV--AlvZDIjIkQAgbp6CxH_Tv4HOhOooV5Vg8LoHMDOncOiMC-ltGTYAFeqwIBRRUVbM3VKgBcy41CszasmXovkAYBemMx4I8s6fnHQyKPiDpXmm0zOxnBsy8cqevzgk41H6sIKDZ0Aq1sDx7wNYakpWoou5OWYVwBr5Dt-ure2K_Urv0itymS55pESRdE4M4g43qjMQpJl9VpWNAf9kCwfgwbmALpSav--JC9PkhWFB8aDqsvCjpykvSoHUBYBEfu_gME7Lk3n6Y7ek7TQWfXTSxn4viFC1rwVMSZzHFhV0cOkOAjOOdN3LITu9ppKW3f4RqxWQ9b11RoLMgHYAidt4yIXMd0Fs2nD4EvWtm-6ac1bgsMpKQ9JZJEYbCYnaYnlr58v39TJhgHLvd73YZDzfeefj8cYb_BjzoI4H57OGFjBNbB338WidzCKc16H1hia2kV-Py_5tErg6j6e9_ObBhtkyr3yJsSpps-18HNPkF3cm2RPb1RbFKewxXDB9zaHOeniHjThEv68uYNmvNDIJNT7sCTzwPcQyEy9Sm87qu_Qc-RVbdCLMbmSy_g2h5C0UBLNcTrcQIsjP7hDAmhwpWF-iM8raU7p1VxlO7mlu6T3iasTBymHbicY6ehstbK87X47wcO93YMCdn-8sS8nH-m0P35Qm8YXmo0vUMbI9F5HNZwiAqBVEpa-BttSf6GeTXVatQKIbKaU4iFam_SQRQ1IjzFe94pmk3bnHsN9l-8g866CzVaRMTBVqmNBpZLj_Vsr9i9s2ovPt_s3bBpI8YOZXv0pDwRw05RDXboVKOuTPKqmwuSPIr4Iv8W0I_uXvOyYC-hy4Yfw_qtsh1OWxUon1c85WYrG_oSXOAk12nUNCcJQXBZY--S6aKZnIbcq4pookl5zMQKRwXg_2RGi8COQFcqiOzDg4fN20Xqdy7h4ZcHA3hPJeFs4ILn20-rrrJneeHBagLlRC4OrnSjJaCzXau4o_C7KaQqioWEknCOndOZwfDb7NiU0sThofc_vji6W3NWJEyubvFodgTAE0o0wLl5RFnQB5vv3ALP8VRZBS-6gcswuIjb8nQC2xW7FLWntUp0zXg_kLzMUcY0xA1my6VrZz7upvkzDW7XGqK1eN9Y382Uj4Ka2J3kn98s472pIeTqcH40NMkdCKjRkqLsD-5yuFfPW4cvzfxFW2RNo2TwJmea5dFUj-1E0hX8YVISuThLcmZbHdoby17xn8hgdotE4m2CbEdUeV24138BRYE656gMmZsuq6U0DnF4JLoCJZSf7mLiHT5YAecn-KG3ARSCK6e0yTxKYdWE3LIu4Y5LYCJP2rYrhid1OHUDUmVkTfOj0y7wLsJWN4gfSbid8cY0BZjhh4cYmVRUTI6Ir3mzEiEvw_78u7mwQVLOmI3FtsOE8wyg6-gYru5QEJuMjTe5BBwW0rT338wDEKSXXuBMpqcEhxOj0bEwLrE17he8vFrsjU_DLAhDpJqvdPBWmd0JGt-0Qg3oJ6z6Ew6i_7AY8oS_E8N_hvDzLqPLJq2qNgws2D6_uh4l8i5SNkiwImoayy7m2Nk_W9d1UlRwCa22ktXDOGt2Aq7foCjX3ZDKDzvZ0xTzoZIpLnkwZX_oM92AI4u9TsdDJDDjAIOQqymzCLoAcKWD4HA2sin6x9QRdjsVoq5CYYBqqlTz5wtg0_0EFSTu358GVYcVJ080lnwztjRRXU5asJkldaG_lYy7HpefpAeT9UMmWCfdE3oBOs26uG5Ue45zwTJ3B0k3cTyimyTmC41N7kPCcCjRnDEFX4xtg8QBd13LUAjSYWeqtS0iyXjwKKuwjV8jqyl3gdeBRXrduqcsEYNWQSLC3U3kxdEvnDzhPIiSngw4tumNRiZXy9ZMgzDIEw09oqs6JfyYVjcDE-bXOUt3HueBC3TfmYDOYY7NDg-aCjVJ0wcred6HgIlZvIHiXAFOu-aR-mN6UsiQYmc92Wi6L6FFDvNsU2fcIR8r7Hqghk0fvWD1H6cWyNWrZ7G81LtqrSoSjOmr-FhiYTXqhq03JvVOuRxM_7CrYcKAR_4glUZWnpIno3LYrTnyhxsKrd3hJIQtd56F6MKCOAL5slms1XyLiBWoCEHDerhUG7i13fIAsuaH4XfTlD3uyrojHpEgrD3hvNI3wjxDkyLebjExVql9BQRJNlUuA3q-bUooE4QJtnyowFgt0HW-LXLM8ssMMvs8pntkaD154JhYIeIobzpwHkjM52Qty9NGSJh5ohyumg3Jbw8cCfZwM_mxveHEKAmPJMzZ4q_Hvp6WrN5zVQwIRKGVF1jVQ6IkoW1cPlR_e0BjOOnoIzqwMzjrJ4AA==",
+            "summary": []
+          },
+          {
+            "id": "msg_052aa0d1e11a7dff016aff65d2663887d29311c1531b5abcaf",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"answer\":\"yes\",\"in_common\":\"Free spins and supernatural themes\"}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "medium",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "recommendation_answer",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unclear"
+                  ]
+                },
+                "in_common": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer",
+                "in_common"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 0.98,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 421,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 119,
+          "output_tokens_details": {
+            "reasoning_tokens": 94
+          },
+          "total_tokens": 540
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}
