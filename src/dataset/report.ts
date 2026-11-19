@@ -112,11 +112,12 @@ export function assertCoverage(report: MessReport): void {
   if (report.offerings.games_withdrawn_somewhere === 0) missing.push("withdrawn offering");
   if (report.games >= FULL_SIZE) {
     if (report.clean_control_rows < 5) missing.push(`five clean controls (found ${report.clean_control_rows})`);
+    if (report.clean_control_rows > 10) missing.push(`no more than ten clean controls (found ${report.clean_control_rows})`);
     for (const [form, rows] of Object.entries(report.description_missing_forms)) {
       if (rows === 0) missing.push(`a missing description as ${form}`);
     }
   }
-  if (missing.length > 0) throw new Error(`the catalogue is missing required cases: ${missing.join(", ")}`);
+  if (missing.length > 0) throw new Error(`the catalogue does not hold the required cases: ${missing.join(", ")}`);
 }
 
 /** From this many games on, the catalogue is expected to hold enough of the rarer cases too. */
