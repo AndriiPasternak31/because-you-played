@@ -260,7 +260,7 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 ## Process material
 
 - **Briefs.** Eight of the briefs given to builder and reviewer agents, cleaned of private details with every cut marked: [`docs/process/`](docs/process/README.md).
-- **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation), and the [build status page](https://because-you-played-status.vercel.app/), which was behind a password while the repository was private. The product itself runs locally.
+- **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation), and the [build status page](https://because-you-played-status.vercel.app/), which was locked while the repository was private. The product itself runs locally.
 - **The rules the agents worked under:** [`AGENTS.md`](AGENTS.md), [`REVIEW.md`](REVIEW.md), [`.claude/settings.json`](.claude/settings.json), [the pull-request template](.github/pull_request_template.md), [`LEARNINGS.md`](LEARNINGS.md), and the enrichment prompt in [`prompts/`](prompts/).
 - **The record of each change** is its pull request: what was checked, what was not verified, and what review found.
 
