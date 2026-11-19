@@ -12,13 +12,13 @@ import { relative } from "node:path";
 import { run } from "node:test";
 import { spec } from "node:test/reporters";
 
-const FILE_PATTERN = "src/**/*.test.ts";
+const FILE_PATTERNS = ["src/**/*.test.ts", "eval/**/*.test.ts"];
 
 const [namePattern, ...extra] = process.argv.slice(2);
 if (extra.length > 0) throw new Error(`expected at most one name pattern, got ${extra.length + 1} arguments`);
 
-const files = globSync(FILE_PATTERN).sort();
-if (files.length === 0) throw new Error(`no test file matches ${FILE_PATTERN}, so nothing was tested`);
+const files = globSync(FILE_PATTERNS).sort();
+if (files.length === 0) throw new Error(`no test file matches ${FILE_PATTERNS.join(" or ")}, so nothing was tested`);
 
 const passedByFile = new Map<string, number>();
 let succeeded = false;

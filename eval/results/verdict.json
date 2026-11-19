@@ -1,0 +1,42 @@
+{
+  "format_version": 1,
+  "index_hash": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a",
+  "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
+  "prompt_version": "enrich-v1",
+  "report": {
+    "path": "enrich-v1/report.json",
+    "sha256": "4738154b060bddb90c156d382b5ed1d9e8a48038a4f71270aa681f9d63de8279"
+  },
+  "serving": {
+    "floor_rule": "floor-p90-v1",
+    "floors": {
+      "raw": 0.579259,
+      "table": 0.587831,
+      "model_where_thin": 0.59806,
+      "model_everywhere": 0.596894
+    }
+  },
+  "passed": true,
+  "ships": "model_where_thin",
+  "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805002). Not passing: table (enrichment.min_recovery_without_tags).",
+  "versions": {
+    "raw": {
+      "passed": true,
+      "failed_marks": []
+    },
+    "table": {
+      "passed": false,
+      "failed_marks": [
+        "enrichment.min_recovery_without_tags"
+      ]
+    },
+    "model_where_thin": {
+      "passed": true,
+      "failed_marks": []
+    },
+    "model_everywhere": {
+      "passed": true,
+      "failed_marks": []
+    }
+  }
+}

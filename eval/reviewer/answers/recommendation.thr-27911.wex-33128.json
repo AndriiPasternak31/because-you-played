@@ -1,0 +1,155 @@
+{
+  "question_id": "recommendation.thr-27911.wex-33128",
+  "kind": "recommendation",
+  "model": "gpt-6-luna",
+  "request_sha256": "b6111b54e813ed2a005ed6fe0978c8d1221ce6f191b5b77d7518a639385a338c",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 1.685,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 169,
+        "output_tokens": 86,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "body": {
+        "id": "resp_06ddb2d7da523fd8016aff65f63e0c87d28745ac5e3af477d6",
+        "object": "response",
+        "created_at": 1795122678,
+        "status": "completed",
+        "access_programs": null,
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795122679,
+        "error": null,
+        "frequency_penalty": 0,
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": null,
+        "max_output_tokens": 2000,
+        "max_tool_calls": null,
+        "model": "gpt-6-luna",
+        "moderation": null,
+        "output": [
+          {
+            "id": "rs_06ddb2d7da523fd8016aff65f6d79487d2a7ef2a6ea6cfc0ba",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq_2X3jzZkY_apmfxChS7HmPDXapuA7VwQC6LHJZAtr04CwcaJ7HY0RA9s0ToV18lUnUrv8MHDkoFEG6y0qut-HDWQ9t9BC1-tbYIUvhmDdn3_z6yT1fV6PAjsiBr6gwCkyre2d8tOFrYvtuIq5njlY8WZyHlOioN9_FclZkviHErS4Vp_k9tStILM_0vF5751_Wv2ZJgK5-4c8uFI8pl_CcXTRLVzx7fj2zhqV1BU7G3f8Q4CXxSR2VX5fBnX7mFSobj0dNpk5LYYOPWhR8zCkp1_qNd2YJ-irMo5dRbwb3B-qwYz0d9qzjFke3MpFCXv_erqIhwCNr726YmVF8LsyBuH72cEJz1P2ghJ60QrnG17TizmY5nVwHtzRhBM48EH-WwSZB9qRAfDxyZ1r6p5K7w6RKJmk7RvtzGEnEFUA5mqONtdmLFElGjuMWB4opoHChsENUpEMXGxxmJNVgRiCK5C8qiTyoj75N9y8N_4YBf-SoEnJfBWXRfmheD8e_FUMteQzawzr6fKMGr2YRh1JtUImDQxtWiDVSEV6hNjuRhGDeOf4xFrJF4Rx9LcdbsH6IXx8UOC8WEKvFIeDIY7Fa10o4vhqdLyu6LGexnBvBxCFB97SeAK_ZcGk5Ky5Ifz22dq42ufYCrUSvkqzRuIFqd4POvm950KVKbeUeISj8PTzZdcZZqVmn1aeUwTtjh6cjlE1SQW8h6DYXitihgsae0CCJf6UjzauNiTmoqGIL2bmA6SGsJlesNpXaS7ZXfBsgKdXjipeNRC4-iGDk0mMqmLv11VwN_dRNcQqxqxuwJvApaFga6fqn22wfUia_n13p3UcD2dogJAFe2HRxpK_ZxpLoMvF0uTxVp9P7mndNsRHDjitztLzqCAWVFvGPeEujdDugfitNy33JJR03v6Y9QoF0TQao_pGT4iU6cqV6NcilNPSDSce6qbPkB5F0Ufyl9oNcycWrumEnEwSHD3WlHADlj5Qv-FfAiQ8EA-xUzmhMHCfgUpu7ZKvbb5bJx0kBuqHxVi2ZhjXQ7Yf1wSm3-BRDFIOnkItd_Cr_ulF7sdInGnGqhIouohKqXJkm7eyMSzdKuSM2I0UBDrw54GSFvRJL8vOYLBTiyPsGiMVw204Gm2XCRWDObofkeLs0mUeCvOERc35IL6zgxj5hbsLUXMQQoAifBjeahYrMZ7BfgfLzDKqApVEbnQ5dQJHXACFoSijTTBWEukROmWpPzeprbbMCLROaaFrY03IOJsVgdidcyWhpUg0k6Fs-1D_KHNccO1e5N9hrTPDR-Rf9ydAnaIinEoaqYgQHqz0vx6yAS6Vuf5wrL8SouIOZMMn8y6ScMIXeRQj7i_vi0ygwxE_xoXI-WZlg3G_Lo0hUcfVjOmwvhm5D_GtolX2EOnoQDomfnbVxCV1TFg3Y0Nt5dRenaeJ43iCH7FXtP-PLgUP0uVomwLLj3rfrB8X3nO50F7J-VPZ3JmFT84sbhQkwUXlB7AxWmz91pGiruQsLXrsfnHUdl2cvivOG9e77BuuM-gZzd6YjtnSgLJ8JDV7XlIfvjANK-DUW_u6RYuTNUYTdjAYE0_pWRbM9d9wwz77vkHqvsfPmGV0IFhD5JxYeM-DBdViiyclqIZ6S1EKympQ4RDSH7Ayphpv2scxtmzjQzEHV2hajvKWbN7QGvvJbl5ixHu34gsKE13hMNBFlIF9HsSK9ACAUwcFsTI-xWO6AUuNwJgQ607bBlQV4QZI7TGS6AMae-ifudjCZSK2ZF4MMSn67SmU_3aVEWYaVbqtu9R-NcHu9-Z7oMUkxjOrR3NBWC8RppTRHF0rO9OqUhuOxyxQ9hGVQD4efkflit0tQkgtPHykcxg2KRSMxvagRK3ui2Wj6NNKGAvMhYfwFAryueU_7ihRNCq9YV6MW8Bx_FdoDdpKvd-WbDBPlYaPR8LhxxVwYoZApP9susvqkao9BecE-kRVHq4X2DJgRkJFMnhKonoq1GhCym1NV17dGw0rYBII1-NiX9CIHwEG_mOc9RUDiEaPJtLRqfUL9inEIBH7RH76eoDO_PaSNUJhCLmFjEhMRCeuAfzM3IWMO2HF6_C3mwj6-kNBQblkAIIWNlMBijGQfL-CpicjP-bLi4bvPM0hpXJyscEaM0r7xMMDeqQHcf1lLhkT_DqU0bMeEdLjMDxwLOoXUMVWWApjhrazavFBRcSKnnPOEJGbgcjlNI1TljBwlTw0GWgo9EKn5YO7ePgGWHpZUGiP6ADPp55FNIeiYwRjh0JRbNQ9IMlrhZrRNwqTMicq_i6dN044F50ctQu5tiWLWvjmvTFRV2stMj3HSadEjhKMFxN5AmH9s_mp1TP0B5W8dzvy56X928_vSjdbDnd3stnLrDYVJVJM7pcygilUlC6xWe-OuhV9wj8KbKOGgmnO9fVUoqaAg6-ExAoyt5RTiUcu1PomWJW1_J9SVe7Opy9nRtUfZBcy7kypUQ=",
+            "summary": []
+          },
+          {
+            "id": "msg_06ddb2d7da523fd8016aff65f78ad487d29da12d5fa2ce855b",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"answer\":\"yes\",\"in_common\":\"Fantasy creatures and mythology\"}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "medium",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "recommendation_answer",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unclear"
+                  ]
+                },
+                "in_common": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer",
+                "in_common"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 0.98,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 169,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 86,
+          "output_tokens_details": {
+            "reasoning_tokens": 62
+          },
+          "total_tokens": 255
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}
