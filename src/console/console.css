@@ -66,10 +66,11 @@ button.icon { cursor: pointer; padding: 4px 12px; }
 dl.raw, dl.detail { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
 dl.raw { background: var(--wash); padding: 12px; border-radius: 4px; font-family: var(--mono); font-size: 0.78rem; }
 dl.raw dt, dl.detail dt { color: var(--muted); }
-dl.raw dd, dl.detail dd { margin: 0; overflow-wrap: anywhere; }
+dl.raw dd, dl.detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 dl.detail { font-size: 0.8125rem; margin-bottom: 12px; }
 
-.scroll { overflow-x: auto; }
+.scroll { overflow-x: auto; max-width: 100%; }
+.section, #trace, #compare, #evaluation-body { min-width: 0; max-width: 100%; }
 .scroll.tall { max-height: 420px; overflow-y: auto; }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
@@ -90,10 +91,13 @@ summary { cursor: pointer; }
 .verdict { border-top: 2px solid var(--plum); padding-top: 16px; }
 .what-if { background: var(--wash); border-radius: 4px; padding: 16px; margin: 16px 0; }
 td.slider { position: relative; min-width: 200px; }
-td.slider input { width: 100%; margin: 0; }
+td.slider input { width: 100%; margin: 0; accent-color: var(--plum); }
 td.slider .tick { position: absolute; top: 4px; width: 2px; height: 28px; background: var(--ink); pointer-events: none; }
 
 @media (max-width: 600px) {
   h1 { font-size: 1.875rem; }
   form#picker { flex-direction: column; align-items: stretch; }
+  .field, .field.wide { min-width: 0; flex: 0 1 auto; }
+  select { width: 100%; }
+  dl.raw, dl.detail { grid-template-columns: 1fr; }
 }

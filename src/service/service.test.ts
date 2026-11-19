@@ -376,6 +376,11 @@ test("SV-5: the service serves the version the verdict chose, and refuses a miss
   editVerdict(failed, (verdict) => Object.assign(verdict, { passed: false, ships: null, reason: "No version passes its marks." }));
   refused(failed, /does not pass: No version passes/);
 
+  // "passed" decides, whatever version the file goes on to name.
+  const failedButNamed = scratch();
+  editVerdict(failedButNamed, (verdict) => Object.assign(verdict, { passed: false, reason: "A mark failed." }));
+  refused(failedButNamed, /does not pass: A mark failed/);
+
   const contradicts = scratch();
   editVerdict(contradicts, (verdict) => Object.assign(verdict, { ships: "table" }));
   refused(contradicts, /ships table, which it also records as not passing/);
