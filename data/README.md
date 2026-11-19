@@ -24,7 +24,7 @@ A fictional catalogue of online slot games, built to look like something a real 
 ## How it is built
 
 1. **Plan** (`src/dataset/plan.ts`). Seeded code decides what each slot is: studio, themes and mechanics from the closed vocabulary, facts, the setting and title pattern, relations to other games, offerings, and which defects it will carry. The first 14 slots are allocated by hand to the cases the catalogue must contain; later slots are drawn from seeded distributions. A slot depends only on the seed and on earlier slots, so a smaller count gives a prefix of the same catalogue.
-2. **Truth text** (`src/dataset/truth-writer.ts`). A model writes a title, a description and one supporting quote per planned theme and mechanic. Output is rejected, with its reason, if it is refused, cut short, malformed, quotes something that is not in the description, mentions a mechanic the plan did not assign, breaks a title rule, or uses a name on the blocked list. Nothing is repaired: a rejected answer is stored and counted, and the next attempt is a fresh answer that is told the reason.
+2. **Truth text** (`src/dataset/truth-writer.ts`). A model writes a title, a description and one supporting quote per planned theme and mechanic. Output is rejected, with its reason, if it is refused, cut short, malformed, quotes something that is not in the description, mentions a mechanic the plan did not assign, states a number or a volatility the brief did not supply, breaks a title rule, or uses a name on the blocked list. Nothing is repaired: a rejected answer is stored and counted, and the next attempt is a fresh answer that is told the reason.
 3. **Degradation** (`src/dataset/degrade.ts`). Seeded code turns the truth into raw rows and records what was lost. No model is involved.
 
 The model never writes a fact of record or an availability row.
@@ -133,7 +133,7 @@ Gaps and formats are properties of the studio, not random noise per field: one s
 
 ## Limits
 
-- The truth text is model-written. A sample was read after generation; it was not independently labelled. Code checks that each quote is verbatim, not that it is good evidence, and it cannot check that a description avoids themes the plan did not assign.
+- The truth text is model-written. A sample was read after generation; it was not independently labelled. Code checks that each quote is verbatim, not that it is good evidence, and it cannot check that a description avoids themes the plan did not assign. Numbers in the copy are checked against the facts only where they are written in digits.
 - "Recoverable" in the truth is mechanical: a quote survived, a tag survived, or the writing model said the title states the theme. It is a diagnostic, not a reference label.
 - Descriptions are easier than real supplier copy: they state every planned mechanic plainly, and one model wrote all of them.
 - Rates of mess are chosen to exercise the pipeline. They are not estimates of how often each defect occurs in real feeds.

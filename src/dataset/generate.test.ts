@@ -122,6 +122,30 @@ test("DS-2: an answer that carries a fact or an availability field is rejected",
   }
 });
 
+test("DS-2: copy that states a number or a volatility the brief did not supply is rejected", () => {
+  const plan = buildPlan(100, DEFAULT_SEED);
+  const slotPlan = plan.find((candidate) => candidate.copyMentionsFacts && candidate.relation.kind === "none");
+  assert.ok(slotPlan);
+  const expectation = expectationFor(slotPlan, new Map());
+  const good = fakeText(slotPlan, new Map());
+  const { facts } = slotPlan;
+  const withSentence = (sentence: string) => ({ ...good, description: `${good.description} ${sentence}` });
+  const band = (name: string): string => name.replace("_", " ");
+
+  const maxWin = `${facts.max_win_multiplier.toLocaleString("en-US")}x the bet`;
+  validateTruthText(withSentence(`A ${facts.grid} grid, ${band(facts.volatility)} volatility and a maximum win of ${maxWin}.`), slotPlan, expectation);
+  assert.throws(
+    () => validateTruthText(withSentence(`The maximum win is ${(facts.max_win_multiplier + 1).toLocaleString("en-US")}x the bet.`), slotPlan, expectation),
+    /a number the brief did not supply/,
+  );
+  assert.throws(() => validateTruthText(withSentence("It plays on 9 reels."), slotPlan, expectation), /states 9, a number the brief did not supply/);
+  const otherBand = facts.volatility === "low" ? "very_high" : "low";
+  assert.throws(
+    () => validateTruthText(withSentence(`Volatility is ${band(otherBand)}.`), slotPlan, expectation),
+    new RegExp(`states the volatility as ${otherBand}, but the brief says ${facts.volatility}`),
+  );
+});
+
 test("DS-2: facts and offerings stay the same when the text changes", () => {
   const { plan, texts, catalogue } = fakeCatalogue(100);
   const rewritten = new Map(

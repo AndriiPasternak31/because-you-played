@@ -12,7 +12,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { TruthTextSchema, type TruthText } from "./model.ts";
+import { TruthTextSchema, type TruthText, type VolatilityBand } from "./model.ts";
 import { studioById, winSystemOf, type SlotPlan, type VariantKind } from "./plan.ts";
 import { at, sha256Hex } from "./rng.ts";
 import { MECHANICS, MECHANIC_MEANING, THEMES, THEME_MEANING, type Mechanic } from "./vocabulary.ts";
@@ -405,6 +405,20 @@ export function validateTruthText(candidate: unknown, slotPlan: SlotPlan, expect
   if (!slotPlan.copyMentionsFacts && /volatil|max(?:imum)? win/i.test(text.description)) {
     reject("description mentions volatility or maximum win, which the brief did not ask for");
   }
+  // The copy may restate a fact of record, never set one: every number in it is one the brief
+  // supplied (or part of the title), and a volatility it states is the planned one.
+  const { facts } = slotPlan;
+  const briefed = new Set([
+    ...numbersIn(`${facts.grid} ${text.title}`),
+    ...(facts.lines_or_ways === null ? [] : [facts.lines_or_ways]),
+    ...(slotPlan.copyMentionsFacts ? [facts.max_win_multiplier] : []),
+  ]);
+  const unbriefed = numbersIn(`${text.description} ${text.description_de ?? ""}`).filter((number) => !briefed.has(number));
+  if (unbriefed.length > 0) reject(`the copy states ${unbriefed.join(" and ")}, a number the brief did not supply`);
+  const otherBands = statedVolatility(text.description).filter((band) => band !== facts.volatility);
+  if (otherBands.length > 0) {
+    reject(`description states the volatility as ${otherBands.join(" and ")}, but the brief says ${facts.volatility}`);
+  }
   for (const mechanic of MECHANICS) {
     if (!slotPlan.mechanics.includes(mechanic) && MECHANIC_GIVEAWAYS[mechanic].test(text.description)) {
       reject(`description mentions the unplanned mechanic "${mechanic}"`);
@@ -448,6 +462,23 @@ function checkQuote(term: string, field: string, quote: string, source: string):
   const words = wordCount(quote);
   if (words < 2 || words > 15) throw new RejectedOutput(`${field} for "${term}" has ${words} words, expected 2 to 15`);
   if (!source.includes(quote)) throw new RejectedOutput(`${field} for "${term}" is not a verbatim quote: "${quote}"`);
+}
+
+/** Every number written in digits, with thousands separators of either language removed. */
+function numbersIn(text: string): number[] {
+  return (text.match(/\d[\d.,]*\d|\d/g) ?? []).map((token) => Number(token.replace(/[.,]/g, "")));
+}
+
+/** The volatility bands named in the sentences of an English description that speak of volatility. */
+function statedVolatility(description: string): VolatilityBand[] {
+  const sentences = description
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => /volatil/i.test(sentence))
+    .join(" ")
+    .toLowerCase();
+  // "very high" is tried first, so that it is not also read as "high".
+  const phrases = sentences.match(/\b(?:very high|high|medium|low)\b/g) ?? [];
+  return [...new Set(phrases)].map((phrase) => phrase.replace(" ", "_") as VolatilityBand);
 }
 
 function wordCount(text: string): number {
