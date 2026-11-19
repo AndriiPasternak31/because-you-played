@@ -1,6 +1,12 @@
 # Local documents kept alongside the working copy, not part of the repository
 *.docx
 
+# Agent working state: one worktree per agent session, and run-time scratch
+wt/
+.plan/
+.claude/settings.local.json
+.claude/worktrees/
+
 # Environment and secrets
 .env
 .env.*
