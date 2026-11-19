@@ -177,7 +177,7 @@ ul.fields li > span { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items:
 .node.end .n { color: var(--green); }
 .node.end.none { border-color: var(--amber); }
 .node.end.none .n { color: var(--amber); }
-button.node { cursor: pointer; transition: border-color 0.2s; }
+button.node { cursor: pointer; border-color: var(--edge); transition: border-color 0.2s; }
 button.node:hover, button.node[aria-expanded="true"] { border-color: var(--mint); }
 button.node[aria-expanded="true"] { background: var(--panel-2); }
 .step-panel { background: var(--panel-2); border-left: 2px solid var(--mint); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
