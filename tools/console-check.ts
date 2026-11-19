@@ -7,6 +7,7 @@
  *   node tools/console-check.ts --first-screens                  only what a visitor sees on arrival
  *   node tools/console-check.ts --screenshots docs/screenshots   every check, then the screenshots
  *   node tools/console-check.ts --base http://127.0.0.1:8787     against a service that is already running
+ *   node tools/console-check.ts --also "/?game=<id>&brand=<brand>"   the first screen of that link too (repeatable)
  *
  * The first screen is behaviour, not look: for the landing page and for every example the page offers,
  * the result or the decline must be on screen without scrolling, at 1280 by 900 and at 390 by 844.
@@ -245,7 +246,7 @@ const EVIDENCE: Partial<Record<Example["kind"], string>> = { thin: "#enrichment"
 // The run
 // ---------------------------------------------------------------------------
 
-const { values: options } = parseArgs({ options: { screenshots: { type: "string" }, base: { type: "string" }, "first-screens": { type: "boolean", default: false } }, strict: true });
+const { values: options } = parseArgs({ options: { screenshots: { type: "string" }, base: { type: "string" }, "first-screens": { type: "boolean", default: false }, also: { type: "string", multiple: true, default: [] } }, strict: true });
 const failures: string[] = [];
 let checks = 0;
 
@@ -336,11 +337,12 @@ try {
     const at = `${view.name} ${view.width}x${view.height}`;
 
     // 1. The first screen: the landing page, then every example, each on arrival.
-    for (const [name, path] of [["landing", "/"], ...found.map((example) => [example.kind, example.href as string])] as [string, string][]) {
+    const arrivals = [["landing", "/"], ...found.map((example) => [example.kind, example.href as string]), ...options.also.map((path, index) => [`link ${index + 1} (${path})`, path])] as [string, string][];
+    for (const [name, path] of arrivals) {
       await ask(`${at}: ${name}: the first screen says what the page is and shows the result or the decline, without scrolling`, async () => {
         await arrive(page, path);
         const problems = await page.evaluate<string[]>(FIRST_SCREEN);
-        await firstScreenShot(page, view, name);
+        if (!name.startsWith("link ")) await firstScreenShot(page, view, name);
         return problems;
       });
       if (options["first-screens"]) continue;

@@ -592,10 +592,12 @@ export async function findExamples(get, catalogue, evaluation) {
       }
       return null;
     },
+    /** A live game the service declines: a record with nothing in it first, and one the evaluation lists no failure for, so the example shows one thing. */
     async decline() {
       let asked = 0;
-      const live = catalogue.games.filter((entry) => liveOn(entry, home));
-      for (const entry of [...live.filter((entry) => entry.evidence === "none"), ...live.filter((entry) => entry.evidence !== "none")]) {
+      const failed = new Set((evaluation?.report.gallery.real ?? []).map((entry) => entry.game_id));
+      const order = (entry) => (entry.evidence === "none" ? 0 : 2) + (failed.has(entry.game_id) ? 1 : 0);
+      for (const entry of catalogue.games.filter((entry) => liveOn(entry, home)).sort((a, b) => order(a) - order(b))) {
         if ((asked += 1) > SEARCH_LIMIT) break;
         const response = await recommend(entry.game_id, home, false);
         if (response.outcome === "declined") return { game: entry.game_id, brand: home, href: link({ game: entry.game_id, brand: home }), note: `${entry.title}: declined, ${words(response.decline.reason)}.` };

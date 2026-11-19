@@ -426,8 +426,14 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   // Each example is checked against the service, not against what the finder says about itself.
   const thin = of("thin");
   assert.ok(thin.response.trace?.anchor?.thin === true && thin.response.outcome === "results" && held(thin.response).some((label) => label.method === "model"));
+  // The number its line gives is the service's, and no other thin game on that brand gained more.
+  const fromModel = (response: Recommendation): number => held(response).filter((label) => label.method === "model").length;
+  assert.ok(thin.note.includes(`the model added ${fromModel(thin.response)} from the text`), thin.note);
+  const gains = catalogue.games.filter((game) => game.thin).map((game) => ask(`/api/recommendations?game=${game.game_id}&brand=${thin.brand}&trace=1`)).filter((response) => response.outcome === "results").map(fromModel);
+  assert.equal(fromModel(thin.response), Math.max(...gains), "another thin game gained more labels than the example");
   const plain = of("plain");
   assert.ok(plain.response.trace?.anchor?.thin === false && held(plain.response).length > 0 && held(plain.response).every((label) => label.method !== "model"));
+  assert.ok(plain.note.includes(`already gave ${held(plain.response).length} label`), plain.note);
   const conflict = of("conflict");
   assert.ok(conflict.response.trace?.anchor?.steps.conflict !== null);
   const filter = of("filter");
