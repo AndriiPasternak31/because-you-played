@@ -21,7 +21,7 @@ import { ENRICHMENT_MODEL, ModelOutputSchema, PROMPT_VERSION, quoteIsVerbatim } 
 import { assertReadable, parseJsonFrom, readBytes, sha256 } from "./io.ts";
 import type { BuildReport, Ledger } from "./report.ts";
 import { TableOutputSchema } from "./synonyms.ts";
-import { ConflictSchema, EVIDENCE_LEVELS, THIN_RULE, VERSIONS, VersionContentSchema, type Version } from "./versions.ts";
+import { ConflictSchema, EVIDENCE_LEVELS, THIN_RULE, VERSIONS, VersionContentSchema, isQuotedFromText, type Version } from "./versions.ts";
 
 export const FORMAT_VERSION = 1;
 
@@ -211,6 +211,18 @@ function validateIndex(read: (name: string) => Buffer | null, where: string): In
   }
   for (const record of records) {
     if (record.canonical.game_id !== record.game_id) fail(`record ${record.game_id} wraps the canonical record of ${record.canonical.game_id}`);
+    if (record.conflict !== null) {
+      // A disputed field: nothing from the table, and from the model only what it quoted from the text.
+      if ((record.versions.table.mechanics?.labels.length ?? 0) > 0) {
+        fail(`record ${record.game_id}: the table version carries a label on a field whose tag "${record.conflict.tag}" the description contradicts`);
+      }
+      for (const version of ["model_where_thin", "model_everywhere"] as const) {
+        const tagBacked = record.versions[version].mechanics?.labels.find((label) => !isQuotedFromText(label));
+        if (tagBacked !== undefined) {
+          fail(`record ${record.game_id}: "${tagBacked.label}" in ${version} is backed by the ${tagBacked.source_field} list, which is in dispute`);
+        }
+      }
+    }
     for (const version of VERSIONS) {
       const { text: versionText, text_sha256: hash, themes, mechanics } = record.versions[version];
       if (sha256(versionText) !== hash) fail(`record ${record.game_id}: the ${version} text does not match its hash`);

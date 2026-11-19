@@ -18,8 +18,8 @@ A fictional catalogue of online slot games, built to look like something a real 
 | `generation/retired-attempts.jsonl` | Accounting for attempts whose responses were later replaced: outcome, time and tokens, without bodies | Anyone |
 | `generation/ledger.json` | Tokens, estimated cost, seconds per record and retries, computed from the two files above | Anyone |
 | `generation/mess-report.json` | Row counts per kind of mess, identity cases and offering statuses | Anyone |
-| `pipeline/responses/` | Every stored model attempt and embedding response behind the index | The pipeline |
-| `index/` | The index the pipeline builds: canonical records, four versions of each game's text with labels and quotes, vectors, ledger | Everything |
+| `pipeline/responses/` | Every stored model attempt, and every stored embedding response with the game and text hash of what it embedded | The pipeline |
+| `index/` | The index the pipeline builds: canonical records, four versions of each game's text with labels and quotes, what became of each conflict between a tag and the description, vectors, ledger | Everything |
 
 `generation/` is hidden from the enrichment pipeline and the service. It exists so that evaluation can tell a fact that was recoverable from the raw row from one that was genuinely unknowable, where the right answer is to abstain.
 
@@ -112,7 +112,7 @@ Counts are raw rows. A row can carry several.
 | `tags_missing` | 13 | Recovers from the description, or abstains |
 | `tag_spelling_drift` | 43 | Maps synonyms and spellings onto the vocabulary |
 | `tag_dropped_but_inferable` | 4 | Recovers the missing tag from the description |
-| `tag_conflicts_description` | 5 | Does not copy a tag the description contradicts |
+| `tag_conflicts_description` | 5 | Does not copy a tag the description contradicts. The table says nothing for that field; a model version may use what the model quotes from the description |
 | `non_attribute_tags` | 23 | Drops them |
 | `title_decoration` | 16 | Cleans the title |
 | `near_empty` | 4 | Abstains |

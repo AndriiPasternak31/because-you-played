@@ -6,6 +6,10 @@
  *   model_where_thin  the table's labels, plus the model's labels on thin records only
  *   model_everywhere  cleaned title and description, plus the model's labels only
  *
+ * Where a delivered tag contradicts the description, the table cannot tell which side is
+ * right, so its version adds nothing for that field. The two model versions carry the
+ * model's reading instead: its labels quoted from the description or the title.
+ *
  * What the versions are for is in eval/refs/evaluation-plan.md. Everything here is
  * deterministic: the model's answers arrive as an argument and are never fetched.
  */
@@ -32,11 +36,22 @@ const WIN_SYSTEM_PHRASES: Record<WinSystem, RegExp> = {
   cluster_pays: /\bclusters?\b/i,
 };
 
-export const ConflictSchema = z.strictObject({
+const DetectedConflictSchema = z.strictObject({
+  /** The delivered tag that the description contradicts. */
   tag: z.string(),
   tag_asserts: z.enum(WIN_SYSTEMS),
   description_states: z.array(z.enum(WIN_SYSTEMS)).min(1),
   description_quote: z.string(),
+});
+/** What code alone finds, from the raw record and the table's output. */
+export type DetectedConflict = z.infer<typeof DetectedConflictSchema>;
+
+/** A conflict as the index records it: what was found, and what became of it in the two model versions. */
+export const ConflictSchema = DetectedConflictSchema.extend({
+  /** True when the model's reading of the text stands in the two model versions. False leaves the field empty in every version. */
+  model_reading_used: z.boolean(),
+  /** The model's labels for this field that were backed by a tag list, and so were not used. */
+  model_labels_withheld: z.array(LabelSchema),
 });
 export type Conflict = z.infer<typeof ConflictSchema>;
 
@@ -49,7 +64,7 @@ function isWinSystem(term: Term): term is WinSystem {
  * a win system but not that one. A game has exactly one, so both cannot be right,
  * and code cannot tell which is.
  */
-export function findConflict(record: CanonicalRecord, table: TableOutput): Conflict | null {
+export function findConflict(record: CanonicalRecord, table: TableOutput): DetectedConflict | null {
   if (record.description === null) return null;
   const stated = WIN_SYSTEMS.flatMap((system) => {
     const match = WIN_SYSTEM_PHRASES[system].exec(record.description ?? "");
@@ -91,12 +106,34 @@ function plainField(labels: readonly Label[]): Field {
     : { status: "asserted", conflict_reason: null, labels: inVocabularyOrder(labels) };
 }
 
-function mechanicsField(labels: readonly Label[], conflict: Conflict | null): Field {
-  if (conflict !== null) return { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] };
+const UNRESOLVED: Field = { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] };
+
+/** A game has one win system, so labels that assert two settle nothing and the field stays empty. */
+function oneWinSystem(labels: readonly Label[]): Field {
   if (new Set(labels.map((label) => label.label).filter(isWinSystem)).size > 1) {
     return { status: "conflict", conflict_reason: "more_than_one_win_system", labels: [] };
   }
   return plainField(labels);
+}
+
+/** The mechanics the table can stand behind. On a conflict it cannot tell which side is right, so it gives none. */
+function tableMechanics(labels: readonly Label[], conflict: DetectedConflict | null): Field {
+  return conflict === null ? oneWinSystem(labels) : UNRESOLVED;
+}
+
+/** True for a label whose quote comes from the description or the title, not from a tag list. */
+export function isQuotedFromText(label: Label): boolean {
+  return label.source_field === "description" || label.source_field === "title";
+}
+
+/**
+ * The mechanics a model version carries on a record in conflict: the model's reading of the text.
+ * The tag lists are what is in dispute, so a label backed by one does not count here, whoever
+ * asserted it. With no reading of the text the conflict stays unresolved.
+ */
+function modelReading(model: readonly Label[]): Field {
+  const reading = model.filter(isQuotedFromText);
+  return reading.length === 0 ? UNRESOLVED : oneWinSystem(reading);
 }
 
 function inVocabularyOrder(labels: readonly Label[]): Label[] {
@@ -115,10 +152,13 @@ export const THIN_RULE = {
     "no delivered tag mapped to a label of that field, or the mechanics tags are in conflict.",
 } as const;
 
-/** Uses only the raw record (through its canonical form) and the table's output. */
+/**
+ * Uses only the raw record (through its canonical form) and the table's output.
+ * A conflict makes a record thin: it is a reason to ask the model.
+ */
 export function isThin(record: CanonicalRecord, table: TableOutput): boolean {
   const conflict = findConflict(record, table);
-  return plainField(table.themes).status !== "asserted" || mechanicsField(table.mechanics, conflict).status !== "asserted";
+  return plainField(table.themes).status !== "asserted" || tableMechanics(table.mechanics, conflict).status !== "asserted";
 }
 
 /** What a record gives a reader to go on, for the service's decision to decline. */
@@ -175,6 +215,8 @@ function union(table: readonly Label[], model: readonly Label[]): Label[] {
 export function buildVersions(record: CanonicalRecord, table: TableOutput, model: ModelLabels): Record<Version, VersionContent> {
   const conflict = findConflict(record, table);
   const thin = isThin(record, table);
+  // On a conflict both model versions carry the same thing for the field: the model's reading of the text.
+  const disputed = conflict === null ? null : modelReading(model.mechanics);
   return {
     raw: content(
       [
@@ -187,12 +229,12 @@ export function buildVersions(record: CanonicalRecord, table: TableOutput, model
       null,
       null,
     ),
-    table: described(record, plainField(table.themes), mechanicsField(table.mechanics, conflict)),
+    table: described(record, plainField(table.themes), tableMechanics(table.mechanics, conflict)),
     model_where_thin: described(
       record,
       plainField(thin ? union(table.themes, model.themes) : table.themes),
-      mechanicsField(thin ? union(table.mechanics, model.mechanics) : table.mechanics, conflict),
+      disputed ?? oneWinSystem(thin ? union(table.mechanics, model.mechanics) : table.mechanics),
     ),
-    model_everywhere: described(record, plainField(model.themes), mechanicsField(model.mechanics, conflict)),
+    model_everywhere: described(record, plainField(model.themes), disputed ?? oneWinSystem(model.mechanics)),
   };
 }

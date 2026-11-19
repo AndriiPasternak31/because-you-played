@@ -18,7 +18,7 @@ import { loadIndex, writeIndex, type IndexRecord, type Manifest } from "./index-
 import { readBytes, sha256 } from "./io.ts";
 import { buildLedger, buildReport, formatLedger, storedSpend, type BuildReport, type Ledger } from "./report.ts";
 import { applyTable } from "./synonyms.ts";
-import { VERSIONS, buildVersions, evidenceLevel, findConflict, isThin, type Version } from "./versions.ts";
+import { VERSIONS, buildVersions, evidenceLevel, findConflict, isQuotedFromText, isThin, type Version } from "./versions.ts";
 
 /** The spend limit a live run gets when none is given, in USD, counting what is already stored. */
 export const DEFAULT_MAX_USD = 2.5;
@@ -33,15 +33,24 @@ export const paths = (dataDir: string) => ({
 /** One index record: the canonical record, what the table and the model each found, and the four versions. */
 export function assembleRecord(canonical: CanonicalRecord, model: ModelOutput): IndexRecord {
   const table = applyTable(canonical);
+  const detected = findConflict(canonical, table);
+  const versions = buildVersions(canonical, table, model);
   return {
     game_id: canonical.game_id,
     canonical,
     evidence: evidenceLevel(canonical, table),
     table,
-    conflict: findConflict(canonical, table),
+    conflict:
+      detected === null
+        ? null
+        : {
+            ...detected,
+            model_reading_used: versions.model_everywhere.mechanics?.status === "asserted",
+            model_labels_withheld: model.mechanics.filter((label) => !isQuotedFromText(label)),
+          },
     thin: isThin(canonical, table),
     model,
-    versions: buildVersions(canonical, table, model),
+    versions,
   };
 }
 
@@ -101,8 +110,8 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   const vectors = {} as Record<Version, Buffer>;
   const embeddingFiles = {} as Record<Version, EmbeddingFile>;
   for (const version of VERSIONS) {
-    const texts = records.map((record) => record.versions[version].text);
-    const { bytes, file } = await obtainEmbeddings(version, texts, { responsesDir: responses, live: options.live, log: options.log });
+    const items = records.map((record) => ({ game_id: record.game_id, text: record.versions[version].text }));
+    const { bytes, file } = await obtainEmbeddings(version, items, { responsesDir: responses, live: options.live, log: options.log });
     vectors[version] = bytes;
     embeddingFiles[version] = file;
   }
