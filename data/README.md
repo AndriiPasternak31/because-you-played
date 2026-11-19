@@ -48,6 +48,9 @@ npm run dataset -- --count 100 --retire 41,57 --retire-reason name_replacement
 
 # Print the blocked-list entry for a name that turned out to exist.
 npm run dataset -- --name-hash Word
+
+# Prove the rebuild is byte-identical, in a scratch directory. The invariants are in docs/features/dataset.md.
+npm test -- DS-1
 ```
 
 Rebuilding from committed responses is byte-identical on every run. A live run is not: the model is sampled, so a regenerated slot gets different text. A request depends only on its own slot and, for a sequel or a same-name twin, on the game it relates to, so one slot can be replaced without touching the rest; `--retire` also retires those dependants. A stored response whose request no longer matches the code is refused, not reused.
