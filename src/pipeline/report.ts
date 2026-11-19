@@ -34,6 +34,7 @@ export interface EnrichmentCost {
 
 export interface VersionLedger {
   enrichment: EnrichmentCost;
+  /** Every stored call for this version. `texts` counts what was sent, so it passes the number of games once a text was embedded again. */
   embedding: { calls: number; texts: number; tokens: number; estimated_usd: number; seconds: number };
   estimated_usd: number;
   seconds: number;
@@ -98,8 +99,7 @@ export function storedSpend(responsesDir: string): Ledger["spent"] {
   for (const version of VERSIONS) {
     const path = embeddingPath(responsesDir, version);
     if (!existsSync(path)) continue;
-    const file = readEmbeddingFile(path);
-    embedding += embeddingUsd(file.usage) + file.superseded.reduce((sum, earlier) => sum + embeddingUsd(earlier.usage), 0);
+    embedding += readEmbeddingFile(path).calls.reduce((sum, call) => sum + embeddingUsd(call.usage), 0);
   }
   const total = Object.values(byPromptVersion).reduce((sum, value) => sum + value, 0) + embedding;
   return { enrichment_usd_by_prompt_version: byPromptVersion, embedding_usd: usd(embedding), total_usd: usd(total) };
@@ -126,13 +126,13 @@ export function buildLedger(
   const versions = Object.fromEntries(
     VERSIONS.map((version) => {
       const enrichment = enrichmentCost(filesFor(sentToModel[version]));
-      const file = embeddingFiles[version];
+      const { calls } = embeddingFiles[version];
       const embedding = {
-        calls: 1,
-        texts: records.length,
-        tokens: file.usage.total_tokens,
-        estimated_usd: usd(embeddingUsd(file.usage)),
-        seconds: file.seconds,
+        calls: calls.length,
+        texts: calls.reduce((sum, call) => sum + call.inputs.length, 0),
+        tokens: calls.reduce((sum, call) => sum + call.usage.total_tokens, 0),
+        estimated_usd: usd(calls.reduce((sum, call) => sum + embeddingUsd(call.usage), 0)),
+        seconds: seconds(calls.reduce((sum, call) => sum + call.seconds, 0)),
       };
       const entry: VersionLedger = {
         enrichment,
@@ -191,7 +191,15 @@ export interface BuildReport {
     /** Every tag the table did not know, with the games it came from. Never guessed. */
     unknown_tags: { tag: string; source_field: string; game_ids: string[] }[];
   };
-  conflicts: { game_id: string; tag: string; description_quote: string }[];
+  /** Per conflict: the contradicted tag, and how many of the model's labels stand in the two model versions or were held back as tag-backed. */
+  conflicts: {
+    game_id: string;
+    tag: string;
+    description_quote: string;
+    model_reading_used: boolean;
+    model_labels_used: number;
+    model_labels_withheld: number;
+  }[];
   thin_records: number;
   enrichment: {
     prompt_version: string;
@@ -256,7 +264,16 @@ export function buildReport(
     conflicts: records.flatMap((record) =>
       record.conflict === null
         ? []
-        : [{ game_id: record.game_id, tag: record.conflict.tag, description_quote: record.conflict.description_quote }],
+        : [
+            {
+              game_id: record.game_id,
+              tag: record.conflict.tag,
+              description_quote: record.conflict.description_quote,
+              model_reading_used: record.conflict.model_reading_used,
+              model_labels_used: record.versions.model_everywhere.mechanics?.labels.length ?? 0,
+              model_labels_withheld: record.conflict.model_labels_withheld.length,
+            },
+          ],
     ),
     thin_records: count(records, (record) => record.thin),
     enrichment: {

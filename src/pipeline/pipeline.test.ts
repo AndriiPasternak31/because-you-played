@@ -11,7 +11,7 @@ import { MECHANICS, THEMES } from "../dataset/vocabulary.ts";
 import { assembleRecord, paths, runBuild } from "./build.ts";
 import { FACT_KEYS, canonicaliseCatalogue, readRawCatalogue, type CanonicalRecord } from "./canonical.ts";
 import { Budget, PRICES, SpendLimitReached, type Live, type Transport } from "./costs.ts";
-import { DIMENSIONS, EMBEDDING_MODEL, embeddingPath, readEmbeddingFile } from "./embed.ts";
+import { BYTES_PER_VECTOR, DIMENSIONS, EMBEDDING_MODEL, embeddingPath, obtainEmbeddings, readEmbeddingFile } from "./embed.ts";
 import {
   ENRICHMENT_MODEL,
   PROMPT_VERSION,
@@ -93,8 +93,13 @@ const STAND_IN = "stand-in-for-the-credential";
 /** A transport that answers both endpoints without a network, and counts what it was asked. */
 function fakeTransport(enrichmentBodies: (call: number) => { status: number; body: unknown }): { transport: Transport; calls: { enrichment: number; embedding: number } } {
   const calls = { enrichment: 0, embedding: 0 };
-  const vector = Buffer.alloc(DIMENSIONS * 4);
-  for (let column = 0; column < DIMENSIONS; column += 1) vector.writeFloatLE(column % 7 === 0 ? 0.25 : 0.01, column * 4);
+  const vectorFor = (call: number, position: number): string => {
+    const vector = Buffer.alloc(DIMENSIONS * 4);
+    for (let column = 0; column < DIMENSIONS; column += 1) vector.writeFloatLE(column % 7 === 0 ? 0.25 : 0.01, column * 4);
+    // Every vector differs by call and by position, so a vector made again cannot pass for one that was kept.
+    vector.writeFloatLE(call + position / 1000, 0);
+    return vector.toString("base64");
+  };
   const transport: Transport = async (url, apiKey, body) => {
     assert.equal(apiKey, STAND_IN);
     if (url.endsWith("/embeddings")) {
@@ -104,7 +109,7 @@ function fakeTransport(enrichmentBodies: (call: number) => { status: number; bod
         status: 200,
         body: {
           model: EMBEDDING_MODEL,
-          data: input.map((_, index) => ({ index, embedding: vector.toString("base64") })),
+          data: input.map((_, index) => ({ index, embedding: vectorFor(calls.embedding, index) })),
           usage: { prompt_tokens: 10 * input.length, total_tokens: 10 * input.length },
         },
       };
@@ -515,6 +520,35 @@ test("PL-4: loading fails, naming the fault, on each kind of corrupted copy of t
       },
     },
     {
+      name: "a disputed tag put back into the table version, with the hashes brought up to date",
+      expect: /the table version carries a label on a field whose tag ".+" the description contradicts/,
+      corrupt: (dir) => {
+        const lines = readFileSync(join(dir, "records.jsonl"), "utf8").split("\n");
+        const position = lines.findIndex((line) => line.length > 0 && (JSON.parse(line) as IndexRecord).conflict !== null);
+        const record = JSON.parse(lines[position] ?? "") as IndexRecord;
+        record.versions.table.mechanics = { status: "asserted", conflict_reason: null, labels: record.table.mechanics };
+        lines[position] = JSON.stringify(record);
+        writeFileSync(join(dir, "records.jsonl"), lines.join("\n"));
+        reseal(dir);
+      },
+    },
+    {
+      name: "a model label on a disputed field backed by the disputed tag, with the hashes brought up to date",
+      expect: /"\w+" in model_everywhere is backed by the features list, which is in dispute/,
+      corrupt: (dir) => {
+        const lines = readFileSync(join(dir, "records.jsonl"), "utf8").split("\n");
+        const position = lines.findIndex((line) => line.length > 0 && (JSON.parse(line) as IndexRecord).conflict !== null);
+        const record = JSON.parse(lines[position] ?? "") as IndexRecord;
+        const disputed = record.table.mechanics.find((label) => label.quote === record.conflict?.tag);
+        assert.ok(disputed && disputed.source_field === "features");
+        // A real delivered tag, quoted whole, so only the rule about disputed fields can refuse it.
+        record.versions.model_everywhere.mechanics?.labels.push({ ...disputed, method: "model", model: ENRICHMENT_MODEL, prompt_version: PROMPT_VERSION });
+        lines[position] = JSON.stringify(record);
+        writeFileSync(join(dir, "records.jsonl"), lines.join("\n"));
+        reseal(dir);
+      },
+    },
+    {
       name: "a text changed without its hash",
       expect: /the raw text does not match its hash/,
       corrupt: (dir) => {
@@ -661,6 +695,10 @@ test("PL-6: the thin rule is recorded in the index, every record's flag follows 
     else assert.deepEqual(record.versions.model_where_thin, record.versions.table, record.game_id);
   }
   assert.ok(thin > 0 && thin < records.length);
+  // A conflict is a reason to call the model, even where the table filled both fields.
+  const disputed = records.filter((record) => record.conflict !== null);
+  assert.ok(disputed.some((record) => record.table.themes.length > 0 && record.table.mechanics.length > 0));
+  assert.ok(disputed.every((record) => record.thin));
   assert.ok(records.some((record) => labelsOf(record, "model_where_thin").some((label) => label.method === "model")));
   // The cost on record for the thin version is the cost of the thin records.
   assert.equal(ledger.versions.model_where_thin.enrichment.records, thin);
@@ -668,54 +706,116 @@ test("PL-6: the thin rule is recorded in the index, every record's flag follows 
 });
 
 // ---------------------------------------------------------------------------
-// PL-7: a field in conflict adds nothing to the text
+// PL-7: on a contradiction the table says nothing and the model's reading of the text stands
 // ---------------------------------------------------------------------------
 
-test("PL-7: when a win-system tag contradicts the description, the mechanics field adds nothing to any version's text", () => {
-  const model: ModelOutput = {
-    ...NO_LABELS,
-    themes: [modelLabel("western", "frontier saloon", "description")],
-    mechanics: [modelLabel("ways", "243 ways to win", "description"), modelLabel("free_spins", "Free Spins", "features")],
-  };
+test("PL-7: when a tag contradicts the description, the table version adds nothing for that field and the model versions carry the model's reading of the text", () => {
+  const fromText = [modelLabel("ways", "243 ways to win", "description"), modelLabel("multipliers", "rising multipliers", "description")];
+  const fromTag = modelLabel("free_spins", "Free Spins", "features");
+  const model: ModelOutput = { ...NO_LABELS, themes: [modelLabel("western", "frontier saloon", "description")], mechanics: [fromText[0] as Label, fromTag, fromText[1] as Label] };
   const payload = { features: ["Paylines", "Free Spins"], themes: ["Wild West"] };
   const agreeing = assembleRecord(recordFrom({ ...payload, description: "A frontier saloon with 25 fixed paylines." }), model);
-  const conflicting = assembleRecord(recordFrom({ ...payload, description: "A frontier saloon with 243 ways to win." }), model);
+  const conflicting = assembleRecord(recordFrom({ ...payload, description: "A frontier saloon with 243 ways to win and rising multipliers." }), model);
 
+  // Control: without the contradiction the delivered tags do reach the table version's text.
   assert.equal(agreeing.conflict, null);
-  assert.deepEqual(conflicting.conflict, { tag: "Paylines", tag_asserts: "paylines", description_states: ["ways"], description_quote: "243 ways" });
-  assert.equal(conflicting.thin, true);
-  for (const version of DESCRIBED) {
-    // Control: without the contradiction the same tags do reach the text.
-    assert.match(agreeing.versions[version].text, /\nMechanics: /, `${version} control`);
-    assert.deepEqual(conflicting.versions[version].mechanics, { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] });
-    assert.doesNotMatch(conflicting.versions[version].text, /Mechanics:|paylines\b(?! to win)|free spins/i, version);
-    // The other field is untouched.
-    assert.match(conflicting.versions[version].text, /\nThemes: western$/, version);
-  }
+  assert.match(agreeing.versions.table.text, /\nMechanics: paylines, free spins$/);
 
-  // Two win systems asserted for one game cannot both be right either.
+  // The record says what happened: which tag was contradicted, and that the model's reading was used.
+  assert.deepEqual(conflicting.conflict, {
+    tag: "Paylines",
+    tag_asserts: "paylines",
+    description_states: ["ways"],
+    description_quote: "243 ways",
+    model_reading_used: true,
+    model_labels_withheld: [fromTag],
+  });
+  assert.equal(conflicting.thin, true, "a conflict is a reason to call the model");
+
+  // The table cannot tell which side is right: the disputed field adds nothing, not even the tags that were not disputed.
+  assert.deepEqual(conflicting.versions.table.mechanics, { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] });
+  assert.doesNotMatch(conflicting.versions.table.text, /Mechanics:/);
+  assert.match(conflicting.versions.table.text, /\nThemes: western$/, "the other field is untouched");
+
+  // Both model versions carry the model's labels that are quoted from the text. The one backed by the disputed tag list is left out.
+  for (const version of ["model_where_thin", "model_everywhere"] as const) {
+    assert.deepEqual(conflicting.versions[version].mechanics, { status: "asserted", conflict_reason: null, labels: fromText }, version);
+    assert.match(conflicting.versions[version].text, /\nMechanics: ways, multipliers$/, version);
+    assert.doesNotMatch(conflicting.versions[version].text, /paylines|free spins/i, version);
+  }
+});
+
+test("PL-7: on a disputed field a label backed only by the tag lists never stands, and with no reading of the text the field stays in conflict", () => {
+  const payload = { features: ["Paylines", "Free Spins"], themes: ["Wild West"], description: "A frontier saloon with 243 ways to win." };
+  const build = (mechanics: Label[]): IndexRecord => assembleRecord(recordFrom(payload), { ...NO_LABELS, mechanics });
+  const unresolved = { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] };
+
+  // The model repeats the tags: the disputed tag itself, and a neighbour from the same list.
+  const tagBacked = [modelLabel("paylines", "Paylines", "features"), modelLabel("free_spins", "Free Spins", "features"), modelLabel("multipliers", "Wild West", "themes")];
+  const repeated = build(tagBacked);
+  assert.deepEqual(repeated.conflict?.model_labels_withheld, tagBacked);
+  assert.equal(repeated.conflict?.model_reading_used, false);
+  // The model abstains.
+  const silent = build([]);
+  assert.deepEqual([silent.conflict?.model_reading_used, silent.conflict?.model_labels_withheld], [false, []]);
+  // The model reads two win systems out of the text: that settles nothing.
+  const torn = build([modelLabel("ways", "243 ways to win", "description"), modelLabel("cluster_pays", "frontier saloon", "description")]);
+  assert.equal(torn.conflict?.model_reading_used, false);
+
+  for (const version of DESCRIBED) {
+    assert.deepEqual(repeated.versions[version].mechanics, unresolved, `repeated tags, ${version}`);
+    assert.deepEqual(silent.versions[version].mechanics, unresolved, `no reading, ${version}`);
+    for (const record of [repeated, silent, torn]) assert.doesNotMatch(record.versions[version].text, /Mechanics:/, version);
+  }
+  assert.deepEqual(torn.versions.model_everywhere.mechanics, { status: "conflict", conflict_reason: "more_than_one_win_system", labels: [] });
+
+  // Away from a conflict the model may still quote a tag: the rule is about the disputed field only.
+  const calm = assembleRecord(recordFrom({ ...payload, description: "A frontier saloon with 25 fixed paylines." }), { ...NO_LABELS, mechanics: tagBacked.slice(0, 2) });
+  assert.deepEqual(calm.versions.model_everywhere.mechanics?.labels, tagBacked.slice(0, 2));
+
+  // Two win systems asserted by the tags alone cannot both be right either.
   const both = assembleRecord(recordFrom({ features: ["Paylines", "Cluster Pays", "Free Spins"] }), NO_LABELS);
   assert.deepEqual(both.versions.table.mechanics, { status: "conflict", conflict_reason: "more_than_one_win_system", labels: [] });
   assert.doesNotMatch(both.versions.table.text, /Mechanics:/);
 });
 
-test("PL-7: in the built index no field in conflict has a label or a line in the text, and an abstaining field has neither", async () => {
+test("PL-7: in the built index a disputed field is empty in the table version and holds only the model's text-backed labels in the model versions", async () => {
   const { records } = await currentIndex();
   const seen = { conflict: 0, abstained: 0, asserted: 0 };
+  let resolved = 0;
+  let labelsUsed = 0;
   for (const record of records) {
     for (const version of DESCRIBED) {
       const { text, themes, mechanics } = record.versions[version];
       for (const [line, field] of [["Themes", themes], ["Mechanics", mechanics]] as const) {
         assert.ok(field);
         seen[field.status] += 1;
+        // A field adds a line to the text exactly when it holds labels.
         const hasLine = text.split("\n").some((row) => row.startsWith(`${line}: `));
         assert.equal(hasLine, field.status === "asserted", `${record.game_id} ${version} ${line}`);
         assert.equal(field.labels.length > 0, field.status === "asserted", `${record.game_id} ${version} ${line}`);
       }
-      assert.equal(mechanics?.status === "conflict", record.conflict !== null || mechanics?.conflict_reason === "more_than_one_win_system");
+    }
+    const { conflict } = record;
+    if (conflict === null) continue;
+    assert.deepEqual(record.versions.table.mechanics, { status: "conflict", conflict_reason: "tag_contradicts_description", labels: [] }, record.game_id);
+    assert.ok(record.table.mechanics.some((label) => label.quote === conflict.tag && label.label === conflict.tag_asserts), `${record.game_id}: the contradicted tag is one that was delivered`);
+    // What the model read from the text, worked out here from its checked answer alone.
+    const fromText = record.model.mechanics.filter((label) => label.source_field === "description" || label.source_field === "title");
+    assert.deepEqual(conflict.model_labels_withheld, record.model.mechanics.filter((label) => !fromText.includes(label)), record.game_id);
+    for (const version of ["model_where_thin", "model_everywhere"] as const) {
+      const used = record.versions[version].mechanics?.labels ?? [];
+      assert.equal(conflict.model_reading_used, used.length > 0, `${record.game_id} ${version}`);
+      assert.deepEqual(used.map((label) => label.label).sort(), conflict.model_reading_used ? fromText.map((label) => label.label).sort() : [], `${record.game_id} ${version}`);
+      assert.ok(used.every((label) => label.method === "model" && (label.source_field === "description" || label.source_field === "title")), `${record.game_id} ${version}`);
+    }
+    if (conflict.model_reading_used) {
+      resolved += 1;
+      labelsUsed += fromText.length;
     }
   }
   assert.ok(seen.conflict > 0 && seen.abstained > 0 && seen.asserted > 0, JSON.stringify(seen));
+  assert.ok(resolved > 0 && labelsUsed > resolved, `${resolved} conflicts resolved with ${labelsUsed} labels`);
 });
 
 // ---------------------------------------------------------------------------
@@ -727,23 +827,74 @@ test("PL-8: all four versions of every game have an embedding of 1,536 dimension
   assert.equal(records.length, 100);
   for (const version of VERSIONS) {
     const stored = readEmbeddingFile(embeddingPath(COMMITTED.responses, version));
-    const body = stored.body as { model: string; data: { embedding: string }[] };
-    assert.deepEqual([stored.model, body.model, stored.dimensions], [EMBEDDING_MODEL, EMBEDDING_MODEL, DIMENSIONS], version);
-    assert.equal(manifest.models.embedding, body.model);
-    assert.equal(body.data.length, records.length);
-    for (let row = 0; row < records.length; row += 1) {
+    assert.deepEqual([stored.version, stored.model, stored.dimensions], [version, EMBEDDING_MODEL, DIMENSIONS], version);
+    // The stored vector of each text, found here by game and text hash.
+    const storedVector = new Map<string, Buffer>();
+    for (const call of stored.calls) {
+      const body = call.body as { model: string; data: { index: number; embedding: string }[] };
+      assert.equal(body.model, manifest.models.embedding, version);
+      assert.equal(body.data.length, call.inputs.length, version);
+      call.inputs.forEach((input, row) => {
+        const entry = body.data.find((candidate) => candidate.index === row);
+        storedVector.set(`${input.game_id} ${input.text_sha256}`, Buffer.from(entry?.embedding ?? "", "base64"));
+      });
+    }
+    records.forEach((record, row) => {
       const vector = vectors[version].subarray(row * DIMENSIONS, (row + 1) * DIMENSIONS);
       assert.equal(vector.length, DIMENSIONS);
       const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
       assert.ok(Math.abs(norm - 1) < 1e-3, `${version} row ${row} has length ${norm}`);
-      // The index holds exactly the stored answer for this text, row for row.
-      assert.equal(Buffer.from(body.data[row]?.embedding ?? "", "base64").readFloatLE(0), vector[0], `${version} row ${row}`);
-    }
+      // The index holds exactly the stored answer for this game's current text.
+      const expected = storedVector.get(`${record.game_id} ${record.versions[version].text_sha256}`);
+      assert.ok(expected, `${version} ${record.game_id}: no stored embedding of its current text`);
+      assert.deepEqual([expected.readFloatLE(0), expected.readFloatLE(BYTES_PER_VECTOR - 4)], [vector[0], vector[DIMENSIONS - 1]], `${version} ${record.game_id}`);
+    });
   }
   // The versions are different texts, so their vectors must differ somewhere.
   assert.notDeepEqual(vectors.raw, vectors.table);
   assert.notDeepEqual(vectors.table, vectors.model_where_thin);
   assert.notDeepEqual(vectors.model_where_thin, vectors.model_everywhere);
+});
+
+test("PL-8: when a text changes, only that text is embedded again and every other vector keeps its bytes", async () => {
+  const dataDir = scratchData(false);
+  const { responses } = paths(dataDir);
+  try {
+    const sent: string[][] = [];
+    const { transport } = fakeTransport(() => assert.fail("no enrichment call belongs here"));
+    const recording: Transport = async (url, apiKey, body) => {
+      sent.push((body as { input: string[] }).input);
+      return transport(url, apiKey, body);
+    };
+    const run = (items: { game_id: string; text: string }[], live: boolean) =>
+      obtainEmbeddings("table", items, { responsesDir: responses, live: live ? liveWith(recording) : null, log: quiet });
+    const vector = (bytes: Buffer, row: number): Buffer => bytes.subarray(row * BYTES_PER_VECTOR, (row + 1) * BYTES_PER_VECTOR);
+
+    const before = [{ game_id: "a", text: "alpha" }, { game_id: "b", text: "beta" }, { game_id: "c", text: "gamma" }];
+    const after = [before[0] ?? assert.fail(), { game_id: "b", text: "beta, revised" }, before[2] ?? assert.fail()];
+    const first = await run(before, true);
+    const second = await run(after, true);
+    assert.deepEqual(sent, [["alpha", "beta", "gamma"], ["beta, revised"]], "only the changed text may be sent the second time");
+    assert.ok(vector(second.bytes, 0).equals(vector(first.bytes, 0)) && vector(second.bytes, 2).equals(vector(first.bytes, 2)), "the unchanged texts keep their vectors");
+    assert.ok(!vector(second.bytes, 1).equals(vector(first.bytes, 1)), "the changed text has a new vector");
+    assert.deepEqual(second.file.calls.map((call) => call.inputs.map((input) => input.game_id)), [["a", "b", "c"], ["b"]]);
+
+    // With no key the same texts give the same bytes and nothing is sent.
+    assert.ok((await run(after, false)).bytes.equals(second.bytes));
+    assert.equal(sent.length, 2);
+    // A text that was never embedded stops a keyless rebuild, and the file and the game are named.
+    const path = embeddingPath(responses, "table");
+    await assert.rejects(run([...after.slice(0, 2), { game_id: "c", text: "gamma, revised" }], false), (error: Error) => error.message.startsWith(`${path} holds no embedding for the current text of 1 game(s): c.`));
+    // One game's vector is never handed to another game, even for the same words.
+    await assert.rejects(run([{ game_id: "d", text: "alpha" }], false), /current text of 1 game\(s\): d\./);
+    // Two stored vectors for one text: nothing says which is right, so neither is used.
+    const stored = readEmbeddingFile(path);
+    stored.calls.push(stored.calls[1] ?? assert.fail());
+    writeFileSync(path, JSON.stringify(stored));
+    await assert.rejects(run(after, false), (error: Error) => error.message === `${path} holds two embeddings for the same text of b; call 3 repeats an earlier one`);
+  } finally {
+    rmSync(dataDir, { recursive: true });
+  }
 });
 
 test("PL-8: embeddings answered by another model, or of the wrong size, stop the build and the file is named", () => {
@@ -757,7 +908,7 @@ test("PL-8: embeddings answered by another model, or of the wrong size, stop the
     try {
       const path = embeddingPath(paths(dataDir).responses, "table");
       const stored = readEmbeddingFile(path);
-      breakIt(stored.body as { model: string; data: { embedding: string }[] });
+      breakIt(stored.calls[0]?.body as { model: string; data: { embedding: string }[] });
       writeFileSync(path, JSON.stringify(stored));
       const result = rebuild(dataDir);
       assert.equal(result.status, 1, result.stderr);
@@ -859,12 +1010,13 @@ test("PL-11: a stored response that is stale, damaged or missing stops the rebui
       breakIt: (dataDir) => rmSync(enrichmentFile(dataDir)),
     },
     {
-      name: "stored embeddings of other texts",
-      expect: /holds embeddings of different texts/,
+      name: "stored embeddings of another text for one game",
+      expect: /holds no embedding for the current text of 1 game\(s\): /,
       file: embeddingFile,
       breakIt: (dataDir) => {
         const stored = readEmbeddingFile(embeddingFile(dataDir));
-        writeFileSync(embeddingFile(dataDir), JSON.stringify({ ...stored, request_sha256: "0".repeat(64) }));
+        (stored.calls[0]?.inputs[0] ?? assert.fail()).text_sha256 = "0".repeat(64);
+        writeFileSync(embeddingFile(dataDir), JSON.stringify(stored));
       },
     },
     {
@@ -922,7 +1074,10 @@ test("PL-12: the ledger gives each version's calls, tokens, cost and seconds, an
     assert.ok(Math.abs(enrichment.estimated_usd - expected.usd) < 1e-6, version);
     assert.ok(Math.abs(enrichment.seconds - expected.seconds) < 1e-3, version);
     const stored = readEmbeddingFile(embeddingPath(COMMITTED.responses, version));
-    assert.deepEqual([embedding.calls, embedding.texts, embedding.tokens, embedding.seconds], [1, records.length, stored.usage.total_tokens, stored.seconds], version);
+    const add = (pick: (call: (typeof stored.calls)[number]) => number): number => stored.calls.reduce((total, call) => total + pick(call), 0);
+    assert.deepEqual([embedding.calls, embedding.texts, embedding.tokens], [stored.calls.length, add((call) => call.inputs.length), add((call) => call.usage.total_tokens)], version);
+    assert.ok(embedding.texts >= records.length && Math.abs(embedding.seconds - add((call) => call.seconds)) < 1e-3, version);
+    assert.ok(Math.abs(embedding.estimated_usd - (embedding.tokens * PRICES.embedding_per_million_usd.input) / 1e6) < 1e-6, version);
     assert.ok(embedding.tokens > 0 && embedding.estimated_usd > 0, version);
     assert.ok(Math.abs(usd - (enrichment.estimated_usd + embedding.estimated_usd)) < 1e-6, version);
     assert.ok(Math.abs(seconds - (enrichment.seconds + embedding.seconds)) < 1e-3, version);

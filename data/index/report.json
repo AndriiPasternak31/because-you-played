@@ -19,27 +19,42 @@
     {
       "game_id": "okk-17457",
       "tag": "Cluster Pays",
-      "description_quote": "paylines"
+      "description_quote": "paylines",
+      "model_reading_used": true,
+      "model_labels_used": 3,
+      "model_labels_withheld": 0
     },
     {
       "game_id": "okk-56037",
       "tag": "Paylines",
-      "description_quote": "clusters"
+      "description_quote": "clusters",
+      "model_reading_used": true,
+      "model_labels_used": 3,
+      "model_labels_withheld": 0
     },
     {
       "game_id": "thr-24389",
       "tag": "paylines",
-      "description_quote": "243 ways"
+      "description_quote": "243 ways",
+      "model_reading_used": true,
+      "model_labels_used": 3,
+      "model_labels_withheld": 0
     },
     {
       "game_id": "ulv-18831",
       "tag": "Cluster Pays",
-      "description_quote": "paylines"
+      "description_quote": "paylines",
+      "model_reading_used": true,
+      "model_labels_used": 4,
+      "model_labels_withheld": 0
     },
     {
       "game_id": "ulv-72242",
       "tag": "Cluster Pays",
-      "description_quote": "paylines"
+      "description_quote": "paylines",
+      "model_reading_used": true,
+      "model_labels_used": 4,
+      "model_labels_withheld": 0
     }
   ],
   "thin_records": 31,
@@ -73,14 +88,14 @@
       "fields_in_conflict": 5
     },
     "model_where_thin": {
-      "labels": 424,
+      "labels": 441,
       "fields_abstained": 11,
-      "fields_in_conflict": 5
+      "fields_in_conflict": 0
     },
     "model_everywhere": {
-      "labels": 422,
+      "labels": 439,
       "fields_abstained": 12,
-      "fields_in_conflict": 5
+      "fields_in_conflict": 0
     }
   }
 }

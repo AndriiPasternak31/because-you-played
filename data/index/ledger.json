@@ -86,14 +86,14 @@
         "seconds": 109.003
       },
       "embedding": {
-        "calls": 1,
-        "texts": 100,
-        "tokens": 7593,
-        "estimated_usd": 0.000152,
-        "seconds": 0.394
+        "calls": 2,
+        "texts": 105,
+        "tokens": 8253,
+        "estimated_usd": 0.000165,
+        "seconds": 0.932
       },
-      "estimated_usd": 0.115972,
-      "seconds": 109.397
+      "estimated_usd": 0.115985,
+      "seconds": 109.935
     },
     "model_everywhere": {
       "enrichment": {
@@ -114,21 +114,21 @@
         "seconds": 355.51
       },
       "embedding": {
-        "calls": 1,
-        "texts": 100,
-        "tokens": 7583,
-        "estimated_usd": 0.000152,
-        "seconds": 0.387
+        "calls": 2,
+        "texts": 105,
+        "tokens": 8243,
+        "estimated_usd": 0.000165,
+        "seconds": 0.817
       },
-      "estimated_usd": 0.39075,
-      "seconds": 355.897
+      "estimated_usd": 0.390763,
+      "seconds": 356.327
     }
   },
   "spent": {
     "enrichment_usd_by_prompt_version": {
       "enrich-v1": 0.390598
     },
-    "embedding_usd": 0.000607,
-    "total_usd": 0.391205
+    "embedding_usd": 0.000633,
+    "total_usd": 0.391231
   }
 }
