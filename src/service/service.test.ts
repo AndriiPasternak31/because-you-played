@@ -395,7 +395,7 @@ test("SV-5: the service serves the version the verdict chose, and refuses a miss
   refused(otherFloor, /judged the serving rule/);
 
   const otherReport = scratch();
-  writeFileSync(join(otherReport.dir, "results", "enrich-v1", "report.json"), "{}");
+  writeFileSync(join(otherReport.dir, "results", service.verdict.report.path), "{}");
   refused(otherReport, /does not match its report/);
 
   const malformed = scratch();

@@ -75,7 +75,7 @@ function fieldLine(name, field) {
 function enrichment(anchor, version) {
   const { table, model, conflict, cleaned } = anchor.steps;
   const parts = [];
-  parts.push(`<h4>Step 1 · Cleaning <span class="small">code only</span></h4><p class="small">Title: ${esc(cleaned.title)}. Description: ${cleaned.description === null ? "none" : "markup removed, words unchanged"}.</p>`);
+  parts.push(`<h4>Step 1 · Cleaning <span class="small">code only</span></h4><p class="small">Title: ${esc(cleaned.title)}. Description: ${cleaned.description === null ? "none delivered" : "kept word for word, with any markup removed"}.</p>`);
   parts.push(`<h4>Step 2 · Synonym table <span class="small">a lookup, no model</span></h4>${evidenceTable([...table.themes, ...table.mechanics], "Labels the table found in the delivered tags")}`);
   if (table.dropped.length > 0) parts.push(`<p class="small">Dropped as not an attribute of the game: ${table.dropped.map((entry) => `${mono(entry.tag)} (${esc(words(entry.reason))})`).join(", ")}.</p>`);
   if (table.unknown.length > 0) parts.push(`<p class="small">Unknown to the table, and not guessed: ${table.unknown.map((entry) => mono(entry.tag)).join(", ")}.</p>`);
