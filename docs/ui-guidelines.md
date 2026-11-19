@@ -142,6 +142,20 @@ Motion is there to help the eye follow an order or a size, and it runs once when
 
 With `prefers-reduced-motion: reduce` every animation and transition is off and the page is complete without them. Nothing in the what-if panel animates, so a slider can be moved without the page moving.
 
+## What #3 added to this proposal
+
+The console that #3 built follows the tokens, type, layout and states above, and adds what the issue asked for beyond one trace. Where this section and the rest of the file disagree, this section describes what exists.
+
+| Added | What it is | Notes |
+|---|---|---|
+| Version picker | A third native `select` beside brand and game | Defaults to the served version. Any other is labelled "inspection" in slate |
+| Side by side | One table, a column per version: outcome, themes, mechanics, results | Each label keeps its quote. The served column carries a green "served" label |
+| Evaluation | Ruled sections under the trace: the verdict, race, where it helps, enrichment measures, failures | Counts beside every rate. A fail is red, since it is a failure of the gate and not a decline |
+| What-if | A button with a gear beside the verdict opens a wash panel of native range inputs | The committed mark is a fixed ink tick on each slider. A moved mark carries an ochre "moved" label. The panel states that the gate reads only the committed file |
+| Step headings | Inside the enrichment section: cleaning, synonym table, thin rule, model, and what the version holds | Model labels are plum and table labels slate |
+
+Two principles are bent by these, on the issue's instruction: the page now has more than one input, and the evaluation sits below the trace on the same page, not behind a tab.
+
 ## States
 
 Every state occupies the place where the trace appears.
