@@ -23,6 +23,7 @@ flowchart TD
     PIPE["Pipeline<br/>calls a model for tags and for embeddings"]
     INDEX[/"index: records, tags with quoted evidence, vectors, hash"/]
     REFS[/"owner's labels and thresholds"/]
+    ANSWERS[/"stored reviewer answers"/]
     EVAL["Evaluation<br/>no key, no model call"]
     VERDICT[/"verdict for one index hash"/]
   end
@@ -39,6 +40,7 @@ flowchart TD
   INDEX --> EVAL
   TRUTH -.->|for scoring only| EVAL
   REFS --> EVAL
+  ANSWERS --> EVAL
   EVAL --> VERDICT
   INDEX --> SVC
   VERDICT --> SVC
@@ -54,7 +56,8 @@ Rectangles are code and slanted boxes are files. The diagram shows the design, n
 |---|---|---|---|---|
 | Regenerate | needed | yes | A model is called and every response is stored | [`dataset.md`](features/dataset.md), [`pipeline.md`](features/pipeline.md) |
 | Rebuild | none | no | The stored responses are replayed | [DS-1](features/dataset.md), #2 |
-| Evaluate | none | no | The stored outputs are scored against the owner's references, and a verdict is written for one index | [EV-1, EV-2](features/service.md), #6 |
+| Ask the reviewer | needed | yes | A second model answers the questions the answer key cannot decide. Every answer is stored, and a spend limit stops the run | [EV-5, EV-7](features/service.md) |
+| Evaluate | none | no | The stored outputs and the stored reviewer answers are scored against the owner's references, and a verdict is written for one index | [EV-1, EV-2](features/service.md), #6 |
 | Start the service | none | no | The index, the offerings and the verdict are loaded and checked before anything is served | [PL-4](features/pipeline.md), [SV-5](features/service.md) |
 | Answer a request | none | no | In-memory work over what was loaded at the start, described below | [SV-2](features/service.md) |
 
@@ -65,9 +68,9 @@ Rectangles are code and slanted boxes are files. The diagram shows the design, n
 3. **Score and rank** what is left against the anchor game. With about 100 games (#1) and no vector database (#2), this is a pass over the whole index in memory.
 4. **Answer** with results or a decline ([SV-4](features/service.md)), and with a trace when the request asks for one (#3).
 
-Product rule 3 fixes one thing: step 2 comes before step 3. Where the other removals sit is for #3 to settle, and this file takes no position on it. Those are the anchor's duplicates and its family ([SV-3](features/service.md)), a record with too little data, and the similarity floor.
+Product rule 3 fixes one thing: step 2 comes before step 3. #3 settled where the other removals sit, and the order has one home: "One request" in [`service.md`](features/service.md). Those are the anchor's duplicates and its family ([SV-3](features/service.md)), a record with too little data, and the similarity floor.
 
-Offerings are read when the service starts, so a change to them takes effect at the next start (#3). Whether such a change also calls for a new evaluation is not decided anywhere in the repository.
+Offerings are read when the service starts, so a change to them takes effect at the next start (#3). Such a change does not call for a new evaluation: the verdict is bound to the index and the pass marks, not to the offerings ([SV-6](features/service.md)).
 
 ## Files between the parts
 
@@ -78,7 +81,7 @@ Everything a later stage needs is a file committed to the repository (#2). That 
 | Raw catalogue | Dataset generator | Pipeline | [`dataset.md`](features/dataset.md) |
 | Offerings: a status per game and brand | Dataset generator, standing in for the source system | Service | [`dataset.md`](features/dataset.md) |
 | Hidden truth | Dataset generator | Evaluation. Never the pipeline (#2) | [`dataset.md`](features/dataset.md) |
-| Stored model responses | The part that made the call | The same part, on rebuild | [`dataset.md`](features/dataset.md), [`pipeline.md`](features/pipeline.md) |
+| Stored model responses | The part that made the call | The same part, on rebuild or re-run | [`dataset.md`](features/dataset.md), [`pipeline.md`](features/pipeline.md), [`service.md`](features/service.md) for the reviewer's answers |
 | Index: records, tags with their quoted evidence, vectors, hash | Pipeline | Evaluation, service | [`pipeline.md`](features/pipeline.md) |
 | The owner's references and thresholds | The owner only ([What is the owner's](../AGENTS.md#what-is-the-owners)) | Evaluation | [`service.md`](features/service.md), #6 |
 | Verdict | Evaluation | Service | [`service.md`](features/service.md) |
@@ -97,7 +100,7 @@ Three more boundaries shape the design.
 
 - **Serving is gated by the evaluation** ([SV-5](features/service.md)).
 - **The hidden truth stays hidden from the pipeline.** #2 asks for a check of that.
-- **Catalogue text is data** ([Safety](../AGENTS.md#safety)).
+- **Catalogue text is data** ([Safety](../AGENTS.md#safety)). On the page it is escaped ([UI-5](features/interface.md)).
 
 ## Parts
 
@@ -107,7 +110,7 @@ Three more boundaries shape the design.
 | Pipeline | Turns raw rows into the index | [`pipeline.md`](features/pipeline.md) | #2 |
 | Service | Answers one game on one brand | [`service.md`](features/service.md) | #3 |
 | Evaluation | Decides whether an index may be served | [`service.md`](features/service.md) | #3, #6 |
-| Console | Shows what the service did for one request | [`interface.md`](features/interface.md). How it should read: [`ui-guidelines.md`](ui-guidelines.md) | #3, #4 |
+| Console | Shows what the service did for one request, and the evaluation behind what is served | [`interface.md`](features/interface.md). How it should read: [`ui-guidelines.md`](ui-guidelines.md) | #3, #4 |
 
 #3 asks for the recommender core to be a plain function with a thin HTTP wrapper. That lets the rules above be tested without a server.
 
