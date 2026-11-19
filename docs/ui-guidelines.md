@@ -2,17 +2,17 @@
 
 What the console is for, how it should behave, and the tokens and components to build it from. The aim is that an agent can build the console from this file alone.
 
-**Status: planned, not built.** There is no console in the repository. It is planned to arrive working in #3 and to be made readable in #4. Its behaviour that can be proved is in [`docs/features/interface.md`](features/interface.md) (UI-1 to UI-3). Nothing checks these guidelines by machine, and the mapping of colours to meanings below is a proposal until the owner has looked at a built console.
+**Status.** This file is a proposal, written before there was a console. Whether a console exists has one home, the **Status** line of [`docs/features/interface.md`](features/interface.md), which also holds the behaviour that can be proved (UI-1 to UI-3). #3 asks for a console that works and #4 for one that is readable. Nothing checks these guidelines by machine, and the mapping of colours to meanings below stays a proposal until the owner has looked at a console built from it.
 
 ## What the console is for
 
-It makes one request readable from end to end. A person picks a brand and a game and sees, in the order the system worked: the raw record, what enrichment added and the text it quoted, what each filter removed, the scores against the similarity floor, and the result or the reason for declining.
+It makes one request readable from end to end. A person picks a brand and a game and sees the raw record, what enrichment added and the text it quoted, what each filter removed, the scores against the similarity floor, and the result or the reason for declining.
 
 The reader is someone who has never seen the project. The console is an inspection page for that reader. It is not the page a player would see. Clarity is the goal. Presentation beyond clarity is not what the work is judged on (#4).
 
 ## Principles
 
-1. **One request, one page, in the order it happened.** The steps run top to bottom. Nothing the reader needs is behind a tab.
+1. **One request, one page.** It reads top to bottom: what went in, what was removed, what was scored, what came out. Nothing the reader needs is behind a tab. Where order matters, the console follows the trace and does not impose an order of its own.
 2. **Show the system's own data.** Every value comes from the service's response to this request (UI-1). The console computes no score and writes no explanation of its own.
 3. **Evidence sits beside the claim.** A tag appears with the text it quoted and the field the text came from. A field with no tags says "abstained" or "conflicting" in words.
 4. **Numbers are exact.** Scores are shown as returned, with the floor beside them. Counts appear beside any rate.
@@ -32,7 +32,7 @@ Colours are CSS custom properties on the root element. Components use the tokens
 | `--ink` | `#172f45` | `#ebe6da` | Text, and the fill of the main button |
 | `--muted` | `#5d6870` | `#9aa7b1` | Secondary text, table headings, control borders |
 | `--line` | `#cfcbbf` | `#34444f` | Rules between sections and rows |
-| `--plum` | `#79566e` | `#cfa6c2` | Accent: step labels, focus ring, what enrichment added |
+| `--plum` | `#79566e` | `#cfa6c2` | Accent: section labels, focus ring, what enrichment added |
 | `--green` | `#386653` | `#84c3a2` | Kept: a result, a score at or above the floor |
 | `--ochre` | `#885d1a` | `#dcb062` | Caution: abstained, conflicting, declined |
 | `--red` | `#9b4f48` | `#e39a92` | Failure: an error, the service not serving |
@@ -84,12 +84,12 @@ No web fonts. Three stacks:
 | Role | Stack | Size and style | Used for |
 |---|---|---|---|
 | Page title | Display | 38px, line height 1.1, regular weight | The one `h1`. 30px at phone width |
-| Section heading | Display | 24px, line height 1.2, regular weight | Each step |
-| Sub-heading | Display | 17px, line height 1.3, regular weight | A group inside a step |
+| Section heading | Display | 24px, line height 1.2, regular weight | Each section |
+| Sub-heading | Display | 17px, line height 1.3, regular weight | A group inside a section |
 | Body | Body | 15px, line height 1.55 | Everything else |
-| Lede | Body | 16.5px, `--muted` | One sentence under a heading saying what the step did |
+| Lede | Body | 16.5px, `--muted` | One sentence under a heading saying what happened there |
 | Small | Body | 13px, `--muted` | Notes, footer, provenance |
-| Label | Body | 11px, weight 700, upper case, letter spacing 1.5px | Step labels in `--plum`, table headings in `--muted`, status labels |
+| Label | Body | 11px, weight 700, upper case, letter spacing 1.5px | Section labels in `--plum`, table headings in `--muted`, status labels |
 | Machine text | Mono | 12.5px | Ids, the raw record, quoted evidence, reason codes |
 | Figures | Body | `font-variant-numeric: tabular-nums` | Every score, count and timing |
 
@@ -98,7 +98,7 @@ Serif headings stay at regular weight. Sizes are given in pixels at the browser'
 ## Layout
 
 - One column, 1000px at most, centred, with a gutter of at least 16px.
-- Each step is a section closed by a 1px `--line` rule, with 28px of space above and below. A 2px `--plum` rule on top marks a group that needs emphasis.
+- Each section is closed by a 1px `--line` rule, with 28px of space above and below. A 2px `--plum` rule on top marks a group that needs emphasis.
 - Spacing comes in steps of 4px: 4, 8, 12, 16, 28.
 - Fills have a radius of 3 to 4px. Nothing has a shadow.
 - At phone width everything stacks. A wide table scrolls inside its own container and the page never scrolls sideways.
@@ -108,10 +108,10 @@ Serif headings stay at regular weight. Sizes are given in pixels at the browser'
 | Component | What it is | Notes |
 |---|---|---|
 | Request picker | A labelled native `select` for the brand, one for the game, and one button | The button is `--ink` with `--paper` text. Choosing is the only input the console has |
-| Step section | Label, heading, one-sentence lede, then the step's content | The five steps are: raw record, enrichment, filters, scores, outcome |
+| Section | Label, heading, one-sentence lede, then the content | The five sections are: raw record, enrichment, removals, scores, outcome |
 | Raw record | The record as the source delivered it, in mono on `--wash` | Verbatim. A field that is absent, null or empty is shown as such and not left blank |
 | Tag with evidence | The tag as a plum label, the quoted text in mono, and the source field as a slate label | The quote may be highlighted inside the raw record or listed beside it. A field with no tags shows an ochre "abstained" or "conflicting" label |
-| Filter table | One row per filter: its name, how many games it removed, and the games on request | Use `details` for the list of games. A filter that removed nothing still has a row with 0. The family cap is a row like any other |
+| Removals table | One row per filter in the trace: its name, how many games it removed, and the games on request | Rows are in the order the trace gives. Use `details` for the list of games. A filter that removed nothing still has a row with 0. The family cap is a row like any other, wherever the service applies it |
 | Score list | A table of candidates in rank order: rank, game, score | The floor is a labelled rule drawn between the rows above it and the rows below it. Rows below it are `--muted` |
 | Outcome | The results as a short list with a green "result" label, or the decline | A decline shows an ochre "declined" label, the reason code in mono, one plain sentence, and the statement that a player would see nothing |
 | Status label | Upper-case label text in a colour on that colour's wash | The words are the meaning. One fact per label |
@@ -127,8 +127,8 @@ Every state occupies the place where the trace appears, so the page does not jum
 |---|---|---|
 | Empty | Nothing chosen yet | The picker and one sentence saying what the page will show. No sample trace |
 | Loading | A request is in flight | The word "Loading" where the trace will appear. No spinner |
-| Result | The service returned results | All five steps |
-| Declined | The service declined | The steps that ran, then the decline. No results list, and no red |
+| Result | The service returned results | All five sections |
+| Declined | The service declined | The sections the trace has data for, then the decline. No results list, and no red |
 | Bad input | The service rejected the request | What was wrong with the request, in a sentence, beside the picker |
 | Not serving | The service has no index it may serve | A red "not serving" label and the reason the service gave, if the page loads at all in that case (#3 decides). This is not a decline and must not look like one |
 | Failed | The request did not complete | A red "failed" label, what happened, and that nothing is shown because nothing was received. Never an empty trace |

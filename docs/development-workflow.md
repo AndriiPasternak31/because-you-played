@@ -39,7 +39,7 @@ The agent works inside the paths its issue owns and commits on its branch. Apart
 
 The documents move with the code, in the same pull request. A change to a part updates that part's file in [`docs/features/`](features/). A change to what [`architecture.md`](architecture.md) or [`ui-guidelines.md`](ui-guidelines.md) describes updates that file (#7).
 
-What counts as a test, and how failures have to behave, is in [Done](../AGENTS.md#done). The two commands are in [Commands](../AGENTS.md#commands). They are not on `main` yet.
+What counts as a test, and how failures have to behave, is in [Done](../AGENTS.md#done). The two commands, and when they arrive, are in [Commands](../AGENTS.md#commands).
 
 **Second opinion.** A decision or a design question that comes up here can go to a model from a different family. It is for decisions, not for diffs ([`REVIEW.md`](../REVIEW.md)).
 
@@ -80,4 +80,3 @@ A mistake worth not repeating adds a line to [`LEARNINGS.md`](../LEARNINGS.md), 
 - **Nothing checks the template.** A pull request with an empty evidence table can be opened. The review and the owner are the check.
 - **The secret scan is run by hand.** See [Safety](../AGENTS.md#safety).
 - **The owner's files are protected only in part.** [What is the owner's](../AGENTS.md#what-is-the-owners) says what the project settings stop and what they do not.
-- **`npm run typecheck` and `npm test` are not on `main`.** They are planned to arrive with the first product pull request (#1).

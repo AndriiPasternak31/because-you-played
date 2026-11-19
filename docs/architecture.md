@@ -1,14 +1,16 @@
 # Architecture
 
-How the parts of the system fit together: what each part reads and writes, what runs offline and what runs for a request, and where each product rule is enforced. It is a living description, kept true as the system is built.
+How the parts of the system fit together: what each part reads and writes, what runs offline and what runs for a request, and where each product rule is enforced. It is a living description, kept true as the system changes.
 
-**Status: nothing described here is on `main` yet.** `main` holds the working rules and these documents. The dataset is in progress (#1) and every other part is planned. Each table carries a status column: "in progress" means code exists on a feature branch that has not merged, and "planned" means there is no code to run. Issue numbers refer to this repository's issues.
+**Status.** This file describes the design. It does not record what exists, and it was written before any part had merged. Two facts have one home each, in the part files under [`docs/features/`](features/): whether a part exists is that file's **Status** line, and whether an invariant holds is its **Last proved** cell. Every table below links each row to that home, so read the status there. Issue numbers refer to this repository's issues.
 
 **What lives elsewhere.**
 
-- A part's invariants, and the command that proves each, are in [`docs/features/`](features/). This file points to them by ID and does not restate them.
-- Why the system has this shape, the alternatives and the trade-offs belong to the decision record, which is planned (#5).
-- The rules for working here are in [`AGENTS.md`](../AGENTS.md).
+- A part's status, where its code and files are, its invariants and the command that proves each: its part file. This file cites invariants by ID and does not restate them.
+- Why the system has this shape, the alternatives and the trade-offs: the decision record that #5 asks for.
+- The rules for working here: [`AGENTS.md`](../AGENTS.md).
+
+**One word.** "Pipeline" in this file means the part described in [`pipeline.md`](features/pipeline.md): enrichment, embedding and the index. `AGENTS.md` also uses the word for all of the offline work, the dataset generator included.
 
 ## The system in one diagram
 
@@ -35,90 +37,86 @@ flowchart TD
   RAW --> PIPE
   PIPE --> INDEX
   INDEX --> EVAL
-  TRUTH -.->|evaluation only| EVAL
+  TRUTH -.->|for scoring only| EVAL
   REFS --> EVAL
   EVAL --> VERDICT
   INDEX --> SVC
   VERDICT --> SVC
   OFFER --> SVC
   SVC --> CON
-  classDef planned stroke-dasharray: 5 4
-  class PIPE,INDEX,REFS,EVAL,VERDICT,SVC,CON planned
 ```
 
-Rectangles are code and slanted boxes are files. A dashed outline means planned. The solid boxes are in progress (#1) and not on `main`.
+Rectangles are code and slanted boxes are files. The diagram shows the design, not what exists.
 
 ## What runs when
 
-| Mode | Key | Model call | What happens | Status |
+| Mode | Key | Model call | What happens | Defined in |
 |---|---|---|---|---|
-| Regenerate | needed | yes | The generator or the pipeline calls the model and stores every response it receives | generator in progress (#1); pipeline planned (#2) |
-| Rebuild | none | no | The same code replays the stored responses and has to reproduce its output byte for byte | generator in progress (#1); pipeline planned (#2) |
-| Evaluate | none | no | The committed outputs are scored against the owner's references, and a verdict is written for the hash of the index that was scored | planned (#3, owner inputs #6) |
-| Start the service | none | no | The index, the offerings and the verdict are loaded and checked. An invalid index stops the start. An index with no passing verdict is not served | planned (#3) |
-| Answer a request | none | no | In-memory work over what was loaded at the start, described below | planned (#3) |
+| Regenerate | needed | yes | A model is called and every response is stored | [`dataset.md`](features/dataset.md), [`pipeline.md`](features/pipeline.md) |
+| Rebuild | none | no | The stored responses are replayed | [DS-1](features/dataset.md), #2 |
+| Evaluate | none | no | The stored outputs are scored against the owner's references, and a verdict is written for one index | [EV-1, EV-2](features/service.md), #6 |
+| Start the service | none | no | The index, the offerings and the verdict are loaded and checked before anything is served | [PL-4](features/pipeline.md), [SV-5](features/service.md) |
+| Answer a request | none | no | In-memory work over what was loaded at the start, described below | [SV-2](features/service.md) |
 
-**One request (planned, #3).** The input is one game and one brand.
+**One request.** The service takes one game and one brand. #3 holds the detail. The shape is four steps:
 
-1. Decline if the game is unknown or is not live on the brand.
-2. Remove every game that is not live on the brand.
-3. Remove the anchor game itself and its duplicates. Decline if there is too little data.
-4. Score what is left by similarity to the anchor and rank it. With about 100 games this is a pass over the whole index in memory.
-5. Keep at most one result from the anchor's own family and drop anything under the similarity floor.
-6. Return the results, or a decline with its reason. On request the response also carries a trace of steps 1 to 5.
+1. **Look up** the game and the brand. #3 lists the reasons for declining here.
+2. **Filter by availability** ([SV-1](features/service.md)).
+3. **Score and rank** what is left against the anchor game. With about 100 games (#1) and no vector database (#2), this is a pass over the whole index in memory.
+4. **Answer** with results or a decline ([SV-4](features/service.md)), and with a trace when the request asks for one (#3).
 
-The fixed point is that step 2 comes before step 4. The order of the other steps is the service pull request's to settle. Offerings are read at the start, so a change to them takes effect at the next start and needs no new evaluation.
+Product rule 3 fixes one thing: step 2 comes before step 3. Where the other removals sit is for #3 to settle, and this file takes no position on it. Those are the anchor's duplicates and its family ([SV-3](features/service.md)), a record with too little data, and the similarity floor.
+
+Offerings are read when the service starts, so a change to them takes effect at the next start (#3). Whether such a change also calls for a new evaluation is not decided anywhere in the repository.
 
 ## Files between the parts
 
-Everything a later stage needs is a plain file committed to the repository. That is what lets the evaluation and the service run with no key.
+Everything a later stage needs is a file committed to the repository (#2). That is what lets the evaluation and the service run with no key. The name of each file belongs to the part that writes it, so it is in that part's file and not here.
 
-| File or folder | Written by | Read by | Status |
+| What | Written by | Read by | Name and status |
 |---|---|---|---|
-| `data/catalogue.raw.jsonl` | Generator | Pipeline | in progress (#1), not on `main` |
-| `data/offerings.jsonl` | Generator, standing in for the source system | Service | in progress (#1), not on `main` |
-| `data/generation/`: hidden truth, stored model responses, cost ledger, mess report | Generator | Generator, and evaluation for the truth. Never the pipeline or the service | in progress (#1), not on `main` |
-| Stored model responses, enriched records and the index, under `data/` | Pipeline | Pipeline on rebuild, evaluation, service | planned (#2), names not decided |
-| `prompts/` | Whoever changes a prompt | Pipeline | planned (#2) |
-| `eval/refs/`, `eval/thresholds.json` | The owner only | Evaluation | planned (#6) |
-| Verdict | Evaluation | Service | planned (#3), name not decided |
-
-The paths marked in progress are the ones the dataset work uses today. [`docs/features/dataset.md`](features/dataset.md) becomes their home when #1 merges.
+| Raw catalogue | Dataset generator | Pipeline | [`dataset.md`](features/dataset.md) |
+| Offerings: a status per game and brand | Dataset generator, standing in for the source system | Service | [`dataset.md`](features/dataset.md) |
+| Hidden truth | Dataset generator | Evaluation. Never the pipeline (#2) | [`dataset.md`](features/dataset.md) |
+| Stored model responses | The part that made the call | The same part, on rebuild | [`dataset.md`](features/dataset.md), [`pipeline.md`](features/pipeline.md) |
+| Index: records, tags with their quoted evidence, vectors, hash | Pipeline | Evaluation, service | [`pipeline.md`](features/pipeline.md) |
+| The owner's references and thresholds | The owner only ([What is the owner's](../AGENTS.md#what-is-the-owners)) | Evaluation | [`service.md`](features/service.md), #6 |
+| Verdict | Evaluation | Service | [`service.md`](features/service.md) |
 
 ## Where each product rule is enforced
 
-The three [product rules](../AGENTS.md#product-rules) are meant to hold by structure, not by care. Until the code in the status column merges, each is held only by `AGENTS.md` and by review: nothing in the repository enforces any of them today.
+The three [product rules](../AGENTS.md#product-rules) are meant to hold by structure, not by care. A rule is enforced only as far as the invariants beside it are proven, so read their **Last proved** cells. Where a cell holds `-`, the rule is held by `AGENTS.md` and by review alone.
 
-| Rule | Where the structure holds it | Invariants | Status |
-|---|---|---|---|
-| 1. The LLM never writes facts or availability | In the generator, the plan and the degradation are seeded code, and the model supplies wording only. In the pipeline, the enrichment result has a shape with room for theme and mechanic tags and nothing else. Offerings are a separate file that the pipeline does not write | [DS-2](features/dataset.md), [PL-1](features/pipeline.md) | generator in progress (#1); pipeline planned (#2) |
-| 2. No AI call in the request path | Model calls exist only in the generator and the pipeline, and their responses are stored. The service, the evaluation and the console work from files | [SV-2, EV-1](features/service.md), [UI-1](features/interface.md) | planned (#3) |
-| 3. Availability is filtered before ranking | In the service's core function, which removes games that are not live before it computes a score (step 2 above) | [SV-1](features/service.md) | planned (#3) |
+| Rule | Where in the structure | Invariants |
+|---|---|---|
+| 1. The LLM never writes facts or availability | At the two places a model is called, the dataset generator and the pipeline. The boundary is the shape of what a model's answer is allowed to hold. Availability has a file of its own, apart from the records a model's answer is merged into | [DS-2](features/dataset.md), [PL-1](features/pipeline.md) |
+| 2. No AI call in the request path | At the line between the two boxes of the diagram. What crosses it is files. Nothing on the request side holds a key | [SV-2, EV-1](features/service.md), [UI-1](features/interface.md) |
+| 3. Availability is filtered before ranking | In the service's core function, between step 2 and step 3 above | [SV-1](features/service.md) |
 
-Three more boundaries shape the design. All are planned.
+Three more boundaries shape the design.
 
-- **Serving is gated by the evaluation.** The verdict names the hash of the index it judged, and the service checks the pair ([SV-5](features/service.md), #3).
-- **The hidden truth stays hidden.** The pipeline and the service never read `data/generation/`, which is planned (#1, #2) and has no check yet.
-- **Catalogue text is data.** One record carries instruction-like text on purpose. See [Safety](../AGENTS.md#safety).
+- **Serving is gated by the evaluation** ([SV-5](features/service.md)).
+- **The hidden truth stays hidden from the pipeline.** #2 asks for a check of that.
+- **Catalogue text is data** ([Safety](../AGENTS.md#safety)).
 
 ## Parts
 
-| Part | Role | Invariants | Paths its issue reserves | Status | Issue |
-|---|---|---|---|---|---|
-| Dataset | Generates the messy catalogue, the offerings and the hidden truth | [`dataset.md`](features/dataset.md) | `src/dataset/`, `data/` | in progress, not on `main` | #1 |
-| Pipeline | Turns raw rows into the index | [`pipeline.md`](features/pipeline.md) | `src/pipeline/`, `prompts/` | planned | #2 |
-| Service | Answers one game on one brand | [`service.md`](features/service.md) | `src/service/` | planned | #3 |
-| Evaluation | Decides whether an index may be served | [`service.md`](features/service.md) | `eval/` | planned | #3, #6 |
-| Console | Shows what the service did for one request | [`interface.md`](features/interface.md), [`ui-guidelines.md`](ui-guidelines.md) | `src/console/` | planned | #3, #4 |
+| Part | Role | Status, code and invariants | Issue |
+|---|---|---|---|
+| Dataset | Generates the messy catalogue, the offerings and the hidden truth | [`dataset.md`](features/dataset.md) | #1 |
+| Pipeline | Turns raw rows into the index | [`pipeline.md`](features/pipeline.md) | #2 |
+| Service | Answers one game on one brand | [`service.md`](features/service.md) | #3 |
+| Evaluation | Decides whether an index may be served | [`service.md`](features/service.md) | #3, #6 |
+| Console | Shows what the service did for one request | [`interface.md`](features/interface.md). How it should read: [`ui-guidelines.md`](ui-guidelines.md) | #3, #4 |
 
-The recommender core is planned as a plain function with a thin HTTP wrapper (#3), so the rules above can be tested without a server.
+#3 asks for the recommender core to be a plain function with a thin HTTP wrapper. That lets the rules above be tested without a server.
 
 ## Technology
 
 - **Language and commands.** See [Commands](../AGENTS.md#commands).
-- **Storage.** Plain files in the repository. There is no database and no vector database.
-- **Models.** One provider, called by the offline scripts only, with the key read from the environment (`.env.example` lists the variable). The model identifiers and the prompt version are planned to be recorded in the index (#2).
+- **Storage.** Files in the repository. There is no vector database (#2).
+- **Models.** Called by the offline scripts only, with the key read from the environment (`.env.example` lists the variable). #2 asks for the index to record the model identifiers and the prompt version.
 
 ## Keeping this true
 
-A pull request that changes what this file describes (a part, a file that crosses a boundary, when something runs, or where a rule is enforced) updates this file and its status columns. Invariants go to the part's file in `docs/features/`, and reasons go to the pull request or the decision record (#5).
+A pull request that changes what this file describes updates it (#7): a part, a file that crosses a boundary, when something runs, or where a rule is enforced. A part's status does not go here. Invariants go to the part's file, and reasons go to the pull request or to the decision record (#5).
