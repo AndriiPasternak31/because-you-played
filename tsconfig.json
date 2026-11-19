@@ -19,5 +19,5 @@
     "noUnusedParameters": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tools"]
+  "include": ["src", "eval", "tools"]
 }
