@@ -21,30 +21,32 @@ A "because you played X, you might like…" rail on a casino site. Five facts sh
 **Every model call happens offline. The service answers from files that an evaluation has passed, held in memory, and declines when it has nothing good enough.**
 
 ```mermaid
-flowchart LR
-  subgraph OFF["Offline batch: holds the model key"]
-    direction TB
-    FEED[/"supplier feed"/] --> PIPE["Pipeline<br/>canonical records, labels with quotes, embeddings"]
-    PIPE --> IDX[/"index, hashed"/]
-    IDX --> EVAL["Evaluation<br/>pass marks fixed in advance"]
-    EVAL --> VER[/"verdict for that hash"/]
+flowchart TB
+  FEED[/"Supplier feed"/]
+  LLM(["Model provider"])
+  subgraph OFF["Offline batch: the only part that holds the model key"]
+    PIPE["Pipeline<br/>canonical records, labels with quotes, embeddings"]
+    EVAL["Evaluation<br/>pass marks fixed in advance"]
   end
-  LLM(["model provider"]) -.-> PIPE
-  subgraph STORE["Artifact store"]
-    ART[/"index and verdict, versioned"/]
-  end
-  IDX --> ART
-  VER --> ART
-  AVAIL[/"availability per game and brand<br/>its own source and cadence"/]
+  ART[/"Artifact store<br/>the index and its verdict, versioned"/]
+  AVAIL[/"Availability per game and brand<br/>its own source and cadence"/]
   subgraph ON["Serving: no key, no outbound call"]
-    direction TB
-    LOAD["Load and check, or refuse to start"] --> REC["Filter by availability, then rank in memory"]
+    LOAD["Load and check, or refuse to start"]
+    REC["Filter by availability, then rank in memory"]
   end
+  PAGE(["Game page"])
+  FEED --> PIPE
+  LLM -.-> PIPE
+  PIPE -->|"index, hashed"| EVAL
+  EVAL -->|"index and a verdict for that hash"| ART
   ART --> LOAD
   AVAIL --> LOAD
-  PAGE(["game page"]) -->|"game and brand, with a timeout"| REC
+  LOAD --> REC
+  PAGE -->|"a game and a brand, with a timeout"| REC
   REC -->|"results, or a decline with a reason"| PAGE
 ```
+
+The diagram shows the proposal. In this repository the artifact store is the repository itself, availability is one file, and the game page is the console or a `curl`.
 
 | Part of the decision | Built in this repository | Proposed for production, not built |
 |---|---|---|

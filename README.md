@@ -214,14 +214,14 @@ None of this monitoring is built.
 
 | What | Time | Notes |
 |---|---|---|
-| Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here |
+| Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
 | The build: the owner's attention | About 4 hours, in two sittings | The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
 | The build: agents' running time | Roughly 6 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
 |---|---|
-| First | The working rules, cut to nine pieces. The catalogue: a 14-game pilot, then all 100. The architecture, workflow and interface documents. The first two reviews |
-| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the console. The interface pass. This write-up |
+| First | The catalogue: a 14-game pilot, then all 100. The architecture, workflow and interface documents. The first two reviews |
+| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the console. This write-up |
 
 The owner's part was briefing agents, reading what came back, and the decisions only he makes: cutting the rules, the evaluation plan and pass marks, reversing a pipeline rule, merging, and judging the console. Agents wrote the code, the tests and the drafts of the documents, this one included.
 
