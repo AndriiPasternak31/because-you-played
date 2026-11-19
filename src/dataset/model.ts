@@ -135,6 +135,8 @@ export const TruthGameSchema = z.strictObject({
   /** Themes the title alone states, as declared by the writing model. */
   title_theme_terms: z.array(ThemeSchema),
   facts: FactsSchema,
+  /** The angle the game takes on its first theme, as briefed to the writing model. */
+  setting: z.string(),
   description: z.string(),
   description_de: z.string().nullable(),
   evidence: z.array(EvidenceSchema),

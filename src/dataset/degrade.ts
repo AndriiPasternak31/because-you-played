@@ -139,6 +139,7 @@ export function degrade(plan: readonly SlotPlan[], texts: ReadonlyMap<number, Tr
       mechanics: [...slotPlan.mechanics],
       title_theme_terms: text.title_theme_terms,
       facts: slotPlan.facts,
+      setting: slotPlan.setting,
       description: text.description,
       description_de: text.description_de,
       evidence: text.evidence,

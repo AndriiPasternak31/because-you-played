@@ -12,10 +12,13 @@ import {
   MODEL,
   PRICE_PER_MILLION,
   PROMPT_VERSION,
+  RETIRE_REASONS,
   estimateUsd,
   readResponseFile,
+  readRetired,
   responseFileName,
   type AttemptOutcome,
+  type RetireReason,
 } from "./truth-writer.ts";
 
 // ---------------------------------------------------------------------------
@@ -27,6 +30,8 @@ export interface MessReport {
   raw_rows: number;
   rows_by_mess: Record<MessKind, number>;
   clean_control_rows: number;
+  /** A missing description arrives in three shapes; enrichment has to cope with each. */
+  description_missing_forms: { absent_key: number; null: number; empty_string: number };
   rows_by_studio: Record<string, number>;
   families: { families: number; members: number };
   same_name_pairs: number;
@@ -41,7 +46,8 @@ export interface MessReport {
 }
 
 export function buildMessReport(catalogue: Catalogue): MessReport {
-  const { truthGames, truthRows, offerings } = catalogue;
+  const { rawRecords, truthGames, truthRows, offerings } = catalogue;
+  const descriptions = rawRecords.map((record) => record.payload.description);
   const familyIds = truthGames.flatMap((game) => (game.family_id === null ? [] : [game.family_id]));
   const offeringsByGame = Map.groupBy(offerings, (offering) => offering.game_id);
   const studioOfGame = new Map(truthGames.map((game) => [game.game_id, game.studio]));
@@ -52,6 +58,11 @@ export function buildMessReport(catalogue: Catalogue): MessReport {
       MESS_KINDS.map((kind) => [kind, truthRows.filter((row) => row.mess.includes(kind)).length]),
     ) as Record<MessKind, number>,
     clean_control_rows: truthRows.filter((row) => row.clean_control).length,
+    description_missing_forms: {
+      absent_key: descriptions.filter((description) => description === undefined).length,
+      null: descriptions.filter((description) => description === null).length,
+      empty_string: descriptions.filter((description) => description === "").length,
+    },
     rows_by_studio: Object.fromEntries(
       STUDIOS.map((studio) => [
         studio.name,
@@ -99,8 +110,17 @@ export function assertCoverage(report: MessReport): void {
   }
   if (report.offerings.games_on_one_brand === 0) missing.push("game on a single brand");
   if (report.offerings.games_withdrawn_somewhere === 0) missing.push("withdrawn offering");
+  if (report.games >= FULL_SIZE) {
+    if (report.clean_control_rows < 5) missing.push(`five clean controls (found ${report.clean_control_rows})`);
+    for (const [form, rows] of Object.entries(report.description_missing_forms)) {
+      if (rows === 0) missing.push(`a missing description as ${form}`);
+    }
+  }
   if (missing.length > 0) throw new Error(`the catalogue is missing required cases: ${missing.join(", ")}`);
 }
+
+/** From this many games on, the catalogue is expected to hold enough of the rarer cases too. */
+const FULL_SIZE = 80;
 
 function brandRows(report: MessReport, brand: string): number {
   return Object.values(report.offerings.by_brand[brand] ?? {}).reduce((sum, count) => sum + count, 0);
@@ -165,7 +185,17 @@ export interface Ledger {
   records_by_result: { succeeded_first_try: number; succeeded_after_retry: number; no_accepted_response: number };
   tokens: { input: number; cached_input: number; cache_write: number; output: number; reasoning: number };
   attempts_with_unknown_usage: number;
-  estimated_usd: number;
+  /**
+   * `committed_run` is what the stored responses cost. `retired_attempts` is what was spent on
+   * responses that were later replaced: prompt revisions and names found to exist.
+   */
+  cost_usd: { committed_run: number; retired_attempts: number; total_spent: number };
+  retired: {
+    slots: number;
+    attempts: number;
+    tokens: { input: number; output: number };
+    by_reason: Record<RetireReason, { slots: number; attempts: number; estimated_usd: number }>;
+  };
   seconds: { total: number; per_record_mean: number; per_record_median: number; per_record_max: number };
   per_record: {
     slot: number;
@@ -177,7 +207,7 @@ export interface Ledger {
   }[];
 }
 
-export function buildLedger(responsesDir: string, plan: readonly SlotPlan[]): Ledger {
+export function buildLedger(responsesDir: string, retiredPath: string, plan: readonly SlotPlan[]): Ledger {
   const outcomes: Record<AttemptOutcome, number> = { ok: 0, invalid_output: 0, refusal: 0, incomplete: 0, api_error: 0 };
   const tokens = { input: 0, cached_input: 0, cache_write: 0, output: 0, reasoning: 0 };
   const results = { succeeded_first_try: 0, succeeded_after_retry: 0, no_accepted_response: 0 };
@@ -217,6 +247,8 @@ export function buildLedger(responsesDir: string, plan: readonly SlotPlan[]): Le
   const seconds = perRecord.map((record) => record.seconds).sort((a, b) => a - b);
   const totalSeconds = seconds.reduce((sum, value) => sum + value, 0);
   const attempts = perRecord.reduce((sum, record) => sum + record.attempts, 0);
+  const committedUsd = perRecord.reduce((sum, record) => sum + record.estimated_usd, 0);
+  const retired = summariseRetired(retiredPath);
   const middle = Math.floor(seconds.length / 2);
   const median = seconds.length % 2 === 1 ? (seconds[middle] ?? 0) : ((seconds[middle - 1] ?? 0) + (seconds[middle] ?? 0)) / 2;
   return {
@@ -230,7 +262,12 @@ export function buildLedger(responsesDir: string, plan: readonly SlotPlan[]): Le
     records_by_result: results,
     tokens,
     attempts_with_unknown_usage: unknownUsage,
-    estimated_usd: round(perRecord.reduce((sum, record) => sum + record.estimated_usd, 0), 6),
+    cost_usd: {
+      committed_run: round(committedUsd, 6),
+      retired_attempts: round(retired.usd, 6),
+      total_spent: round(committedUsd + retired.usd, 6),
+    },
+    retired: retired.summary,
     seconds: {
       total: round(totalSeconds, 3),
       per_record_mean: round(totalSeconds / Math.max(perRecord.length, 1), 3),
@@ -238,6 +275,36 @@ export function buildLedger(responsesDir: string, plan: readonly SlotPlan[]): Le
       per_record_max: round(seconds.at(-1) ?? 0, 3),
     },
     per_record: perRecord,
+  };
+}
+
+function summariseRetired(retiredPath: string): { usd: number; summary: Ledger["retired"] } {
+  const byReason = Object.fromEntries(
+    RETIRE_REASONS.map((reason) => [reason, { slots: 0, attempts: 0, estimated_usd: 0 }]),
+  ) as Ledger["retired"]["by_reason"];
+  const tokens = { input: 0, output: 0 };
+  const lines = readRetired(retiredPath);
+  for (const line of lines) {
+    const bucket = byReason[line.reason];
+    bucket.slots += 1;
+    bucket.attempts += line.attempts.length;
+    for (const attempt of line.attempts) {
+      if (attempt.usage === null) continue;
+      tokens.input += attempt.usage.input_tokens;
+      tokens.output += attempt.usage.output_tokens;
+      bucket.estimated_usd += estimateUsd(attempt.usage);
+    }
+  }
+  const usd = RETIRE_REASONS.reduce((sum, reason) => sum + byReason[reason].estimated_usd, 0);
+  for (const reason of RETIRE_REASONS) byReason[reason].estimated_usd = round(byReason[reason].estimated_usd, 6);
+  return {
+    usd,
+    summary: {
+      slots: lines.length,
+      attempts: lines.reduce((sum, line) => sum + line.attempts.length, 0),
+      tokens,
+      by_reason: byReason,
+    },
   };
 }
 

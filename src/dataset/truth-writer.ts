@@ -9,7 +9,7 @@
  * Every attempt is stored next to the data, so the catalogue can be rebuilt
  * without a key and the run ledger can be recomputed from committed files.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { TruthTextSchema, type TruthText } from "./model.ts";
@@ -18,9 +18,9 @@ import { at, sha256Hex } from "./rng.ts";
 import { MECHANICS, MECHANIC_MEANING, THEMES, THEME_MEANING, type Mechanic } from "./vocabulary.ts";
 
 export const MODEL = "gpt-6.2-sol";
-export const PROMPT_VERSION = "truth-v3";
+export const PROMPT_VERSION = "truth-v4";
 const ENDPOINT = "https://api.openai.com/v1/responses";
-const MAX_ATTEMPTS_PER_RUN = 3;
+const MAX_ATTEMPTS_PER_RUN = 4;
 const REQUEST_TIMEOUT_MS = 180_000;
 
 /**
@@ -40,8 +40,8 @@ const INSTRUCTIONS = `You write supplier game-sheet copy for invented online slo
 
 Rules:
 1. Everything is fictional. Never use or allude to a real game title or game series, studio, casino or betting brand, person, film, show, band or any other trademark, and never use a branded mechanic name.
-2. Title. If brief.title.mode is "exact", return brief.title.value unchanged. If it is "invent", write a title of two to four words that a real studio could ship but that no existing commercial game is likely to carry. Build it around a specific character, place or object from the game's world, and make at least one word an invented name or an unusual word. Do not simply put an invented word in front of a generic category label, and avoid well-worn openers such as "Book of", "Gates of", "Legend of", "Rise of", "Age of", "Big", "Lucky", "Mega", "Super" and "Golden". Use letters, spaces and apostrophes only: no digits and no symbols. With style "thematic" the title names the first briefed theme plainly enough that a reader could tell the theme from the title alone. With style "opaque" the title is an abstract name that hints at no theme and no mechanic.
-3. Description. One paragraph of 70 to 110 words of English copy written in the house style given in brief.voice. Plain text with plain ASCII punctuation: no markup, no line breaks, no lists. It makes every briefed theme and every briefed mechanic unmistakable to a careful reader, the way real game sheets do: by the name suppliers and players use for the feature or by a concrete account of what happens on the reels. The "meaning" texts in the brief explain the terms to you; never copy their wording, and phrase each feature differently from how a glossary would. It does not mention or imply any theme or mechanic from the vocabulary below that is not in the brief; in particular do not mention wild symbols, bonus rounds or jackpots unless a briefed mechanic is about them. It never states RTP, a percentage, a stake or bet amount, a currency or any promise about winning.
+2. Title. If brief.title.mode is "exact", return brief.title.value unchanged. If it is "invent", write a title of two to four words that a real studio could ship but that no existing commercial game is likely to carry. Follow the pattern in brief.title.shape, filling it from the game's world as set by brief.setting; the invented word in the pattern is a name you make up that begins with the letter in brief.title.invented_word_initial. Do not simply put an invented word in front of a generic category label, and avoid well-worn openers such as "Book of", "Gates of", "Legend of", "Rise of", "Age of", "Big", "Lucky", "Mega", "Super" and "Golden". Use letters, spaces and apostrophes only: no digits and no symbols. With style "thematic" the title names the first briefed theme plainly enough that a reader could tell the theme from the title alone. With style "opaque" the title is an abstract name that hints at no theme and no mechanic.
+3. Description. One paragraph of 70 to 110 words of English copy written in the house style given in brief.voice. brief.setting is the angle this game takes on its first theme: build the world of the game on it, with its own characters and details. When brief.setting is null, keep the world of the related game. Plain text with plain ASCII punctuation: no markup, no line breaks, no lists. It makes every briefed theme and every briefed mechanic unmistakable to a careful reader, the way real game sheets do: by the name suppliers and players use for the feature or by a concrete account of what happens on the reels. The "meaning" texts in the brief explain the terms to you; never copy their wording, and phrase each feature differently from how a glossary would. It does not mention or imply any theme or mechanic from the vocabulary below that is not in the brief; in particular do not mention wild symbols, bonus rounds or jackpots unless a briefed mechanic is about them. It never states RTP, a percentage, a stake or bet amount, a currency or any promise about winning.
 4. Facts. If brief.facts_to_mention is null, do not mention volatility or the maximum win at all. Otherwise work both into the copy in your own words; write the maximum win in the form "5,000x the bet" and never use the word "multiplier" for it.
 5. Evidence. Exactly one entry for each briefed theme and each briefed mechanic, and no others. "span" is a short quote of 3 to 12 words copied character for character from your description which, read alone, shows that the term applies.
 6. German. If brief.german_copy is true, "description_de" is a faithful, natural German rendering of the description with the same content, and each evidence entry's "span_de" is a quote of 3 to 12 words copied character for character from description_de for the same term. If it is false, "description_de" and every "span_de" are null.
@@ -73,6 +73,7 @@ export interface Expectation {
   requiredTitle: string | null;
   usedTitles: readonly string[];
   germanCopy: boolean;
+  blockedNameHashes: ReadonlySet<string>;
 }
 
 export function expectationFor(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): Expectation {
@@ -90,6 +91,7 @@ export function expectationFor(slotPlan: SlotPlan, texts: ReadonlyMap<number, Tr
       .sort(([a], [b]) => a - b)
       .map(([, text]) => text.title),
     germanCopy: studioById(slotPlan.studio).descriptionLocale === "de",
+    blockedNameHashes: BLOCKED_NAME_HASHES,
   };
 }
 
@@ -123,9 +125,15 @@ function buildRequest(
   const brief = {
     studio: studio.name,
     voice: studio.voice,
+    setting: relation.kind === "variant_of" ? null : slotPlan.setting,
     title:
       expectation.requiredTitle === null
-        ? { mode: "invent", style: slotPlan.titleStyle }
+        ? {
+            mode: "invent",
+            style: slotPlan.titleStyle,
+            shape: slotPlan.titleShape,
+            invented_word_initial: slotPlan.titleInitial,
+          }
         : { mode: "exact", value: expectation.requiredTitle, style: slotPlan.titleStyle },
     themes: slotPlan.themes.map((term) => ({ term, meaning: THEME_MEANING[term] })),
     mechanics: slotPlan.mechanics.map((term) => ({ term, meaning: MECHANIC_MEANING[term] })),
@@ -157,7 +165,15 @@ function buildRequest(
 // ---------------------------------------------------------------------------
 
 /** A response that must not enter the catalogue. The message is the reason. */
-export class RejectedOutput extends Error {}
+export class RejectedOutput extends Error {
+  /** Words that must not be written to disk; set when the rejection is about a blocked name. */
+  readonly withheld: readonly string[];
+
+  constructor(message: string, withheld: readonly string[] = []) {
+    super(message);
+    this.withheld = withheld;
+  }
+}
 
 const UsageSchema = z.object({
   input_tokens: z.number().int(),
@@ -191,30 +207,32 @@ export type AttemptOutcome = "ok" | "invalid_output" | "refusal" | "incomplete" 
 
 export type Interpreted =
   | { outcome: "ok"; text: TruthText }
-  | { outcome: Exclude<AttemptOutcome, "ok" | "api_error">; reason: string };
+  | { outcome: Exclude<AttemptOutcome, "ok" | "api_error">; reason: string; withheld: readonly string[] };
 
 /** Turns a raw 200 response body into accepted text or a named rejection. */
 export function interpretResponse(body: unknown, slotPlan: SlotPlan, expectation: Expectation): Interpreted {
   const envelope = ResponseEnvelopeSchema.safeParse(body);
   if (!envelope.success) {
-    return { outcome: "invalid_output", reason: `response envelope: ${z.prettifyError(envelope.error)}` };
+    return { outcome: "invalid_output", reason: `response envelope: ${z.prettifyError(envelope.error)}`, withheld: [] };
   }
   if (envelope.data.status !== "completed") {
     const detail = envelope.data.incomplete_details?.reason ?? "no reason given";
-    return { outcome: "incomplete", reason: `status "${envelope.data.status}": ${detail}` };
+    return { outcome: "incomplete", reason: `status "${envelope.data.status}": ${detail}`, withheld: [] };
   }
   const parts = envelope.data.output.flatMap((item) => (item.type === "message" ? (item.content ?? []) : []));
   if (parts.some((part) => part.type === "refusal")) {
-    return { outcome: "refusal", reason: "the model refused the request" };
+    return { outcome: "refusal", reason: "the model refused the request", withheld: [] };
   }
   const texts = parts.flatMap((part) => (part.type === "output_text" && part.text !== undefined ? [part.text] : []));
   if (texts.length !== 1) {
-    return { outcome: "invalid_output", reason: `expected one output_text part, found ${texts.length}` };
+    return { outcome: "invalid_output", reason: `expected one output_text part, found ${texts.length}`, withheld: [] };
   }
   try {
     return { outcome: "ok", text: validateTruthText(parseJson(at(texts, 0)), slotPlan, expectation) };
   } catch (error) {
-    if (error instanceof RejectedOutput) return { outcome: "invalid_output", reason: error.message };
+    if (error instanceof RejectedOutput) {
+      return { outcome: "invalid_output", reason: error.message, withheld: error.withheld };
+    }
     throw error;
   }
 }
@@ -248,22 +266,71 @@ const MECHANIC_GIVEAWAYS: Record<Mechanic, RegExp> = {
 };
 
 /**
- * Coinages the model produced that turned out to name something real. The
- * catalogue must stay fictional, so text that uses one is rejected. They are
- * kept as hashes (the first 16 hex characters of the SHA-256 of the
- * lower-cased word) so that this repository does not publish the names it
- * avoids. Add an entry whenever a name check finds another.
+ * Names that a search found to belong to something real: words the model
+ * coined, and candidates considered for a studio or brand. The catalogue must
+ * stay fictional, so text that uses one is rejected.
+ *
+ * They are kept as hashes so that this repository does not itself publish the
+ * names it avoids. An entry is the first 16 hex characters of the SHA-256 of
+ * the lower-cased word; `npm run dataset -- --name-hash <word>` prints one.
+ * Single words only.
  */
 const BLOCKED_NAME_HASHES: ReadonlySet<string> = new Set([
+  "0095b2922d7ab5a4",
+  "1125ed82922327b7",
+  "1fcbc9fd1c248e73",
   "2148812bc9581192",
+  "21dc0918f1ee5e30",
   "2962bc3b6018d331",
   "299232dfc65490df",
   "33d142e0c8013e27",
+  "3e1b7ea6a835400a",
   "3ec2aa8a82c00c59",
+  "48e5ccaf5f57e0aa",
   "6d81cde6701535dc",
+  "7b848e04bbcd443a",
+  "86b3d34939c626cd",
+  "941b7a89b88e9f93",
+  "963ab7b003182b9a",
+  "972fb3e6f0d34c3c",
   "a86f36e617200ba9",
+  "bf64032e445e82d6",
+  "cb2549b8b48a52b0",
+  "d27dbd9c741561e6",
   "f89983563d6ccfc1",
 ]);
+
+export function nameHash(word: string): string {
+  return sha256Hex(word.toLowerCase()).slice(0, 16);
+}
+
+function blockedNamesIn(text: string, blocked: ReadonlySet<string>): string[] {
+  const words = text.match(/\p{L}+/gu) ?? [];
+  return [...new Set(words.filter((word) => blocked.has(nameHash(word))))];
+}
+
+/**
+ * A title word such as "spell" or "rune" fused with another word. Every one the model produced
+ * was found to be an existing game, so they are refused as a class instead of one at a time.
+ */
+const FUSED_FANTASY_COMPOUND = /^(?:spell|rune)\p{L}{3,}$/iu;
+
+/** What is stored for a rejection that was about a blocked name: the reason without the name. */
+const WITHHELD_REASON =
+  "uses a name that already exists outside this catalogue; the name is withheld and the stored body is redacted";
+const WITHHELD_MARK = "[name withheld]";
+
+/** Replaces the given words in every string of a JSON value. */
+export function redactNames(value: unknown, names: readonly string[]): unknown {
+  if (typeof value === "string") {
+    return names.reduce((text, name) => text.replaceAll(new RegExp(name, "giu"), WITHHELD_MARK), value);
+  }
+  if (Array.isArray(value)) return value.map((item) => redactNames(item, names));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactNames(item, names)]));
+  }
+  return value;
+}
 
 const INVENTED_TITLE = /^[A-Z][A-Za-z']*(?: [A-Za-z][A-Za-z']*){1,3}$/;
 
@@ -275,11 +342,24 @@ export function validateTruthText(candidate: unknown, slotPlan: SlotPlan, expect
     throw new RejectedOutput(problem);
   };
 
-  const copy = `${text.title} ${text.description} ${text.description_de ?? ""}`;
-  const realName = (copy.match(/\p{L}+/gu) ?? []).find((word) =>
-    BLOCKED_NAME_HASHES.has(sha256Hex(word.toLowerCase()).slice(0, 16)),
+  const realNames = blockedNamesIn(
+    `${text.title} ${text.description} ${text.description_de ?? ""}`,
+    expectation.blockedNameHashes,
   );
-  if (realName !== undefined) reject(`the name "${realName}" already exists outside this catalogue; invent a different one`);
+  if (realNames.length > 0) {
+    throw new RejectedOutput(
+      `the name ${realNames.map((name) => `"${name}"`).join(" and ")} already exists outside this catalogue; invent a different one`,
+      realNames,
+    );
+  }
+  const fused = text.title.split(" ").filter((word) => FUSED_FANTASY_COMPOUND.test(word));
+  if (fused.length > 0) {
+    throw new RejectedOutput(
+      `the title word "${at(fused, 0)}" fuses two ordinary words, and such compounds are usually existing game titles; ` +
+        "keep ordinary words separate and let the made-up name be the only invented word",
+      fused,
+    );
+  }
 
   // Title
   if (expectation.requiredTitle !== null) {
@@ -288,14 +368,24 @@ export function validateTruthText(candidate: unknown, slotPlan: SlotPlan, expect
     }
   } else {
     if (!INVENTED_TITLE.test(text.title)) reject(`title "${text.title}" is not two to four plain words`);
+    if (!text.title.split(" ").some((word) => word.toUpperCase().startsWith(slotPlan.titleInitial))) {
+      reject(`title "${text.title}" has no word beginning with "${slotPlan.titleInitial}"`);
+    }
     // Titles are kept apart by rejection, not by listing earlier titles in the request: a request
     // then depends only on its own slot, so replacing one title never invalidates the slots after it.
     const words = distinctiveWords(text.title);
-    for (const used of expectation.usedTitles) {
-      const shared = distinctiveWords(used).filter((word) => words.includes(word));
-      if (used.toLowerCase() === text.title.toLowerCase() || shared.length >= 2) {
-        reject(`title "${text.title}" is too close to the existing title "${used}"; use different words`);
-      }
+    const tooClose = expectation.usedTitles.filter(
+      (used) =>
+        used.toLowerCase() === text.title.toLowerCase() ||
+        distinctiveWords(used).filter((word) => words.includes(word)).length >= 2,
+    );
+    if (tooClose.length > 0) {
+      // The retry is told every title that shares a word, not only the ones that tripped the rule.
+      const related = expectation.usedTitles.filter((used) => distinctiveWords(used).some((word) => words.includes(word)));
+      reject(
+        `title "${text.title}" is too close to the existing title "${at(tooClose, 0)}"; ` +
+          `use none of the main words of these titles: ${[...new Set(related)].join("; ")}`,
+      );
     }
   }
   const strangers = text.title_theme_terms.filter((term) => !slotPlan.themes.includes(term));
@@ -374,6 +464,8 @@ const AttemptSchema = z.strictObject({
   http_status: z.number().int().nullable(),
   reason: z.string().nullable(),
   usage: UsageSchema.nullable(),
+  /** True when a blocked name was replaced in `body` before it was stored. */
+  body_redacted: z.boolean(),
   /** The response body as received. Null for API errors, whose bodies are never kept. */
   body: z.unknown(),
 });
@@ -396,6 +488,63 @@ export function readResponseFile(path: string): ResponseFile {
   const parsed = ResponseFileSchema.safeParse(JSON.parse(readFileSync(path, "utf8")));
   if (!parsed.success) throw new Error(`${path} is not a valid response file: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
+// Retired attempts: what was spent on responses that are no longer stored
+// ---------------------------------------------------------------------------
+
+export const RETIRE_REASONS = ["prompt_revision", "name_replacement", "other"] as const;
+export type RetireReason = (typeof RETIRE_REASONS)[number];
+
+const RetiredSchema = z.strictObject({
+  slot: z.number().int(),
+  model: z.string(),
+  prompt_version: z.string(),
+  reason: z.enum(RETIRE_REASONS),
+  /** Accounting only: bodies and rejection reasons are not kept. */
+  attempts: z.array(
+    z.strictObject({
+      outcome: AttemptSchema.shape.outcome,
+      seconds: z.number(),
+      http_status: z.number().int().nullable(),
+      usage: UsageSchema.nullable(),
+    }),
+  ),
+});
+export type Retired = z.infer<typeof RetiredSchema>;
+
+export function readRetired(path: string): Retired[] {
+  if (!existsSync(path)) return [];
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line, index) => {
+      const parsed = RetiredSchema.safeParse(JSON.parse(line));
+      if (!parsed.success) throw new Error(`${path} line ${index + 1}: ${z.prettifyError(parsed.error)}`);
+      return parsed.data;
+    });
+}
+
+/**
+ * Removes a slot's stored responses so that it is regenerated, keeping what
+ * they cost. Returns the number of attempts retired, or null if the slot had
+ * no response file.
+ */
+export function retireSlot(responsesDir: string, retiredPath: string, slot: number, reason: RetireReason): number | null {
+  const path = join(responsesDir, responseFileName(slot));
+  if (!existsSync(path)) return null;
+  const file = readResponseFile(path);
+  const retired: Retired = {
+    slot,
+    model: file.model,
+    prompt_version: file.prompt_version,
+    reason,
+    attempts: file.attempts.map(({ outcome, seconds, http_status, usage }) => ({ outcome, seconds, http_status, usage })),
+  };
+  appendFileSync(retiredPath, `${JSON.stringify(RetiredSchema.parse(retired))}\n`);
+  rmSync(path);
+  return retired.attempts.length;
 }
 
 export function estimateUsd(usage: Usage): number {
@@ -466,8 +615,11 @@ export async function obtainTruthText(
     throw new Error(`${label}: no accepted response in ${path}. Re-run with --live and OPENAI_API_KEY set.`);
   }
   mkdirSync(options.responsesDir, { recursive: true });
-  // A rejected answer is never repaired, but the next attempt is told why it was rejected.
-  let rejection = file.attempts.findLast((attempt) => attempt.outcome === "invalid_output")?.reason ?? null;
+  // A rejected answer is never repaired, but the next attempt is told why earlier ones were
+  // rejected. Every reason from this run is passed on: told only the latest, the model goes
+  // back to a name it was refused two attempts ago.
+  const stored = file.attempts.findLast((attempt) => attempt.outcome === "invalid_output")?.reason;
+  const feedback: string[] = stored == null ? [] : [stored];
   for (let attemptNumber = 1; attemptNumber <= MAX_ATTEMPTS_PER_RUN; attemptNumber += 1) {
     if (options.live.spentUsd >= options.live.maxUsd) {
       throw new Error(
@@ -476,12 +628,12 @@ export async function obtainTruthText(
       );
     }
     const attempt = await callOnce(
-      rejection === null ? request : withRejectionNote(request, rejection),
+      feedback.length === 0 ? request : withRejectionNote(request, feedback),
       options.live.apiKey,
       slotPlan,
       expectation,
     );
-    if (attempt.record.outcome === "invalid_output") rejection = attempt.record.reason;
+    if (attempt.feedback !== null && !feedback.includes(attempt.feedback)) feedback.push(attempt.feedback);
     file.attempts.push(attempt.record);
     writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
     if (attempt.record.usage !== null) options.live.spentUsd += estimateUsd(attempt.record.usage);
@@ -496,10 +648,12 @@ export async function obtainTruthText(
   throw new Error(`${label}: no acceptable response after ${file.attempts.length} stored attempt(s); see ${path}`);
 }
 
-function withRejectionNote(request: ModelRequest, reason: string): ModelRequest {
+function withRejectionNote(request: ModelRequest, reasons: readonly string[]): ModelRequest {
   return {
     ...request,
-    input: `${request.input}\n\nAn earlier answer to this brief was rejected for this reason: ${reason}\nWrite a new answer that does not repeat it.`,
+    input:
+      `${request.input}\n\nEarlier answers to this brief were rejected for these reasons:\n` +
+      `${reasons.map((reason) => `- ${reason}`).join("\n")}\nWrite a new answer that repeats none of them.`,
   };
 }
 
@@ -508,13 +662,22 @@ async function callOnce(
   apiKey: string,
   slotPlan: SlotPlan,
   expectation: Expectation,
-): Promise<{ record: Attempt; text: TruthText | null; retryable: boolean }> {
+): Promise<{ record: Attempt; text: TruthText | null; retryable: boolean; feedback: string | null }> {
   const started = performance.now();
   const elapsed = (): number => Math.round(performance.now() - started) / 1000;
   const apiError = (status: number | null, reason: string, retryable: boolean) => ({
-    record: { outcome: "api_error" as const, seconds: elapsed(), http_status: status, reason, usage: null, body: null },
+    record: {
+      outcome: "api_error" as const,
+      seconds: elapsed(),
+      http_status: status,
+      reason,
+      usage: null,
+      body_redacted: false,
+      body: null,
+    },
     text: null,
     retryable,
+    feedback: null,
   });
 
   let response: Response;
@@ -546,17 +709,24 @@ async function callOnce(
 
   const usage = z.object({ usage: UsageSchema }).safeParse(body);
   const interpreted = interpretResponse(body, slotPlan, expectation);
+  // The model is told the real reason on the next attempt. What goes to disk never carries a
+  // blocked name: the name is replaced in the body and left out of the stored reason.
+  const withheld = interpreted.outcome === "ok" ? [] : interpreted.withheld;
+  const redacted = withheld.length > 0;
+  const rejection = interpreted.outcome === "ok" ? null : interpreted.reason;
   return {
     record: {
       outcome: interpreted.outcome,
       seconds: elapsed(),
       http_status: response.status,
-      reason: interpreted.outcome === "ok" ? null : interpreted.reason,
+      reason: redacted ? WITHHELD_REASON : rejection,
       usage: usage.success ? usage.data.usage : null,
-      body,
+      body_redacted: redacted,
+      body: redacted ? redactNames(body, withheld) : body,
     },
     text: interpreted.outcome === "ok" ? interpreted.text : null,
     retryable: true,
+    feedback: interpreted.outcome === "invalid_output" ? rejection : null,
   };
 }
 

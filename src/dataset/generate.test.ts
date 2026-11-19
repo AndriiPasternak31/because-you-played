@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { addMarkup, degrade, stripMarkup } from "./degrade.ts";
 import type { TruthText } from "./model.ts";
 import { DEFAULT_SEED, SCENARIO_COUNT, buildPlan, type SlotPlan } from "./plan.ts";
 import { assertCoverage, buildMessReport } from "./report.ts";
-import { expectationFor, interpretResponse, validateTruthText } from "./truth-writer.ts";
+import {
+  expectationFor,
+  interpretResponse,
+  nameHash,
+  readRetired,
+  redactNames,
+  responseFileName,
+  retireSlot,
+  validateTruthText,
+} from "./truth-writer.ts";
 
 /** A stand-in for model output that satisfies every rule for the slot. */
 function fakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): TruthText {
@@ -17,7 +29,7 @@ function fakeText(slotPlan: SlotPlan, texts: ReadonlyMap<number, TruthText>): Tr
   const german = terms.map((term) => `Dieses Spiel hat eindeutig das Merkmal ${term} in sich.`);
   const germanFiller = Array.from({ length: 6 }, () => "Ein weiterer Satz sorgt hier noch fuer etwas Laenge.");
   return {
-    title: expectation.requiredTitle ?? `${tag}walden ${tag}marsh`,
+    title: expectation.requiredTitle ?? `${slotPlan.titleInitial}${tag.toLowerCase()}walden ${tag}marsh`,
     description: [...sentences, ...filler].join(" "),
     description_de: expectation.germanCopy ? [...german, ...germanFiller].join(" ") : null,
     evidence: terms.map((term) => ({
@@ -134,7 +146,7 @@ test("a title that must be exact or unused is enforced", () => {
   const taken = texts.get(0);
   assert.ok(fresh && taken);
   assert.throws(
-    () => validateTruthText({ ...fakeText(fresh, texts), title: `${taken.title} Again` }, fresh, expectationFor(fresh, texts)),
+    () => validateTruthText({ ...fakeText(fresh, texts), title: `${fresh.titleInitial}ox ${taken.title}` }, fresh, expectationFor(fresh, texts)),
     /is too close to the existing title/,
   );
 });
@@ -153,4 +165,65 @@ test("refused, incomplete and malformed responses are told apart", () => {
   assert.equal(outcomeOf(message([{ type: "output_text", text: "{not json" }])), "invalid_output");
   assert.equal(outcomeOf(message([{ type: "output_text", text: "{}" }])), "invalid_output");
   assert.equal(outcomeOf({ unexpected: true }), "invalid_output");
+});
+
+test("a blocked name is rejected, and never reaches what is stored", () => {
+  const plan = buildPlan(SCENARIO_COUNT, DEFAULT_SEED);
+  const slotPlan = plan[0];
+  assert.ok(slotPlan);
+  // A stand-in for a name that a search found to exist; the real list is kept as hashes.
+  const expectation = { ...expectationFor(slotPlan, new Map()), blockedNameHashes: new Set([nameHash("Exampleton")]) };
+  const good = fakeText(slotPlan, new Map());
+  const body = {
+    status: "completed",
+    output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ ...good, title: "EXAMPLETON's Marsh" }) }] }],
+  };
+
+  const interpreted = interpretResponse(body, slotPlan, expectation);
+  if (interpreted.outcome !== "invalid_output") assert.fail(`expected a rejection, got ${interpreted.outcome}`);
+  assert.match(interpreted.reason, /already exists outside this catalogue/);
+  assert.deepEqual(interpreted.withheld, ["EXAMPLETON"]);
+
+  const stored = JSON.stringify(redactNames(body, interpreted.withheld));
+  assert.doesNotMatch(stored, /exampleton/i);
+  assert.match(stored, /\[name withheld\]'s Marsh/);
+});
+
+test("retiring a slot removes its responses and keeps what they cost", () => {
+  const dir = mkdtempSync(join(tmpdir(), "retire-"));
+  const retiredPath = join(dir, "retired-attempts.jsonl");
+  const usage = { input_tokens: 1000, output_tokens: 200 };
+  const attempt = { seconds: 4.2, http_status: 200, usage, body_redacted: false };
+  writeFileSync(
+    join(dir, responseFileName(3)),
+    JSON.stringify({
+      slot: 3,
+      model: "m",
+      prompt_version: "p",
+      request_sha256: "x",
+      attempts: [
+        { ...attempt, outcome: "invalid_output", reason: "some reason", body: { secret: "text" } },
+        { ...attempt, outcome: "ok", reason: null, body: {} },
+      ],
+    }),
+  );
+
+  assert.equal(retireSlot(dir, retiredPath, 3, "name_replacement"), 2);
+  assert.equal(retireSlot(dir, retiredPath, 3, "name_replacement"), null);
+  assert.equal(existsSync(join(dir, responseFileName(3))), false);
+  const [line] = readRetired(retiredPath);
+  assert.ok(line);
+  assert.equal(line.reason, "name_replacement");
+  assert.deepEqual(line.attempts.map((entry) => entry.outcome), ["invalid_output", "ok"]);
+  assert.equal(line.attempts[0]?.usage?.input_tokens, 1000);
+  assert.doesNotMatch(JSON.stringify(line), /some reason|secret/);
+});
+
+test("at full size the catalogue holds enough clean controls and every missing-description form", () => {
+  const report = buildMessReport(fakeCatalogue(100).catalogue);
+  assert.ok(report.clean_control_rows >= 5 && report.clean_control_rows <= 10, `clean controls: ${report.clean_control_rows}`);
+  assert.ok(report.description_missing_forms.absent_key > 0);
+  assert.ok(report.description_missing_forms.null > 0);
+  assert.ok(report.description_missing_forms.empty_string > 0);
+  assertCoverage(report);
 });

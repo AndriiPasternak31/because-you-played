@@ -240,6 +240,11 @@ export interface SlotPlan {
   facts: Facts;
   /** Whether the description states volatility and maximum win. Most real copy does not. */
   copyMentionsFacts: boolean;
+  /** The angle taken on the first theme, so that games sharing a theme do not share a subject. */
+  setting: string;
+  /** How an invented title is built, and the letter its invented word starts with. */
+  titleShape: string;
+  titleInitial: string;
   offerings: readonly (readonly [BrandId, OfferingStatus])[];
 }
 
@@ -408,24 +413,25 @@ export function buildPlan(count: number, seed: string): SlotPlan[] {
   const plan: SlotPlan[] = [];
   for (let slot = 0; slot < count; slot += 1) {
     const scenario = SCENARIOS[slot];
-    plan.push(scenario === undefined ? drawSlot(seed, slot, plan) : scenarioSlot(seed, slot, scenario));
+    plan.push(scenario === undefined ? drawSlot(seed, slot, plan) : scenarioSlot(seed, slot, scenario, plan));
   }
   for (const slotPlan of plan) checkSlot(slotPlan, plan);
   return plan;
 }
 
-function scenarioSlot(seed: string, slot: number, scenario: Scenario): SlotPlan {
+function scenarioSlot(seed: string, slot: number, scenario: Scenario, earlier: readonly SlotPlan[]): SlotPlan {
+  const relation = scenario.relation ?? { kind: "none" };
   return {
     slot,
     scenario: scenario.scenario,
     studio: scenario.studio,
     themes: scenario.themes,
     mechanics: scenario.mechanics,
-    relation: scenario.relation ?? { kind: "none" },
+    relation,
     titleStyle: scenario.titleStyle ?? "thematic",
     mess: { ...NO_MESS, ...scenario.mess },
     facts: drawFacts(seededRng(seed, "facts", slot), scenario.mechanics, scenario.rtpBuilds),
-    copyMentionsFacts: drawCopyMentionsFacts(seed, slot),
+    ...drawCopy(seed, slot, scenario.themes, scenario.titleStyle ?? "thematic", relation, earlier),
     offerings: scenario.offerings,
   };
 }
@@ -502,40 +508,47 @@ function drawSlot(seed: string, slot: number, earlier: readonly SlotPlan[]): Slo
     titleStyle = relation.kind === "same_name_as" || rng.chance(0.12) ? "opaque" : "thematic";
   }
 
-  const nearEmpty = relation.kind === "none" && rng.chance(0.03);
+  // Clean controls would otherwise be rare by chance: nothing may be wrong with the row at all.
+  // A fifth of the fresh titles from the reference studio are therefore drawn clean on purpose.
+  const cleanControl = relation.kind === "none" && studio.omits.length === 0 && usesReferenceFormats(studio) && rng.chance(0.2);
+  const nearEmpty = !cleanControl && relation.kind === "none" && rng.chance(0.03);
   const description = rng.weighted<DescriptionState>(
     studio.boilerplateProne
-      ? [["full", 25], ["missing", 20], ["boilerplate", 45], ["terse", 10]]
-      : [["full", 40], ["missing", 24], ["boilerplate", 26], ["terse", 10]],
+      ? [["full", 25], ["missing", 18], ["boilerplate", 47], ["terse", 10]]
+      : [["full", 38], ["missing", 22], ["boilerplate", 30], ["terse", 10]],
   );
   let tags = rng.weighted<TagState>([
-    ["clean", 35],
-    ["drift", 30],
+    ["clean", 33],
+    ["drift", 28],
     ["removed", 15],
     ["one_dropped", 12],
-    ["conflict", 8],
+    ["conflict", 12],
   ]);
   if (needsFullDescription(tags) && !hasFullDescription(description, nearEmpty, studio)) tags = "drift";
 
+  // Draws stay in this order: mess, then offerings. A clean control takes none of the mess draws.
+  const mess: SlotMess = cleanControl
+    ? NO_MESS
+    : {
+        description,
+        tags,
+        nonAttributes: rng.chance(0.22),
+        titleDecoration: rng.weighted<TitleDecoration>([["none", 86], ["trademark", 9], ["uppercase", 5]]),
+        injection: false,
+        nearEmpty,
+        duplicateRow: rng.chance(0.06),
+      };
   return {
     slot,
-    scenario: "drawn",
+    scenario: cleanControl ? "drawn_clean_control" : "drawn",
     studio: studioId,
     themes,
     mechanics,
     relation,
     titleStyle,
-    mess: {
-      description,
-      tags,
-      nonAttributes: rng.chance(0.22),
-      titleDecoration: rng.weighted<TitleDecoration>([["none", 86], ["trademark", 9], ["uppercase", 5]]),
-      injection: false,
-      nearEmpty,
-      duplicateRow: rng.chance(0.06),
-    },
-    facts: drawFacts(seededRng(seed, "facts", slot), mechanics, undefined),
-    copyMentionsFacts: drawCopyMentionsFacts(seed, slot),
+    mess,
+    facts: drawFacts(seededRng(seed, "facts", slot), mechanics, cleanControl ? 1 : undefined),
+    ...drawCopy(seed, slot, themes, titleStyle, relation, earlier),
     offerings: drawOfferings(rng, earlier),
   };
 }
@@ -641,8 +654,143 @@ function drawFacts(rng: Rng, mechanics: readonly Mechanic[], rtpBuilds: number |
   };
 }
 
-function drawCopyMentionsFacts(seed: string, slot: number): boolean {
-  return seededRng(seed, "copy", slot).chance(0.35);
+// ---------------------------------------------------------------------------
+// Seeded variety for the copy. Left to itself the writing model returns to the
+// same few subjects and the same few sounds: every animal game is a badger and
+// every invented name starts with V.
+// ---------------------------------------------------------------------------
+
+const THEME_SETTINGS: Record<Theme, readonly string[]> = {
+  ancient_egypt: [
+    "a pharaoh's tomb and its guardians",
+    "the gods of the Nile",
+    "a queen's court on the river",
+    "scarab amulets and temple priests",
+    "an archaeologist's dig in the desert",
+    "a sphinx and its riddles",
+  ],
+  mythology: [
+    "Greek gods on a mountain summit",
+    "Norse gods and a world tree",
+    "a hero's voyage past monsters",
+    "the underworld and its ferryman",
+    "a thunder god's forge",
+    "a sun god's chariot",
+  ],
+  fantasy: [
+    "a wizard's tower",
+    "a dragon's hoard inside a mountain",
+    "an elven forest kingdom",
+    "a dwarven mine and forge",
+    "a fairy glade at night",
+    "a knight's quest for an enchanted sword",
+  ],
+  animals: [
+    "big cats on an African savannah",
+    "wolves in a northern forest",
+    "pandas in a bamboo grove",
+    "bison and eagles on open grassland",
+    "parrots and monkeys in a jungle canopy",
+    "farmyard animals at a county fair",
+    "badgers, foxes and otters in woodland",
+    "penguins and seals on the ice",
+  ],
+  adventure: [
+    "a jungle expedition to a lost temple",
+    "a mountaineering expedition",
+    "a caravan crossing to a buried city",
+    "a balloon race around the world",
+    "a cave-diving expedition",
+    "a polar expedition by dog sled",
+  ],
+  classic_fruit: [
+    "a retro fruit machine in a seaside arcade",
+    "neon fruit symbols in a modern lounge",
+    "a vintage mechanical one-armed bandit",
+    "a fruit stall at a street market",
+    "polished bars, bells and sevens in a grand gaming hall",
+  ],
+  east_asian: [
+    "a lantern festival and a dragon dance",
+    "a koi pond in a temple garden",
+    "a Lunar New Year street market",
+    "a samurai castle in cherry blossom season",
+    "a tea house in the mountains",
+    "lucky coins, jade and a beckoning cat",
+  ],
+  irish_luck: [
+    "a leprechaun's pot of gold",
+    "a village pub on a festival night",
+    "a rainbow over clover fields",
+    "a fiddler and a ceilidh band",
+    "a lucky charm stall at a horse fair",
+  ],
+  western: [
+    "a frontier saloon and its card table",
+    "a train robbery on the plains",
+    "a gold-rush mining town",
+    "a cattle drive and a rodeo",
+    "a sheriff's showdown at noon",
+    "an outlaw hideout in a canyon",
+  ],
+  horror: [
+    "a haunted manor",
+    "a vampire's castle",
+    "a werewolf in a moonlit village",
+    "a carnival of ghosts",
+    "a mad scientist's laboratory",
+    "an abandoned asylum",
+  ],
+  ocean_fishing: [
+    "a deep-sea fishing boat",
+    "a coral reef and its creatures",
+    "a sunken wreck and its octopus",
+    "a harbour fish market at dawn",
+    "a lighthouse and a lobster boat",
+    "an angling contest on a pier",
+  ],
+  sci_fi: [
+    "a space station",
+    "a robot factory",
+    "a survey of an alien planet",
+    "a starship race through an asteroid belt",
+    "a neon city of the future",
+    "a time-travel laboratory",
+  ],
+};
+
+const TITLE_SHAPES: Record<TitleStyle, readonly string[]> = {
+  thematic: [
+    "<invented name>'s <object or place>",
+    "<plural subject> of <invented place>",
+    "<invented place> <object or event>",
+    "<invented name> the <role or creature>",
+    "The <object> of <invented name>",
+  ],
+  opaque: ["The <invented word> <abstract noun>", "<invented word> <abstract noun>", "<abstract noun> of <invented word>"],
+};
+
+const TITLE_INITIALS = "ABCDEFGHIJKLMNOPRSTVWZ";
+
+function drawCopy(
+  seed: string,
+  slot: number,
+  themes: readonly Theme[],
+  titleStyle: TitleStyle,
+  relation: Relation,
+  earlier: readonly SlotPlan[],
+) {
+  const rng = seededRng(seed, "copy", slot);
+  // The order of these draws is part of the committed data: changing it changes every request.
+  const copyMentionsFacts = rng.chance(0.35);
+  const ownSetting = rng.pick(THEME_SETTINGS[at(themes, 0)]);
+  return {
+    copyMentionsFacts,
+    // A sequel or an edition stays in the world of the game it follows.
+    setting: relation.kind === "variant_of" ? at(earlier, relation.parent).setting : ownSetting,
+    titleShape: rng.pick(TITLE_SHAPES[titleStyle]),
+    titleInitial: at([...TITLE_INITIALS], rng.int(TITLE_INITIALS.length)),
+  };
 }
 
 export function winSystemOf(mechanics: readonly Mechanic[]): WinSystem {
