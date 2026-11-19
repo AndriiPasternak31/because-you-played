@@ -4,44 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Because you played: console</title>
+<title>Because you played: inspection view</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/console/console.css">
 </head>
 <body>
 <main>
   <header>
-    <div class="top"><p class="kicker">Inspection console</p><p class="kicker">Not the page a player sees</p></div>
+    <div class="top"><p class="kicker">Inspection view · not the screen a player would see</p><p id="serving" class="serving" aria-live="polite">Loading</p></div>
     <h1>Because you played</h1>
-    <p class="lede">What the recommender did for one game on one brand, step by step, and the evidence for which version of the index it serves.</p>
-    <p id="serving" class="serving" aria-live="polite">Loading</p>
-    <nav aria-label="Sections"><a href="#request">Trace</a><a href="#side-by-side">Side by side</a><a href="#evaluation">Evaluation</a></nav>
+    <p class="lede">A related-games recommender, opened up: what it recommends for a game on a brand, the evidence for it, and whether the language model earned its cost.</p>
   </header>
 
-  <section id="request" class="section">
-    <p class="kicker">Trace</p>
-    <h2>One request, end to end</h2>
+  <section id="request">
     <form id="picker">
+      <div class="field wide"><label for="game">Game played <span class="hint">the page follows your choice at once</span></label><select id="game" name="game"></select></div>
       <div class="field"><label for="brand">Brand</label><select id="brand" name="brand"></select></div>
-      <div class="field wide"><label for="game">Game</label><select id="game" name="game"></select></div>
       <div class="field"><label for="version">Version of the index</label><select id="version" name="version"></select></div>
-      <button type="submit">Show the trace</button>
     </form>
-    <p id="picker-note" class="small" aria-live="polite"></p>
+    <div id="examples" aria-live="polite"><p class="small">Looking for examples in the catalogue</p></div>
   </section>
 
   <div id="trace" aria-live="polite"></div>
 
-  <section id="side-by-side" class="section">
-    <p class="kicker">Side by side</p>
-    <h2>The same request against each version</h2>
-    <p class="lede">What each version would recommend for the chosen game on the chosen brand, and the labels it holds. Only the served version answers players.</p>
-    <div id="compare" aria-live="polite"><p class="small">Choose a brand and a game above.</p></div>
-  </section>
+  <details id="versions" class="drawer">
+    <summary>The same request in every version of the index</summary>
+    <div class="drawer-body">
+      <p class="lede">What each version would recommend for the chosen game on the chosen brand, and the labels it holds. Only the served version answers players.</p>
+      <div id="compare" aria-live="polite"><p class="small">Choose a brand and a game above.</p></div>
+    </div>
+  </details>
 
-  <section id="evaluation" class="section">
-    <p class="kicker">Evaluation</p>
-    <h2>Which version may be served, and why</h2>
+  <section id="evaluation" class="block">
+    <p class="kicker">4 · Was the model worth it</p>
+    <h2>The evidence for the version that is served</h2>
     <div id="evaluation-body" aria-live="polite"><p>Loading</p></div>
   </section>
 

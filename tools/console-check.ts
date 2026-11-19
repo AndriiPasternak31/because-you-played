@@ -1,14 +1,21 @@
 /**
- * Drives the console in a real browser and checks what the tests cannot reach: the page script,
- * the layout at desktop and phone width, keyboard focus, reduced motion, and that moving a
- * what-if slider with the keyboard changes no file. It also writes the screenshots.
+ * Drives the console in a real browser and checks what the tests cannot reach: what a visitor sees on
+ * the first screen, the page script, the layout at a fixed desktop and a fixed phone size, keyboard
+ * focus, reduced motion, and that moving a what-if slider with the keyboard changes no file.
  *
- *   node tools/console-check.ts                                  checks only
- *   node tools/console-check.ts --screenshots docs/screenshots   checks, then writes the screenshots there
+ *   node tools/console-check.ts                                  every check
+ *   node tools/console-check.ts --first-screens                  only what a visitor sees on arrival
+ *   node tools/console-check.ts --screenshots docs/screenshots   every check, then the screenshots
+ *   node tools/console-check.ts --base http://127.0.0.1:8787     against a service that is already running
  *
+ * The first screen is behaviour, not look: for the landing page and for every example the page offers,
+ * the result or the decline must be on screen without scrolling, at 1280 by 900 and at 390 by 844.
+ * The screenshot of each first screen is the window as it is on arrival: not resized, not scrolled, not cropped.
+ *
+ * The examples are found the way the page finds them, by asking the service, so no game is named here.
  * It needs a local Chrome or Chromium (set CHROME to its path when it is not found) and no package:
- * it speaks the DevTools protocol over Node's own WebSocket. It starts the service in this process
- * on a free port, reads no key and calls no model.
+ * it speaks the DevTools protocol over Node's own WebSocket. Without --base it starts the service in
+ * this process on a free port. It reads no key and calls no model.
  *
  * It is not part of `npm test`, because a machine without a browser cannot run it. Without a
  * browser it fails and says so. It judges nothing about how the page looks.
@@ -21,20 +28,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { createService } from "../src/service/http.ts";
+import { findExamples, type Example } from "../src/console/view.js";
 import { loadService } from "../src/service/state.ts";
 
-/**
- * The requests the walkthrough shows, and what each has to demonstrate. When the catalogue or the
- * evaluation changes and a game no longer shows its moment, the check for that moment fails and names it.
- */
-const MOMENTS = {
-  thin: { game: "okk-62483", brand: "tavrenmoor" },
-  versions: { game: "qfi-87623", brand: "tavrenmoor" },
-  filter: { game: "okk-50023", brand: "tavrenmoor", brandBefore: "copperjay" },
-  decline: { game: "qfi-40239", brand: "tavrenmoor" },
-  conflict: { game: "okk-17457", brand: "tavrenmoor" },
-} as const;
-
+/** The two fixed windows every check is made in. */
 const WIDTHS = [
   { name: "desktop", width: 1280, height: 900, scale: 1, mobile: false },
   { name: "phone", width: 390, height: 844, scale: 2, mobile: true },
@@ -165,7 +162,7 @@ const LAYOUT = `(() => {
   const problems = [];
   if (document.documentElement.scrollWidth > width) problems.push("the page is " + document.documentElement.scrollWidth + "px wide in a " + width + "px window");
   for (const element of document.querySelectorAll("main *")) {
-    if (element.closest(".scroll, .sr, table.race thead")) continue;
+    if (element.closest(".scroll, .sr, ol.examples")) continue;
     const box = element.getBoundingClientRect();
     if (box.width === 0 || box.height === 0) continue;
     if (box.right > width + 0.5 || box.left < -0.5) problems.push(element.tagName.toLowerCase() + "." + element.className + " runs from " + Math.round(box.left) + " to " + Math.round(box.right) + "px");
@@ -173,42 +170,82 @@ const LAYOUT = `(() => {
   return problems.slice(0, 5);
 })()`;
 
-const SHOWS: Record<keyof typeof MOMENTS, string> = {
+/**
+ * What a visitor sees on arrival, with no scrolling: what the page is, and the result or the decline.
+ * "On screen" means wholly inside the window: a result cut off by the bottom edge does not count.
+ */
+const FIRST_SCREEN = `(() => {
+  const problems = [];
+  const onScreen = (element) => { if (!element) return false; const box = element.getBoundingClientRect(); return box.height > 0 && box.top >= 0 && box.bottom <= innerHeight; };
+  if (scrollY !== 0) problems.push("the page arrived scrolled to " + Math.round(scrollY) + "px");
+  const header = document.querySelector("header");
+  if (!onScreen(header) || !/not the (screen|page) a player/i.test(header.textContent)) problems.push("the line saying what this page is, is not on screen");
+  const result = document.querySelector("#outcome [data-results] li");
+  const decline = document.querySelector("#outcome [data-decline]");
+  if (!result && !decline) problems.push("the page shows neither a result nor a decline");
+  else if (!onScreen(result ?? decline)) problems.push("the " + (result ? "first result" : "decline") + " is not on screen: it runs from " + Math.round((result ?? decline).getBoundingClientRect().top) + " to " + Math.round((result ?? decline).getBoundingClientRect().bottom) + "px in a window " + innerHeight + "px tall");
+  const sentence = [...document.querySelectorAll("#outcome p")].find((p) => /^\\s*(result|declined)?\\s*Given /i.test(p.textContent));
+  if (!onScreen(sentence)) problems.push("the sentence that states the outcome is not on screen");
+  return problems;
+})()`;
+
+/** What each example has to show, once opened. */
+const SHOWS: Record<Example["kind"], string> = {
   thin: `(() => {
-    const record = document.querySelector("ol.flow li .v")?.textContent;
-    if (record !== "thin") return ["the record is shown as " + record + ", not thin"];
-    if (document.querySelectorAll("#enrichment .context mark").length === 0) return ["no quote is marked in the record's text"];
-    if (document.querySelectorAll("#enrichment .holds .tag.model").length === 0) return ["the served version holds no label from the model"];
-    return document.querySelector("#outcome [data-results]") ? [] : ["there are no results"];
+    const problems = [];
+    if (!/thin/.test(document.querySelector("#enrichment [data-story]")?.textContent ?? "")) problems.push("the page does not say the record is thin");
+    if (document.querySelectorAll("#enrichment .holds ul.fields .tag.model").length === 0) problems.push("the index holds no label from the model");
+    if (!document.querySelector("#enrichment [data-phrase]")) problems.push("no phrase the model read is shown");
+    if (document.querySelectorAll("#enrichment .copy mark").length === 0) problems.push("no quote is marked in the supplier's text");
+    return problems;
+  })()`,
+  plain: `(() => {
+    const problems = [];
+    if (document.querySelectorAll("#enrichment .holds ul.fields .tag.model").length > 0) problems.push("the index holds a label from the model");
+    if (document.querySelectorAll("#enrichment .holds ul.fields .tag.table").length === 0) problems.push("the index holds no label from the supplier's tags");
+    if (document.querySelector("#enrichment [data-phrase]")) problems.push("a phrase from the model is shown though it added nothing");
+    return problems;
+  })()`,
+  conflict: `(() => {
+    const problems = [];
+    if (!document.querySelector("#enrichment .tag.contradicted")) problems.push("no supplier tag is marked as contradicted");
+    if (!/A lookup cannot tell which is right/.test(document.querySelector("#enrichment [data-story]")?.textContent ?? "")) problems.push("the page does not say what the table did");
+    return problems;
+  })()`,
+  filter: `(() => {
+    const problems = [];
+    if (!document.querySelector("#removals [data-focus]")) problems.push("the removed game is not pointed out");
+    if (document.querySelectorAll("#removals button.step[aria-expanded=true]").length !== 1) problems.push("the step that removed it is not the one open step");
+    const row = document.querySelector("#removals .step-panel:not([hidden]) li.focus");
+    if (!row || row.getBoundingClientRect().height === 0) problems.push("the removed game is not visible in that step");
+    return problems;
+  })()`,
+  decline: `(() => {
+    const problems = [];
+    if (!document.querySelector("#outcome [data-decline]")) problems.push("the outcome is not a decline");
+    if (document.querySelector("#trace [data-results]")) problems.push("results are shown beside the decline");
+    if (document.querySelector("#outcome .main .label.red")) problems.push("the decline carries a failure label");
+    return problems;
   })()`,
   versions: `(() => {
+    if (!document.querySelector("#versions")?.open) return ["the comparison of versions is not open"];
     const rows = [...document.querySelectorAll("#compare table.matrix tbody tr")];
     if (rows.length === 0) return ["no version recommends anything"];
     const columns = rows[0].querySelectorAll("td").length;
     const picks = [...Array(columns).keys()].map((column) => rows.map((row) => row.querySelectorAll("td")[column].textContent).join("|"));
     return new Set(picks).size > 1 ? [] : ["every version recommends the same games in the same order"];
   })()`,
-  filter: "[]",
-  decline: `(() => {
-    const problems = [];
-    if (!document.querySelector("#outcome [data-decline]")) problems.push("the outcome is not a decline");
-    if (document.querySelector("#trace [data-results]")) problems.push("results are shown beside the decline");
-    if (document.querySelector("#trace .label.red")) problems.push("the decline carries a failure label");
-    if (!document.querySelector("ol.flow li:last-child.amber")) problems.push("the last step is not marked as declined");
-    return problems;
-  })()`,
-  conflict: `(() => {
-    if (!document.querySelector("#enrichment [data-conflict]")) return ["no conflict is shown"];
-    const mechanics = [...document.querySelectorAll("#enrichment .holds ul.fields li")].find((line) => line.textContent.startsWith("Mechanics"));
-    return mechanics?.querySelector(".tag.model") ? [] : ["the served version does not hold the model's reading of the mechanics"];
-  })()`,
+  failure: `(() => (document.querySelector("#outcome [data-failure]") ? [] : ["the failure the evaluation lists is not said with the result"]))()`,
 };
+
+/** The part of the page that holds each example's evidence, for its picture. */
+const EVIDENCE: Partial<Record<Example["kind"], string>> = { thin: "#enrichment", conflict: "#enrichment", filter: "#removals", versions: "#versions" };
 
 // ---------------------------------------------------------------------------
 // The run
 // ---------------------------------------------------------------------------
 
-const { values: options } = parseArgs({ options: { screenshots: { type: "string" } }, strict: true });
+const { values: options } = parseArgs({ options: { screenshots: { type: "string" }, base: { type: "string" }, "first-screens": { type: "boolean", default: false } }, strict: true });
 const failures: string[] = [];
 let checks = 0;
 
@@ -218,6 +255,15 @@ function check(name: string, problems: readonly string[]): void {
   else {
     failures.push(name);
     console.log(`FAIL  ${name}\n        ${problems.join("\n        ")}`);
+  }
+}
+
+/** A check that asks the page. If the page cannot even be asked, that is a failure of the check, and the run goes on. */
+async function ask(name: string, work: () => Promise<readonly string[]>): Promise<void> {
+  try {
+    check(name, await work());
+  } catch (error) {
+    check(name, [error instanceof Error ? error.message : String(error)]);
   }
 }
 
@@ -234,108 +280,150 @@ function hashTree(directories: readonly string[]): string {
   return hash.digest("hex");
 }
 
-const service = createService(loadService());
-await new Promise<void>((resolve) => service.listen(0, "127.0.0.1", resolve));
-const base = `http://127.0.0.1:${(service.address() as AddressInfo).port}`;
+const service = options.base === undefined ? createService(loadService()) : undefined;
+if (service !== undefined) await new Promise<void>((resolve) => service.listen(0, "127.0.0.1", resolve));
+const base = options.base ?? `http://127.0.0.1:${(service?.address() as AddressInfo).port}`;
+
+// The examples, found the way the page finds them: by asking the service.
+const get = async (url: string): Promise<unknown> => {
+  const response = await fetch(`${base}${url}`);
+  if (!response.ok) throw new Error(`${response.status} for ${url}`);
+  return response.json();
+};
+const examples = await findExamples(get, await get("/api/catalogue"), await get("/api/evaluation"));
+const found = examples.filter((example) => example.found && example.href !== undefined);
+check("the service's data holds every kind of example", examples.filter((example) => !example.found).map((example) => `no game shows: ${example.name}`));
+
 const chrome = await launchChrome();
 
-async function shot(page: Page, view: Width, name: string, from: string, to = from): Promise<void> {
+/** The window as it is: not resized, not scrolled, not cropped. */
+async function firstScreenShot(page: Page, view: Width, name: string): Promise<void> {
+  if (options.screenshots === undefined) return;
+  const { data } = (await page.send("Page.captureScreenshot", { format: "png" })) as { data: string };
+  mkdirSync(options.screenshots, { recursive: true });
+  writeFileSync(join(options.screenshots, `${view.name}-first-screen-${name}.png`), Buffer.from(data, "base64"));
+}
+
+/** One part of the page, for a picture of evidence that sits below the first screen. The window is made as tall as the part. */
+async function partShot(page: Page, view: Width, name: string, from: string, to = from): Promise<void> {
   if (options.screenshots === undefined) return;
   const box = await page.evaluate<{ top: number; bottom: number; page: number } | null>(
     `(() => { const a = document.querySelector(${JSON.stringify(from)}); const b = document.querySelector(${JSON.stringify(to)}); if (!a || !b) return null; return { top: a.getBoundingClientRect().top + scrollY, bottom: b.getBoundingClientRect().bottom + scrollY, page: document.documentElement.scrollHeight }; })()`,
   );
-  if (box === null) throw new Error(`screenshot ${name}: the page has no ${from} or no ${to}`);
+  if (box === null) throw new Error(`picture ${name}: the page has no ${from} or no ${to}`);
   const top = Math.max(0, Math.floor(box.top - 16));
   const height = Math.ceil(Math.min(box.bottom + 16, box.page) - top);
-  // The window is made as tall as the part wanted, so the picture is of the page as a reader would scroll to it.
   await page.send("Emulation.setDeviceMetricsOverride", windowOf(view, height));
   await page.evaluate(`window.scrollTo({ top: ${top}, behavior: "instant" })`);
   await sleep(300);
   const { data } = (await page.send("Page.captureScreenshot", { format: "png" })) as { data: string };
   mkdirSync(options.screenshots, { recursive: true });
-  writeFileSync(join(options.screenshots, `${view.name}-${name}.png`), Buffer.from(data, "base64"));
+  writeFileSync(join(options.screenshots, `${view.name}-evidence-${name}.png`), Buffer.from(data, "base64"));
   await page.send("Emulation.setDeviceMetricsOverride", windowOf(view));
+  await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
 }
 
-const link = (moment: { game: string; brand: string }, brand: string = moment.brand): string => `${base}/?${new URLSearchParams({ game: moment.game, brand })}`;
-
-async function openRequest(page: Page, url: string): Promise<void> {
-  await page.goto(url);
-  await page.waitFor("document.querySelector('#outcome') && document.querySelector('#compare table.compare') && document.querySelector('#race')", "the trace, the comparison and the evaluation");
-  await sleep(1300); // the bars and the steps have finished appearing
+/** Arrives at a page as a visitor does, and waits until it has settled. Nothing here scrolls. */
+async function arrive(page: Page, path: string): Promise<void> {
+  await page.goto(`${base}${path}`);
+  await page.waitFor("document.querySelector('#outcome') && document.querySelector('#evaluation-body')?.children.length > 1", "the outcome and the evaluation");
+  await sleep(1500); // the page has stopped loading and the bars have finished appearing
 }
 
 try {
   for (const view of WIDTHS) {
     const page = await openPage(chrome.port, view);
+    const at = `${view.name} ${view.width}x${view.height}`;
 
-    for (const name of ["thin", "versions", "decline", "conflict"] as const) {
-      await openRequest(page, link(MOMENTS[name]));
-      check(`${view.name}: ${name} (${MOMENTS[name].game} on ${MOMENTS[name].brand}) shows its moment`, await page.evaluate<string[]>(SHOWS[name]));
-      check(`${view.name}: ${name} fits the window`, await page.evaluate<string[]>(LAYOUT));
-      if (name === "thin") {
-        await shot(page, view, "0-one-request", "header", "#raw-record");
-        await shot(page, view, "1-thin-record-gains-labels", "#enrichment");
-      }
-      if (name === "versions") await shot(page, view, "2-versions-differ", "#side-by-side");
-      if (name === "decline") await shot(page, view, "4-decline-instead-of-a-guess", ".trace-title", ".provenance");
-      if (name === "conflict") await shot(page, view, "5-tag-contradicts-description", "#enrichment");
+    // 1. The first screen: the landing page, then every example, each on arrival.
+    for (const [name, path] of [["landing", "/"], ...found.map((example) => [example.kind, example.href as string])] as [string, string][]) {
+      await ask(`${at}: ${name}: the first screen says what the page is and shows the result or the decline, without scrolling`, async () => {
+        await arrive(page, path);
+        const problems = await page.evaluate<string[]>(FIRST_SCREEN);
+        await firstScreenShot(page, view, name);
+        return problems;
+      });
+      if (options["first-screens"]) continue;
+      await ask(`${at}: ${name}: nothing is wider than the window`, () => page.evaluate<string[]>(LAYOUT));
+      const example = found.find((entry) => entry.kind === name);
+      if (example === undefined) continue;
+      await ask(`${at}: ${name}: the example shows what it says (${example.name})`, async () => {
+        if (example.kind === "versions") await page.waitFor("document.querySelector('#compare table.matrix')", "the comparison of versions");
+        return page.evaluate<string[]>(SHOWS[example.kind]);
+      });
+      const part = EVIDENCE[example.kind];
+      if (part !== undefined) await partShot(page, view, example.kind, part);
+    }
+    if (options["first-screens"]) {
+      await page.close();
+      continue;
     }
 
-    // A filter removes a plausible result: the best result on one brand is not live on the other, and is named there as removed.
-    const filter = MOMENTS.filter;
-    await openRequest(page, link(filter, filter.brandBefore));
-    const best = await page.evaluate<string | null>("document.querySelector('#outcome ol.results li code')?.textContent ?? null");
-    await shot(page, view, `3a-best-result-on-${filter.brandBefore}`, "#outcome");
-    await openRequest(page, link(filter));
-    const removal = await page.evaluate<string[]>(`(() => {
-      const best = ${JSON.stringify(best)};
-      if (best === null) return ["there is no result on ${filter.brandBefore} to lose"];
-      const first = document.querySelector("#removals ol.funnel > li");
-      const details = first?.querySelector("details");
-      if (details) details.open = true;
-      const removed = [...(first?.querySelectorAll("ul.removed code") ?? [])].map((code) => code.textContent);
-      const problems = [];
-      if (!removed.includes(best)) problems.push("the first filter on ${filter.brand} does not name " + best + " as removed");
-      if ([...document.querySelectorAll("#outcome code, #scores code")].some((code) => code.textContent === best)) problems.push(best + " is still scored or returned on ${filter.brand}");
-      return problems;
-    })()`);
-    check(`${view.name}: filter (${filter.game}, ${filter.brandBefore} then ${filter.brand}) removes the best result before scoring`, removal);
-    check(`${view.name}: filter fits the window`, await page.evaluate<string[]>(LAYOUT));
-    await shot(page, view, `3b-removed-before-scoring-on-${filter.brand}`, "#removals", "#removals ol.funnel > li");
+    // 2. The page's own examples are the ones the data holds, and one click opens one without leaving the first screen.
+    await ask(`${at}: the page offers every example as a link, and a click opens it with its result on screen`, async () => {
+      await arrive(page, "/");
+      const offered = await page.evaluate<string[]>("[...document.querySelectorAll('#examples a[data-example]')].map((a) => a.getAttribute('href'))");
+      const problems = found.filter((example) => !offered.includes(example.href as string)).map((example) => `the page does not offer: ${example.name}`);
+      const pick = found.find((example) => example.kind === "decline") ?? found.at(-1);
+      if (pick === undefined) return [...problems, "there is no example to click"];
+      await page.evaluate(`document.querySelector('#examples a[data-example="${pick.kind}"]').click()`);
+      await page.waitFor(`document.querySelector('#examples a[data-example="${pick.kind}"]')?.getAttribute('aria-current') === 'true' && document.querySelector('#outcome')`, "the clicked example to open");
+      await sleep(600);
+      return [...problems, ...(await page.evaluate<string[]>(FIRST_SCREEN))];
+    });
 
-    // The evaluation, then the what-if panel driven with the keyboard alone.
-    await shot(page, view, "6-race-and-where-it-helps", "#evaluation", "#where-it-helps");
-    const before = hashTree(["eval", "data"]);
+    // 3. A step of the path opens what it removed, and only one is open at a time.
+    await ask(`${at}: a step opens what it removed, one at a time`, async () => {
+      const example = found.find((entry) => entry.kind === "thin") ?? found[0];
+      if (example === undefined) return ["there is no example to open"];
+      await arrive(page, example.href as string);
+      return page.evaluate<string[]>(`(() => {
+        const steps = [...document.querySelectorAll("#removals button.step")];
+        if (steps.length < 2) return ["the path has fewer than two steps"];
+        const panel = (button) => document.getElementById(button.getAttribute("aria-controls"));
+        const problems = [];
+        if (steps.some((step) => !panel(step).hidden)) problems.push("a step is open before any is asked for");
+        steps[0].click();
+        if (panel(steps[0]).hidden || steps[0].getAttribute("aria-expanded") !== "true") problems.push("the first step did not open");
+        steps[1].click();
+        if (!panel(steps[0]).hidden || panel(steps[1]).hidden) problems.push("opening a second step left the first open");
+        steps[1].click();
+        if (!panel(steps[1]).hidden) problems.push("a step did not close");
+        return problems;
+      })()`);
+    });
+
+    // 4. The evidence for the served version, then the what-if panel driven with the keyboard alone.
+    await partShot(page, view, "evaluation", "#evaluation", "#pass-marks");
+    const before = service === undefined ? "" : hashTree(["eval", "data"]);
     const rings: string[] = [];
     const focused = (): Promise<{ id: string; type: string; ring: boolean; what: string }> =>
-      page.evaluate(`(() => { const a = document.activeElement; const s = getComputedStyle(a); return { id: a.id, type: a.type ?? "", ring: s.outlineStyle === "solid" && parseFloat(s.outlineWidth) >= 2, what: a.tagName.toLowerCase() + (a.id ? "#" + a.id : "") }; })()`);
+      page.evaluate(`(() => { const a = document.activeElement; const s = getComputedStyle(a); return { id: a.id, type: a.type ?? "", ring: s.outlineStyle === "solid" && parseFloat(s.outlineWidth) >= 2, what: a.tagName.toLowerCase() + (a.id ? "#" + a.id : "") + (a.className && typeof a.className === "string" ? "." + a.className.split(" ")[0] : "") }; })()`);
     const tabTo = async (wanted: (element: { id: string; type: string }) => boolean, what: string): Promise<void> => {
-      for (let presses = 0; presses < 200; presses += 1) {
+      for (let presses = 0; presses < 300; presses += 1) {
         await page.key("Tab", 9);
         const now = await focused();
         if (now.what === "body") continue;
         if (!now.ring) rings.push(`${now.what} takes focus with no visible ring`);
         if (wanted(now)) return;
       }
-      throw new Error(`200 presses of Tab did not reach ${what}`);
+      throw new Error(`300 presses of Tab did not reach ${what}`);
     };
-    await page.evaluate("document.body.focus(); window.scrollTo(0, 0)");
-    await tabTo((element) => element.id === "what-if-open", "the what-if button");
-    await page.key("Enter", 13, "\r");
-    await page.waitFor("document.querySelector('#what-if .mark')", "the what-if panel");
-    const committedFails = await page.evaluate<number>("document.querySelectorAll('#what-if .label.red').length");
-    await tabTo((element) => element.type === "range" && element.id === "mark-min_pairwise_accuracy", "the pairwise accuracy slider");
-    // Raise the mark a step at a time until a version that passed now fails.
-    for (let step = 1; step <= 25; step += 1) {
-      await page.key("ArrowRight", 39);
-      await page.waitFor(`document.querySelector('#what-if .mark.moved output')?.textContent !== undefined && document.querySelectorAll('#what-if .mark.moved').length === 1`, "the moved mark");
-      await sleep(200);
-      if ((await page.evaluate<number>("document.querySelectorAll('#what-if .label.red').length")) > committedFails) break;
-    }
-    check(
-      `${view.name}: the what-if panel opens and moves with the keyboard, says what the gate reads, and changes no file`,
-      await page.evaluate<string[]>(`(() => {
+    await ask(`${at}: the what-if panel opens and moves with the keyboard, says what the gate reads, and changes no file${service === undefined ? " (files not hashed: the service is not this checkout's)" : ""}`, async () => {
+      await page.evaluate("document.body.focus(); window.scrollTo(0, 0)");
+      await tabTo((element) => element.id === "what-if-open", "the what-if button");
+      await page.key("Enter", 13, "\r");
+      await page.waitFor("document.querySelector('#what-if .mark')", "the what-if panel");
+      const committedFails = await page.evaluate<number>("document.querySelectorAll('#what-if .label.red').length");
+      await tabTo((element) => element.type === "range" && element.id === "mark-min_pairwise_accuracy", "the pairwise accuracy slider");
+      // Raise the mark a step at a time until a version that passed now fails.
+      for (let step = 1; step <= 25; step += 1) {
+        await page.key("ArrowRight", 39);
+        await page.waitFor("document.querySelectorAll('#what-if .mark.moved').length === 1", "the moved mark");
+        await sleep(200);
+        if ((await page.evaluate<number>("document.querySelectorAll('#what-if .label.red').length")) > committedFails) break;
+      }
+      const problems = await page.evaluate<string[]>(`(() => {
         const panel = document.querySelector("#what-if");
         const problems = [];
         if (!panel.textContent.includes("The release gate reads only the committed file")) problems.push("the panel does not say what the gate reads");
@@ -344,30 +432,31 @@ try {
         if (document.activeElement?.id !== "mark-min_pairwise_accuracy") problems.push("the slider lost focus when the panel was redrawn");
         if (panel.querySelectorAll(".label.red").length <= ${committedFails}) problems.push("raising the mark failed no version");
         return problems;
-      })()`).then((problems) => (hashTree(["eval", "data"]) === before ? problems : [...problems, "a file under eval/ or data/ changed"])),
-    );
-    check(`${view.name}: every control reached with Tab shows a focus ring`, rings);
-    check(`${view.name}: the open what-if panel fits the window`, await page.evaluate<string[]>(LAYOUT));
-    await shot(page, view, "7-what-if-a-mark-moved", "#what-if");
-    check(`${view.name}: the page script raised no error`, page.errors);
+      })()`);
+      return service === undefined || hashTree(["eval", "data"]) === before ? problems : [...problems, "a file under eval/ or data/ changed"];
+    });
+    check(`${at}: every control reached with Tab shows a focus ring`, rings);
+    await ask(`${at}: the open what-if panel is no wider than the window`, () => page.evaluate<string[]>(LAYOUT));
+    await partShot(page, view, "what-if", "#what-if");
+    check(`${at}: the page script raised no error`, page.errors);
     await page.close();
 
-    // Motion: there is some by default, and none for a reader who asked for less.
-    const animated = `["#outcome ol.results li", "#removals .track .fill"].map((selector) => getComputedStyle(document.querySelector(selector)).animationName).concat(getComputedStyle(document.querySelector("ol.flow li"), "::before").animationName)`;
-    const still = await openPage(chrome.port, view, true);
-    await openRequest(still, link(MOMENTS.thin));
-    const reduced = await still.evaluate<string[]>(animated);
-    check(`${view.name}: nothing animates under prefers-reduced-motion`, reduced.every((name) => name === "none") ? [] : [`animations still set: ${reduced.join(", ")}`]);
-    await still.close();
-    const moving = await openPage(chrome.port, view);
-    await openRequest(moving, link(MOMENTS.thin));
-    const usual = await moving.evaluate<string[]>(animated);
-    check(`${view.name}: the same parts do animate otherwise`, usual.every((name) => name !== "none") ? [] : [`no animation on: ${usual.join(", ")}`]);
-    await moving.close();
+    // 5. Motion: there is some by default, and none for a reader who asked for less.
+    const animated = `["#outcome ol.results li", "#removals .node", "aside.worth .track .fill"].map((selector) => { const element = document.querySelector(selector); return element ? getComputedStyle(element).animationName : "missing: " + selector; })`;
+    const path = (found.find((example) => example.kind === "thin") ?? found[0])?.href ?? "/";
+    for (const [reduced, name] of [[true, "nothing animates under prefers-reduced-motion"], [false, "the same parts do animate otherwise"]] as const) {
+      const probe = await openPage(chrome.port, view, reduced);
+      await ask(`${at}: ${name}`, async () => {
+        await arrive(probe, path);
+        const names = await probe.evaluate<string[]>(animated);
+        return names.every((animation) => (reduced ? animation === "none" : animation !== "none" && !animation.startsWith("missing"))) ? [] : [`animations: ${names.join(", ")}`];
+      });
+      await probe.close();
+    }
   }
 } finally {
   chrome.child.kill();
-  service.close();
+  service?.close();
   rmSync(chrome.profile, { recursive: true, force: true, maxRetries: 5 });
 }
 

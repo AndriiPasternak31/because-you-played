@@ -10,7 +10,7 @@ import { VERSIONS } from "../pipeline/versions.ts";
 import { route } from "../service/http.ts";
 import type { Recommendation } from "../service/recommend.ts";
 import { loadService } from "../service/state.ts";
-import { compareView, esc, gameOptions, renderEvaluation, renderTrace, traceView, versionName, whatIfView } from "./view.js";
+import { compareView, esc, findExamples, gameOptions, renderEvaluation, renderExamples, renderTrace, traceView, versionName, whatIfView } from "./view.js";
 
 const service = loadService();
 const games = service.index.records.map((record) => record.game_id);
@@ -211,41 +211,255 @@ test("UI-6: for a game whose tag contradicts its description, the page shows the
   }
 });
 
+/** One request as the service answers it. */
+const ask = (path: string): Recommendation => JSON.parse(route(service, "GET", path).body) as Recommendation;
+/** The brand with the most live games, as the catalogue route counts them. */
+const home = ((JSON.parse(route(service, "GET", "/api/catalogue").body) as { brands: { brand: string; live: number }[] }).brands.sort((a, b) => b.live - a.live)[0] as { brand: string }).brand;
+type Held = { label: string; method: string; quote: string; source_field: string };
+const held = (response: Recommendation): (Held & { field: string })[] => {
+  const fields = response.trace?.anchor?.fields;
+  if (!fields) return [];
+  return (["themes", "mechanics"] as const).flatMap((field) => (fields[field]?.labels ?? []).map((label) => ({ ...(label as Held), field })));
+};
+
 test("UI-7: a quote is marked where it sits in the record's own text, and a bar is as long as the number the response carries", () => {
-  const brand = brands[0] as string;
   const marksIn = (html: string): string[] => [...html.matchAll(/<mark>(.*?)<\/mark>/g)].map((match) => match[1] as string);
+  const plain = (html: string): string => html.replaceAll(/<sup class="ref">[^<]*<\/sup>/g, "").replaceAll(/<\/?mark>/g, "");
   let quotesSeen = 0;
   for (const game of games) {
-    const response = JSON.parse(route(service, "GET", `/api/inspect?game=${game}&brand=${brand}&version=model_everywhere`).body) as Recommendation;
+    const response = ask(`/api/inspect?game=${game}&brand=${home}&version=model_everywhere`);
     const anchor = response.trace?.anchor;
     assert.ok(anchor, `${game}: no record in the trace`);
     const html = renderTrace(response);
-    const contexts = [...html.matchAll(/<p class="copy">(.*?)<\/p>/g)].map((match) => match[1] as string);
-    const model = [...anchor.steps.model.themes, ...anchor.steps.model.mechanics];
+    const texts = [...html.matchAll(/<p class="copy">(.*?)<\/p>/g)].map((match) => match[1] as string);
     for (const field of ["title", "description"] as const) {
-      const quotes = model.filter((entry) => entry.source_field === field).map((entry) => entry.quote);
-      if (quotes.length === 0) continue;
       const text = anchor.steps.cleaned[field];
-      assert.ok(typeof text === "string", `${game}: a quote names a ${field} the record does not have`);
-      // The words in place are the record's own text, with nothing added but the marks.
-      const context = contexts.find((candidate) => candidate.replaceAll(/<\/?mark>/g, "") === esc(text));
-      assert.ok(context !== undefined, `${game}: the cleaned ${field} is not shown with its quotes in place`);
-      for (const quote of quotes) assert.ok(marksIn(context).some((marked) => marked.includes(esc(quote))), `${game}: "${quote}" is not marked in the ${field}`);
+      const quotes = held(response).filter((entry) => entry.source_field === field).map((entry) => entry.quote);
+      if (typeof text !== "string") {
+        assert.equal(quotes.length, 0, `${game}: a label quotes a ${field} the record does not have`);
+        continue;
+      }
+      // The text shown is the record's own, with nothing added but the marks and their numbers.
+      const shown = texts.find((candidate) => plain(candidate) === esc(text));
+      assert.ok(shown !== undefined, `${game}: the cleaned ${field} is not shown`);
+      for (const quote of quotes) assert.ok(marksIn(shown).some((marked) => marked.includes(esc(quote))), `${game}: "${quote}" is not marked in the ${field}`);
       quotesSeen += quotes.length;
     }
-    assert.ok(!html.includes("not found in this text"), `${game}: a stored quote could not be placed`);
+    assert.ok(!html.includes("words not found in the record"), `${game}: a stored quote could not be placed`);
+    // The one phrase shown on its own is a quote of a label the model added and this version holds.
+    const phrase = /<blockquote data-phrase>“(.*?)”<\/blockquote>/.exec(html)?.[1];
+    const fromModel = held(response).filter((entry) => entry.method === "model");
+    if (fromModel.length === 0) assert.equal(phrase, undefined, `${game}: a phrase is shown though the model added nothing`);
+    else assert.ok(fromModel.some((entry) => esc(entry.quote) === phrase), `${game}: the phrase shown is not one the model quoted`);
   }
-  assert.ok(quotesSeen > 0, "no model quote was checked");
+  assert.ok(quotesSeen > 0, "no quote was checked");
 
   // A quote that is not in the text is said, not dropped; and a bar follows the number in the response.
-  const busy = games.map((id) => JSON.parse(route(service, "GET", `/api/inspect?game=${id}&brand=${brand}&version=model_everywhere`).body) as Recommendation).find((response) => response.results.length > 0 && (response.trace?.anchor?.steps.model.mechanics.length ?? 0) > 0);
-  assert.ok(busy?.trace?.anchor && busy.trace.scores[0] !== undefined && busy.trace.anchor.steps.model.mechanics[0] !== undefined);
-  busy.trace.anchor.steps.model.mechanics[0].source_field = "description";
-  busy.trace.anchor.steps.model.mechanics[0].quote = "words that are nowhere in this record";
+  const busy = games.map((id) => ask(`/api/inspect?game=${id}&brand=${home}&version=model_everywhere`)).find((response) => response.results.length > 0 && held(response).some((entry) => entry.method === "model" && entry.source_field === "description"));
+  assert.ok(busy?.trace?.anchor?.fields && busy.trace.scores[0] !== undefined);
+  const lost = [...busy.trace.anchor.fields.themes.labels, ...busy.trace.anchor.fields.mechanics.labels].find((entry) => entry.method === "model" && entry.source_field === "description");
+  assert.ok(lost);
+  lost.quote = "words that are nowhere in this record";
   busy.trace.scores[0].score = 0.4321;
   busy.trace.floor = 0.1234;
   const changed = renderTrace(busy);
-  assert.ok(text(changed).includes("1 not found in this text"));
+  assert.equal(changed.split("words not found in the record").length - 1, 1);
   assert.ok(changed.includes('style="width:43.21%"'), "the bar is not as long as the score");
   assert.ok(changed.includes('style="left:12.34%"'), "the tick is not at the floor");
+});
+
+test("UI-8: the result or the decline comes first, said in a sentence, and the evidence comes beneath it with the detail folded away", async () => {
+  const { get } = getter();
+  const evaluation = await get("/api/evaluation");
+  let results = 0;
+  let declines = 0;
+  for (const brand of brands) {
+    for (const game of games) {
+      const html = await traceView(get, { game, brand, version: service.served.version, served: service.served.version, versions: VERSIONS, evaluation });
+      const at = (marker: string): number => html.indexOf(marker);
+      assert.equal(at('<section id="outcome"'), 0, `${game} on ${brand}: the page does not start with the outcome`);
+      const answer = html.slice(0, at("</section>"));
+      if (answer.includes("data-results")) {
+        results += 1;
+        assert.match(text(answer), /Given .+ on .+, the service returns \d+ related games? that (is|are) live there, best match first\./, `${game} on ${brand}`);
+        assert.ok(at('id="outcome"') < at('id="enrichment"') && at('id="enrichment"') < at('id="removals"'), `${game} on ${brand}: the evidence is out of order`);
+      } else {
+        declines += 1;
+        assert.ok(answer.includes("data-decline"), `${game} on ${brand}: neither a result nor a decline comes first`);
+        assert.match(text(answer), /Given .+ on .+, the service recommends nothing, and says why\./);
+      }
+      // What is true and not first is on the page, closed, each under its own named control.
+      for (const drawer of ["raw-record", "steps", "scores", "provenance"]) {
+        if (at(`id="${drawer}"`) === -1) continue;
+        assert.ok(html.includes(`<details id="${drawer}" class="drawer"><summary>`), `${game} on ${brand}: ${drawer} is not folded away`);
+      }
+      assert.ok(!html.includes("<details open") && !/<details[^>]* open/.test(html), `${game} on ${brand}: a drawer starts open`);
+    }
+  }
+  assert.ok(results > 0 && declines > 0);
+  const summaries = [...(await traceView(get, { game: games[0] as string, brand: home, served: service.served.version })).matchAll(/<summary>(.*?)<\/summary>/g)].map((match) => text(match[1] as string).trim());
+  assert.equal(new Set(summaries).size, summaries.length, "two controls carry the same name");
+  for (const summary of summaries) assert.ok(summary.length > 20 && !/^(show )?(more|details)$/i.test(summary), `"${summary}" does not say what it opens`);
+});
+
+test("UI-9: what a result is said to have in common with the game played is held by both, and it is never offered as the cause of the score", async () => {
+  const { get } = getter();
+  let cards = 0;
+  for (const game of games) {
+    const response = ask(`/api/recommendations?game=${game}&brand=${home}&trace=1`);
+    if (response.outcome !== "results") continue;
+    const html = await traceView(get, { game, brand: home, version: service.served.version, served: service.served.version });
+    const mine = held(response);
+    const items = (html.split('<ol class="results" data-results>')[1] ?? "").split("</ol>")[0]?.split("<li ").slice(1) ?? [];
+    assert.equal(items.length, response.results.length);
+    for (const [index, result] of response.results.entries()) {
+      const theirs = held(ask(`/api/inspect?game=${result.game_id}&brand=${home}&version=${service.served.version}`));
+      const expected = mine.filter((label) => theirs.some((other) => other.field === label.field && other.label === label.label)).map((label) => label.label.replaceAll("_", " "));
+      const shown = [...(items[index] ?? "").matchAll(/<span class="tag (?:model|table)">(.*?)<\/span>/g)].map((match) => match[1] as string);
+      assert.deepEqual(shown, expected.map((label) => esc(label)), `${game}: what ${result.game_id} has in common is not what both hold`);
+      if (expected.length === 0) assert.ok(text(items[index] ?? "").includes("No label in common"), `${game}: ${result.game_id} shows no reason and does not say so`);
+      cards += 1;
+    }
+    assert.ok(text(html).includes("cannot be traced to single labels") && text(html).includes("not as the cause of its score"));
+    assert.ok(!/because (it|they) share|ranked (first|higher) because/i.test(text(html)));
+  }
+  assert.ok(cards > 100, `only ${cards} results were checked`);
+});
+
+test("UI-10: beside the result, the other versions' answers are counted as the service gave them and the measured numbers are the report's; a different list is not called better", async () => {
+  const { get } = getter();
+  const evaluation = (await get("/api/evaluation")) as { report: { matching: Record<string, { pairwise: { pooled: { rate: number } }; cost: { estimated_usd: number; model_calls: number } }> } };
+  let differing = 0;
+  for (const game of games) {
+    const html = await traceView(get, { game, brand: home, version: service.served.version, served: service.served.version, versions: VERSIONS, evaluation });
+    const aside = html.slice(html.indexOf("<aside"), html.indexOf("</aside>"));
+    assert.ok(aside.length > 0 && html.indexOf("<aside") < html.indexOf("</section>"), `${game}: the model's value is not beside the result`);
+    const mine = ask(`/api/recommendations?game=${game}&brand=${home}`).results.map((entry) => entry.game_id);
+    const lines = (aside.split("data-others>")[1] ?? "").split("</ul>")[0]?.split("<li>").slice(1) ?? [];
+    const others = VERSIONS.filter((version) => version !== service.served.version);
+    assert.equal(lines.length, others.length);
+    for (const [index, version] of others.entries()) {
+      const other = ask(`/api/inspect?game=${game}&brand=${home}&version=${version}`);
+      const theirs = other.results.map((entry) => entry.game_id);
+      const same = theirs.filter((id) => mine.includes(id)).length;
+      const line = text(lines[index] ?? "");
+      assert.ok(line.includes(versionName(version)), `${game}: no line for ${version}`);
+      assert.ok(line.includes(evaluation.report.matching[version]?.cost.model_calls === 0 ? "no model" : "model"), `${game}: ${version} is not marked by how it was built`);
+      if (other.outcome === "declined") assert.ok(line.includes("declines"), `${game}: ${version} declines and the line does not say so`);
+      else if (mine.length === 0) assert.ok(line.includes(`returns ${theirs.length} game`));
+      else if (same === mine.length && theirs.length === same) assert.ok(line.includes("the same games"), `${game}: ${version} returns the same games`);
+      else {
+        differing += 1;
+        assert.ok(line.includes(`${same} of these ${mine.length}`), `${game}: ${version} shares ${same} of ${mine.length}, the line says "${line}"`);
+        if (theirs.length > same) assert.ok(line.includes(`and ${theirs.length - same} other`), `${game}: ${version} returns ${theirs.length - same} other game(s)`);
+      }
+    }
+    assert.ok(text(aside).includes("A different list is not a better list."));
+  }
+  assert.ok(differing > 0, "no version ever differed, so the differing case was not checked");
+  const html = await traceView(get, { game: games[0] as string, brand: home, served: service.served.version, versions: VERSIONS, evaluation });
+  const measured = (html.split("data-measured>")[1] ?? "").split("</table>")[0] ?? "";
+  for (const version of VERSIONS) {
+    const row = evaluation.report.matching[version];
+    assert.ok(row !== undefined && text(measured).includes(`${(row.pairwise.pooled.rate * 100).toFixed(1)}%`) && measured.includes(`$${row.cost.estimated_usd.toFixed(4)}`), `${version}: its measured numbers are not beside the result`);
+  }
+  assert.ok(text(html).includes("It shows direction, not how real players would judge a list."));
+  assert.ok(renderEvaluation(evaluation).includes("data-limits"));
+});
+
+test("UI-11: the path shows the trace's own counts in the trace's order, availability first, as three different things, and points out a game where it was removed", () => {
+  let limited = 0;
+  for (const brand of brands) {
+    for (const game of games) {
+      const response = ask(`/api/recommendations?game=${game}&brand=${brand}&trace=1`);
+      const filters = response.trace?.filters ?? [];
+      if (filters.length === 0) continue;
+      const html = renderTrace(response);
+      const path = html.slice(html.indexOf('<section id="removals"'), html.indexOf('<details id="scores"') === -1 ? html.indexOf('<section id="removals"') + 100000 : html.indexOf('<details id="scores"'));
+      const counts = [...path.matchAll(/<span class="n num">([^<]*)<\/span><span class="name">([^<]*)<\/span>/g)].map((match) => [match[1], match[2]]);
+      const first = filters[0];
+      assert.ok(first !== undefined && first.filter === "not_live_on_brand", `${game} on ${brand}: availability is not the first filter`);
+      assert.deepEqual(counts[0], [String(first.removed.length + first.remaining), "In the catalogue"]);
+      assert.deepEqual(counts[1], [String(first.remaining), "Live on this brand"]);
+      assert.deepEqual(counts.slice(1, -1).map((entry) => entry[0]), filters.map((step) => String(step.remaining)), `${game} on ${brand}: the counts are not the trace's`);
+      assert.deepEqual(counts.at(-1), [String(response.results.length), "Shown"]);
+      const stages = [...path.matchAll(/<div class="stage (\w+)">/g)].map((match) => match[1]);
+      // Three different things, in this order. A request that ends at the floor has no third.
+      assert.deepEqual(stages, ["eligible", "similar", "limit"].slice(0, stages.length), `${game} on ${brand}`);
+      assert.ok(stages.length >= 2 && (response.outcome !== "results" || stages.length === 3), `${game} on ${brand}: ${stages.join(", ")}`);
+      assert.ok(text(path).includes("Rules, not scores.") && text(path).includes("not that a player would find it relevant"));
+      // A game that cleared the floor and is not shown is named, with the reason the trace gives.
+      const cut = filters.filter((step) => step.filter === "family_cap" || step.filter === "over_limit").flatMap((step) => step.removed);
+      if (stages.length < 3) assert.equal(cut.length, 0);
+      else if (cut.length === 0) assert.ok(text(path).includes("Every game that cleared the floor is shown."));
+      else if (cut.length <= 3) {
+        limited += 1;
+        for (const entry of cut) assert.ok(path.includes(`<strong>${esc(entry.title)}</strong> (${esc(entry.why.replaceAll("_", " "))})`), `${game} on ${brand}: ${entry.game_id} cleared the floor, is not shown, and is not named`);
+      }
+      assert.ok(!path.includes('aria-expanded="true"') && !path.includes("data-focus"), "a step is open though nothing was pointed out");
+    }
+  }
+  assert.ok(limited > 0, "no game was ever cut by the limit, so that sentence was not checked");
+  // Pointed at a game the first filter removed, the page opens that step and marks the game.
+  const withRemoved = games.map((game) => ask(`/api/recommendations?game=${game}&brand=${home}&trace=1`)).find((response) => (response.trace?.filters[0]?.removed.length ?? 0) > 0);
+  const gone = withRemoved?.trace?.filters[0]?.removed[0];
+  assert.ok(withRemoved && gone);
+  const pointed = renderTrace(withRemoved, { focus: gone.game_id });
+  assert.ok(pointed.includes("data-focus") && pointed.includes(`<strong>${esc(gone.title)}</strong> was taken out at the step “Live on this brand”`));
+  assert.equal(pointed.split('aria-expanded="true"').length - 1, 1);
+  assert.ok(pointed.includes('<div id="step-0" class="step-panel">') && pointed.includes('<li class="focus">'));
+});
+
+test("UI-12: the examples are found in the data, each shows what it says, and they follow the data when it changes", async () => {
+  const { get, asked } = getter();
+  const catalogue = (await get("/api/catalogue")) as { games: { game_id: string; title: string; thin: boolean }[]; served: { version: string } };
+  const evaluation = (await get("/api/evaluation")) as { report: { gallery: { real: { game_id: string; what: string }[] } } };
+  const examples = await findExamples(get, catalogue, evaluation);
+  assert.ok(asked.every((url) => /^\/api\/(catalogue|recommendations|inspect|evaluation)(\?|$)/.test(url)));
+  assert.deepEqual(examples.map((example) => example.kind), ["thin", "plain", "conflict", "filter", "decline", "versions", "failure"]);
+  for (const example of examples) assert.ok(example.found && example.note.length > 20 && example.href?.startsWith("/?game="), `${example.kind}: ${example.note}`);
+  const of = (kind: string) => {
+    const example = examples.find((entry) => entry.kind === kind);
+    assert.ok(example?.game !== undefined && example.brand !== undefined);
+    return { ...example, game: example.game, brand: example.brand, response: ask(`/api/recommendations?game=${example.game}&brand=${example.brand}&trace=1`) };
+  };
+  // Each example is checked against the service, not against what the finder says about itself.
+  const thin = of("thin");
+  assert.ok(thin.response.trace?.anchor?.thin === true && thin.response.outcome === "results" && held(thin.response).some((label) => label.method === "model"));
+  const plain = of("plain");
+  assert.ok(plain.response.trace?.anchor?.thin === false && held(plain.response).length > 0 && held(plain.response).every((label) => label.method !== "model"));
+  const conflict = of("conflict");
+  assert.ok(conflict.response.trace?.anchor?.steps.conflict !== null);
+  const filter = of("filter");
+  assert.ok(filter.focus !== undefined && filter.response.trace?.filters[0]?.removed.some((entry) => entry.game_id === filter.focus));
+  assert.ok(brands.some((brand) => ask(`/api/recommendations?game=${filter.game}&brand=${brand}`).results[0]?.game_id === filter.focus), "the removed game is the best match on no brand");
+  assert.equal(of("decline").response.outcome, "declined");
+  const versions = of("versions");
+  assert.ok(new Set(VERSIONS.map((version) => ask(`/api/inspect?game=${versions.game}&brand=${versions.brand}&version=${version}`).results.map((entry) => entry.game_id).join(" "))).size > 1);
+  const failure = of("failure");
+  assert.ok(evaluation.report.gallery.real.some((entry) => entry.game_id === failure.game));
+  // Opened, the failure is said on the first screen in the evaluation's own words.
+  const opened = await traceView(get, { game: failure.game, brand: failure.brand, served: service.served.version, evaluation });
+  const said = evaluation.report.gallery.real.find((entry) => entry.game_id === failure.game)?.what ?? "";
+  assert.ok(opened.includes("data-failure") && opened.indexOf("data-failure") < opened.indexOf("</section>") && opened.includes(esc(said)));
+
+  // No game is named in the console's own files.
+  const sources = ["view.js", "app.js", "index.html", "console.css"].map((file) => readFileSync(`src/console/${file}`, "utf8")).join("\n");
+  for (const game of catalogue.games) assert.ok(!sources.includes(game.game_id) && !sources.includes(game.title), `${game.game_id} is named in the console`);
+
+  // The data changed: without the game it chose, the example is another true one, and with no thin record there is none to show.
+  const without = await findExamples(get, { ...catalogue, games: catalogue.games.filter((game) => game.game_id !== thin.game) }, evaluation);
+  const other = without.find((example) => example.kind === "thin");
+  assert.ok(other?.found && other.game !== thin.game, "the thin example does not follow the catalogue");
+  const otherAnswer = ask(`/api/recommendations?game=${other.game}&brand=${other.brand}&trace=1`);
+  assert.ok(otherAnswer.trace?.anchor?.thin === true && held(otherAnswer).some((label) => label.method === "model"));
+  const none = await findExamples(get, { ...catalogue, games: catalogue.games.filter((game) => !game.thin) }, evaluation);
+  const missing = none.find((example) => example.kind === "thin");
+  assert.ok(missing !== undefined && !missing.found && missing.href === undefined);
+  const drawn = renderExamples(none, "");
+  assert.ok(drawn.includes('<li class="missing">') && text(drawn).includes("No game in this catalogue shows it."));
+  // The open example is marked, and its line is shown above the result.
+  assert.equal(renderExamples(examples, thin.href?.slice(1)).split('aria-current="true"').length - 1, 1);
+  const pointed = renderTrace(thin.response, { look: { note: thin.note, target: "enrichment" } });
+  assert.ok(pointed.includes("data-look") && pointed.includes(esc(thin.note)) && pointed.includes('href="#enrichment"'));
 });

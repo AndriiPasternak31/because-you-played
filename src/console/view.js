@@ -1,10 +1,15 @@
 // The console's views: plain functions from the service's responses to HTML text.
 //
+// The page answers four questions in order: what the system recommends, why these and not
+// others, what the model added, and whether the model was worth it. The detail behind each
+// answer stays on the page, folded away under a labelled control.
+//
 // Nothing here computes a score, a label or a verdict. Every value shown is read from a
 // response of this service, fetched through the `get` function a view is given, and every
 // piece of text from a response is escaped before it reaches the page: catalogue text is data.
-// What a view does add is drawing: a bar as long as a number the response carries, a count of a
-// list it carries, a quote marked where it sits in the text it was copied from.
+// What a view adds is reading and drawing: a bar as long as a number the response carries, a
+// count of a list it carries, a quote marked where it sits in the text it was copied from, the
+// labels two records both hold, and a search of the responses for a game that shows a moment.
 // The same file runs in the browser and under the tests, which is why it touches no DOM.
 
 const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -24,59 +29,237 @@ const count = (value) => esc(typeof value === "number" ? value.toLocaleString("e
 const plural = (number, one, many) => `${count(number)} ${number === 1 ? one : many}`;
 /** A share of a track, for a value between 0 and 1. */
 const width = (value) => `${(Math.max(0, Math.min(1, Number(value))) * 100).toFixed(2)}%`;
+const url = (path, params) => `${path}?${new URLSearchParams(params).toString()}`;
 
-function section(id, kicker, heading, lede, body) {
-  return `<section id="${id}" class="section"><p class="kicker">${esc(kicker)}</p><h3>${esc(heading)}</h3><p class="lede">${lede}</p>${body}</section>`;
-}
-
-/** One of the five steps of a trace. `state` is done, skipped (the step never ran) or declined. */
-function stage(number, id, kicker, heading, lede, body, state = "done") {
-  return (
-    `<section id="${id}" class="stage ${state}"><span class="node" aria-hidden="true">${number}</span>` +
-    `<p class="kicker"><span class="sr">Step ${number}: </span>${esc(kicker)}</p><h3>${esc(heading)}</h3><p class="lede">${lede}</p>${body}</section>`
-  );
+/** Detail that is true and not the first thing to read: folded away under a summary that says what it holds. */
+function drawer(id, summary, lede, body) {
+  return `<details id="${id}" class="drawer"><summary>${summary}</summary><div class="drawer-body">${lede ? `<p class="lede">${lede}</p>` : ""}${body}</div></details>`;
 }
 
 const VERSION_NAMES = { raw: "Raw text", table: "Synonym table", model_where_thin: "Model where thin", model_everywhere: "Model everywhere" };
 export const versionName = (version) => VERSION_NAMES[version] ?? version;
 
-// ---------------------------------------------------------------------------
-// Trace: one request, top to bottom
-// ---------------------------------------------------------------------------
-
-const STEPS = [
-  ["raw-record", "Record"],
-  ["enrichment", "Labels"],
-  ["removals", "Removed"],
-  ["scores", "Scored"],
-  ["outcome", "Outcome"],
-];
-
-/** The five steps at a glance. `facts` gives each step its one fact and whether it ran; with none, the steps are only named. */
-function flow(facts) {
-  const items = STEPS.map(([id, name], index) => {
-    const fact = facts?.[index];
-    const classes = [fact?.state ?? (facts ? "" : "off"), facts?.[index + 1]?.state === "off" ? "before-off" : ""].filter(Boolean).join(" ");
-    const inner = `<span class="kicker">${name}</span>${fact ? `<span class="v num">${fact.text}</span>` : ""}`;
-    return `<li style="--i:${index}"${classes ? ` class="${classes}"` : ""}>${facts ? `<a href="#${id}">${inner}</a>` : `<span class="step">${inner}</span>`}</li>`;
-  });
-  return `<ol class="flow" aria-label="The five steps of a request">${items.join("")}</ol>`;
+/** The labels a version holds for a record, themes first. */
+function heldLabels(anchor) {
+  if (!anchor || anchor.fields === null || anchor.fields === undefined) return [];
+  return ["themes", "mechanics"].flatMap((field) => (anchor.fields[field]?.labels ?? []).map((entry) => ({ ...entry, field })));
 }
 
-function traceFlow(response) {
+// ---------------------------------------------------------------------------
+// 1 · What it recommends
+// ---------------------------------------------------------------------------
+
+/** The labels of the game played that a recommended game also holds, in the same version. */
+function sharedLabels(anchor, neighbour) {
+  const theirs = heldLabels(neighbour?.trace?.anchor);
+  return heldLabels(anchor).filter((mine) => theirs.some((other) => other.field === mine.field && other.label === mine.label));
+}
+
+const pct = (value) => (value === null || value === undefined ? "–" : `${(value * 100).toFixed(1)}%`);
+
+/**
+ * The model's value, beside the result: what the other versions return for this request, and what the
+ * evaluation measured over every game. A different list is not called a better one; only the measured numbers are.
+ */
+function worth(response, { versions, evaluation }) {
+  if (versions === undefined && evaluation === undefined) return "";
+  let here = "";
+  if (versions !== undefined) {
+    const mine = response.results.map((entry) => entry.game_id);
+    const lines = Object.keys(versions)
+      .filter((version) => version !== response.served.version)
+      .map((version) => {
+        const theirs = versions[version].results.map((entry) => entry.game_id);
+        const same = theirs.filter((id) => mine.includes(id)).length;
+        const calls = evaluation?.report.matching[version]?.cost.model_calls;
+        const built = calls === undefined ? "" : calls === 0 ? ` ${label("neutral", "no model")}` : ` ${label("blue", "model")}`;
+        let returns;
+        if (versions[version].outcome === "declined") returns = "declines";
+        else if (mine.length === 0) returns = `returns ${plural(theirs.length, "game", "games")}`;
+        else if (same === mine.length && theirs.length === same) returns = theirs.join() === mine.join() ? "the same games, same order" : "the same games, another order";
+        else returns = `${count(same)} of these ${count(mine.length)}${theirs.length > same ? `, and ${plural(theirs.length - same, "other", "others")}` : ""}`;
+        return `<li><span>${esc(versionName(version))}${built}</span><span class="num">${returns}</span></li>`;
+      })
+      .join("");
+    here = `<h3>This request in the other versions</h3><ul class="others" data-others>${lines}</ul><p class="small">A different list is not a better list. Whether the model's lists are better is measured, over every game:</p>`;
+  }
+  let measured = "";
+  if (evaluation !== undefined) {
+    const { report, verdict } = evaluation;
+    const names = Object.keys(report.matching);
+    const dearest = Math.max(...names.map((version) => report.matching[version].cost.estimated_usd));
+    const rows = names
+      .map((version) => {
+        const row = report.matching[version];
+        const failed = report.decision.versions[version]?.passed === false ? `<br>${label("red", "fails a pass mark")}` : "";
+        return (
+          `<tr${version === verdict.ships ? ' class="served"' : ""}><th scope="row">${esc(versionName(version))}${version === verdict.ships ? ` ${label("green", "served")}` : ""}${failed}</th>` +
+          `<td class="num">${pct(row.pairwise.pooled.rate)}<span class="track"><span class="fill" style="width:${width(row.pairwise.pooled.rate ?? 0)}"></span></span></td>` +
+          `<td class="num">$${esc(row.cost.estimated_usd.toFixed(4))}<span class="track"><span class="fill blue" style="width:${width(dearest > 0 ? row.cost.estimated_usd / dearest : 0)}"></span></span></td></tr>`
+        );
+      })
+      .join("");
+    measured =
+      `<h3>Measured over the whole catalogue</h3><table class="mini-race" data-measured><thead><tr><th scope="col">Version</th><th scope="col" class="num">Ranked right</th><th scope="col" class="num">Cost to build</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<p class="small">Ranked right: how often a related game scores above an unrelated one, against the answer key of this fictional catalogue. It shows direction, not how real players would judge a list. <a href="#evaluation">The evidence behind it</a></p>`;
+  }
+  return `<aside class="worth" aria-label="Was the model worth it, in short"><p class="kicker">Was the model worth it? In short</p>${here}${measured}</aside>`;
+}
+
+function answer(response, extras) {
+  const { neighbours, evaluation, look } = extras;
+  const anchor = response.trace?.anchor ?? null;
+  const title = esc(anchor ? anchor.title : response.request.game_id);
+  const brand = esc(response.request.brand);
+  const inspection =
+    response.inspection && !response.inspection.is_served_version
+      ? `<p class="callout blue"><span>${label("neutral", "inspection")} This is ${esc(versionName(response.served.version))}, shown for comparison. Players are served ${esc(versionName(response.inspection.served_version))}.</span></p>`
+      : "";
+  const pointer = look?.note ? `<p class="look" data-look>${label("neutral", "this example")} <span>${esc(look.note)}${look.target ? ` <a href="#${esc(look.target)}">See it below</a>` : ""}</span></p>` : "";
+  // A failure the evaluation itself lists for this game is said with the result, not left for the reader to find.
+  const failures = (evaluation?.report.gallery.real ?? [])
+    .filter((entry) => anchor !== null && entry.game_id === anchor.game_id)
+    .map((entry) => {
+      const about = [entry.detail?.label ? `label ${words(entry.detail.label)}` : "", entry.version ? `in ${versionName(entry.version)}` : ""].filter(Boolean).join(", ");
+      return `<p class="callout amber" data-failure><span>${label("amber", "a failure the evaluation found")} ${esc(entry.what)}${about ? ` <span class="small">${esc(about)}</span>` : ""}</span></p>`;
+    })
+    .join("");
+  const head = `<p class="kicker">1 · What it recommends</p><h2>Because you played <em>${title}</em> <span class="small">on ${brand}</span></h2>${inspection}`;
+
+  let main;
+  if (response.outcome === "declined") {
+    main =
+      `<div class="callout amber decline"><p data-decline>${label("amber", "declined")} <strong>Given ${title} on ${brand}, the service recommends nothing, and says why.</strong></p>` +
+      `<p class="reason">${esc(response.decline.detail)}</p><p>A player would see nothing. <span class="small">Reason code ${mono(response.decline.reason)}</span></p></div>${failures}${pointer}`;
+  } else {
+    const cards = response.results
+      .map((entry, index) => {
+        let common = "";
+        if (neighbours !== undefined) {
+          const shared = sharedLabels(anchor, neighbours[entry.game_id]);
+          if (anchor?.fields === null) common = '<p class="why small">No labels in this version: only the two texts are alike.</p>';
+          else if (shared.length === 0) common = '<p class="why small">No label in common: only the two texts are alike.</p>';
+          else common = `<p class="why" data-shared><span class="small">in common</span> ${shared.map((held) => tag(held.method, held.label)).join(" ")}</p>`;
+        }
+        return `<li style="--i:${index}"><span class="rank num">${esc(entry.rank)}</span><div><strong>${esc(entry.title)}</strong> <span class="small">${esc(entry.provider)} · ${mono(entry.game_id)}</span>${common}</div><span class="score num">score ${esc(entry.score)}</span></li>`;
+      })
+      .join("");
+    const reading =
+      neighbours === undefined
+        ? ""
+        : `<p class="small">The order is a similarity between two texts and cannot be traced to single labels. What a game has in common with the one played is shown to help read the list, not as the cause of its score. ${tag("model", "blue")} was added by the model, ${tag("table", "plain")} came from the supplier's tags.</p>`;
+    main =
+      `<p class="lede">${label("green", "result")} Given <strong>${title}</strong> on <strong>${brand}</strong>, the service returns ${plural(response.results.length, "related game that is", "related games that are")} live there, best match first.</p>` +
+      `<ol class="results" data-results>${cards}</ol>${failures}${pointer}${reading}`;
+  }
+  return `<section id="outcome" class="block answer">${head}<div class="split"><div class="main">${main}</div>${worth(response, extras)}</div></section>`;
+}
+
+// ---------------------------------------------------------------------------
+// 3 · Why these and not others
+// ---------------------------------------------------------------------------
+
+/**
+ * What a game has to be to pass each filter, and which of three different things the filter decides.
+ * A filter the console does not know keeps the service's own name and stands apart.
+ */
+const STEPS = {
+  not_live_on_brand: { name: "Live on this brand", group: "eligible" },
+  anchor_or_duplicate: { name: "Not the game itself", group: "eligible" },
+  insufficient_data: { name: "Enough to compare", group: "eligible" },
+  below_floor: { name: "Similar enough", group: "similar" },
+  family_cap: { name: "One per family", group: "limit" },
+  over_limit: { name: "Within the limit", group: "limit" },
+};
+const GROUPS = { eligible: "Which games may be shown at all", similar: "Which of them are similar enough", limit: "How many are shown", other: "Other steps" };
+const stepName = (filter) => STEPS[filter]?.name ?? words(filter);
+const stepGroup = (filter) => STEPS[filter]?.group ?? "other";
+
+function scoreTable(trace) {
+  let floorDrawn = false;
+  const floorRow = `<tr class="floor"><td colspan="4">${label("neutral", "similarity floor")} <span class="num">${esc(trace.floor)}</span> <span class="small">${esc(trace.floor_rule)}</span></td></tr>`;
+  const rows = trace.scores
+    .map((entry) => {
+      const below = entry.score < trace.floor;
+      const line = below && !floorDrawn ? floorRow : "";
+      if (below) floorDrawn = true;
+      const bar = `<span class="track"><span class="fill${below ? " quiet" : ""}" style="width:${width(entry.score)}"></span><span class="at" style="left:${width(trace.floor)}" title="similarity floor"></span></span>`;
+      return `${line}<tr${below ? ' class="below"' : ""}><td class="num">${esc(entry.rank)}</td><td>${game(entry)}</td><td class="num">${esc(entry.score)}</td><td class="barcell">${bar}</td></tr>`;
+    })
+    .join("");
+  return drawer(
+    "scores",
+    `Every score against the floor: ${plural(trace.scores.length, "candidate", "candidates")}`,
+    "Each candidate's similarity to the game played. The tick on each bar is the similarity floor: a score under it is never shown to a player.",
+    `<div class="scroll tall" tabindex="0" role="region" aria-label="Scores of every candidate"><table class="scores"><thead><tr><th class="num">Rank</th><th>Game</th><th class="num">Score</th><th>From 0 to 1</th></tr></thead><tbody>${rows}${floorDrawn ? "" : floorRow}</tbody></table></div>`,
+  );
+}
+
+/**
+ * Why these games and not others: the steps the trace gives, in its order, set out as the three
+ * different things they decide. Eligibility is rules, the floor is a point in the spread of scores,
+ * and the limit is a number: none of them is evidence that a player would find the result relevant.
+ */
+function path(response, focus) {
   const { trace } = response;
-  const anchor = trace.anchor;
-  const held = anchor.fields === null ? null : anchor.fields.themes.labels.length + anchor.fields.mechanics.labels.length;
-  const removed = trace.filters.reduce((sum, step) => sum + step.removed.length, 0);
-  const declined = response.outcome === "declined";
-  return flow([
-    { text: anchor.evidence === "none" ? "nearly empty" : anchor.thin ? "thin" : "not thin" },
-    { text: held === null ? "none in this version" : plural(held, "label", "labels") },
-    trace.filters.length === 0 ? { text: "not run", state: "off" } : { text: `${count(removed)} removed` },
-    trace.scores.length === 0 ? { text: "nothing", state: "off" } : { text: `${count(trace.scores.length)} scored` },
-    declined ? { text: "declined", state: "amber" } : { text: plural(response.results.length, "result", "results") },
-  ]);
+  const head = '<p class="kicker">3 · Why these and not others</p><h2>Three things decide which games are shown</h2>';
+  if (trace.filters.length === 0) return `<section id="removals" class="block">${head}<p class="lede">The request was declined before any filter ran: no game was removed and none was scored.</p></section>`;
+  const start = trace.filters[0].removed.length + trace.filters[0].remaining;
+  const shown = response.results.length;
+  const bar = (remaining) => `<span class="track"><span class="fill" style="width:${width(start === 0 ? 0 : remaining / start)}"></span></span>`;
+  let found = "";
+  const node = (step, index) => {
+    const name = stepName(step.filter);
+    const hit = focus ? step.removed.find((entry) => entry.game_id === focus) : undefined;
+    if (hit) found = `<p class="callout amber" data-focus><span>${label("amber", "removed")} <strong>${esc(hit.title)}</strong> was taken out at the step “${esc(name)}”: ${esc(words(hit.why))}.</span></p>`;
+    const removed =
+      step.removed.length === 0
+        ? '<p class="small">This step removed nothing.</p>'
+        : `<ul class="removed">${step.removed.map((entry) => `<li${entry.game_id === focus ? ' class="focus"' : ""}><span>${game(entry)}</span><span class="why">${esc(words(entry.why))}</span></li>`).join("")}</ul>`;
+    return (
+      `<button type="button" class="node step${step.removed.length === 0 ? " quiet" : ""}" style="--i:${index + 1}" aria-expanded="${hit ? "true" : "false"}" aria-controls="step-${index}" title="${esc(step.filter)}">` +
+      `<span class="n num">${count(step.remaining)}</span><span class="name">${esc(name)}</span><span class="cut num">${step.removed.length === 0 ? "none removed" : `${count(step.removed.length)} removed`}</span>${bar(step.remaining)}</button>` +
+      `<div id="step-${index}" class="step-panel"${hit ? "" : " hidden"}><p><strong>${esc(name)}.</strong> ${esc(step.rule)}</p>${removed}</div>`
+    );
+  };
+  // Runs of neighbouring steps that decide the same thing, in the order the trace gives them.
+  const runs = [];
+  trace.filters.forEach((step, index) => {
+    const group = stepGroup(step.filter);
+    if (runs.at(-1)?.group !== group) runs.push({ group, steps: [] });
+    runs.at(-1).steps.push({ step, index });
+  });
+  const says = (run) => {
+    if (run.group === "eligible") return "Rules, not scores. A game that is not live on the brand is removed before anything is scored.";
+    if (run.group === "similar") return `The floor is ${esc(trace.floor)}. ${esc(trace.floor_rule)} It is a point in the spread of scores: it says a game is closer than most pairs are, not that a player would find it relevant.`;
+    if (run.group !== "limit") return "";
+    const cut = run.steps.flatMap(({ step }) => step.removed);
+    if (cut.length === 0) return "Every game that cleared the floor is shown.";
+    if (cut.length > 3) return `${plural(cut.length, "game", "games")} cleared the floor and are not shown. Open a step to see them.`;
+    return `Cleared the floor and not shown: ${cut.map((entry) => `<strong>${esc(entry.title)}</strong> (${esc(words(entry.why))})`).join(", ")}.`;
+  };
+  const groups = runs
+    .map((run, at) => {
+      const first = at === 0 ? `<div class="node start" style="--i:0"><span class="n num">${count(start)}</span><span class="name">In the catalogue</span><span class="cut">&nbsp;</span>${bar(start)}</div>` : "";
+      const last =
+        at === runs.length - 1 ? `<div class="node end${shown === 0 ? " none" : ""}" style="--i:${trace.filters.length + 1}"><span class="n num">${count(shown)}</span><span class="name">Shown</span><span class="cut">&nbsp;</span>${bar(shown)}</div>` : "";
+      const nodes = run.steps.map(({ step, index }) => node(step, index)).join("");
+      return `<div class="stage ${run.group}"><h3><span class="num">${at + 1}</span> ${GROUPS[run.group]}</h3><div class="path" style="--steps:${run.steps.length + (first ? 1 : 0) + (last ? 1 : 0)}">${first}${nodes}${last}</div><p class="small">${says(run)}</p></div>`;
+    })
+    .join("");
+  if (focus && found === "") {
+    const result = response.results.find((entry) => entry.game_id === focus);
+    if (result) found = `<p class="callout green" data-focus><span>${label("green", "shown")} <strong>${esc(result.title)}</strong> passes every step here and is shown at rank ${esc(result.rank)}.</span></p>`;
+  }
+  return (
+    `<section id="removals" class="block">${head}<p class="lede">Of the ${plural(start, "game", "games")} in the catalogue, ${shown === 0 ? "none is shown" : `${count(shown)} ${shown === 1 ? "is" : "are"} shown`}. Open a step to see what it removed.</p>${found}` +
+    `<div class="stages" role="group" aria-label="The steps from the catalogue to the result">${groups}</div>${trace.scores.length === 0 ? "" : scoreTable(trace)}</section>`
+  );
 }
+
+// ---------------------------------------------------------------------------
+// 2 · What the model added
+// ---------------------------------------------------------------------------
 
 function absent(value) {
   if (value === null || value === undefined) return '<span class="absent">(none delivered)</span>';
@@ -85,25 +268,132 @@ function absent(value) {
   return esc(typeof value === "object" ? JSON.stringify(value) : value);
 }
 
+const ref = (numbers) => (numbers.length === 0 ? "" : `<sup class="ref">${numbers.join(", ")}</sup>`);
+
+/**
+ * A text of the record with the words each label was read from marked in place, each mark followed by
+ * the numbers of its labels. Returns the numbers that were placed, so a quote that is not found is said.
+ */
+function markedText(text, labels) {
+  const spans = [];
+  for (const entry of labels) {
+    const start = entry.quote === "" ? -1 : text.indexOf(entry.quote);
+    if (start !== -1) spans.push({ start, end: start + entry.quote.length, numbers: [entry.n] });
+  }
+  spans.sort((a, b) => a.start - b.start);
+  const merged = [];
+  for (const span of spans) {
+    const last = merged.at(-1);
+    if (last && span.start <= last.end) {
+      last.end = Math.max(last.end, span.end);
+      last.numbers.push(...span.numbers);
+    } else merged.push(span);
+  }
+  let html = "";
+  let cursor = 0;
+  for (const span of merged) {
+    html += `${esc(text.slice(cursor, span.start))}<mark>${esc(text.slice(span.start, span.end))}</mark>${ref(span.numbers)}`;
+    cursor = span.end;
+  }
+  return { html: html + esc(text.slice(cursor)), placed: spans.flatMap((span) => span.numbers) };
+}
+
+const sameTag = (a, b) => a === b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+
+/** One or two sentences on what happened to this record on its way into this version of the index. */
+function story(anchor, version) {
+  if (anchor.fields === null) return `${esc(versionName(version))} holds no labels: it indexes the supplier's text as it is.`;
+  const held = heldLabels(anchor);
+  const fromModel = held.filter((entry) => entry.method === "model").length;
+  const fromTable = held.length - fromModel;
+  const { conflict, model } = anchor.steps;
+  const sentences = [];
+  if (conflict !== null) sentences.push(`A supplier tag says ${esc(words(conflict.tag_asserts))}, but the description says ${esc(conflict.description_states.map(words).join(", "))}. A lookup cannot tell which is right, so it asserts no mechanic.`);
+  else if (fromTable > 0) sentences.push(`The lookup table read ${plural(fromTable, "label", "labels")} from the supplier's tags.`);
+  else sentences.push(`The supplier's tags gave the lookup table no usable label${anchor.thin ? ", so this record counts as thin" : ""}.`);
+  if (fromModel > 0) sentences.push(`The model read the text and added ${plural(fromModel, "label", "labels")}, each copied from the words marked below.`);
+  else if (!model.used) sentences.push("The model is not used for this record in this version.");
+  else sentences.push("The model was asked, and this version holds no label from it.");
+  return sentences.join(" ");
+}
+
+/**
+ * What the supplier's structured fields held, what the index holds now, and one phrase the model read,
+ * all visible without opening anything; then the supplier's text with every quoted phrase marked in place.
+ */
+function added(anchor, version) {
+  const d = anchor.delivered;
+  const { cleaned, table, conflict } = anchor.steps;
+  const held = heldLabels(anchor).map((entry, index) => ({ ...entry, n: index + 1 }));
+  const placed = new Set();
+  const text = (field) => {
+    if (typeof cleaned[field] !== "string") return absent(cleaned[field]);
+    const marked = markedText(cleaned[field], held.filter((entry) => entry.source_field === field));
+    for (const number of marked.placed) placed.add(number);
+    return `<p class="copy">${marked.html}</p>`;
+  };
+  const tags = (field) => {
+    if (!Array.isArray(d[field]) || d[field].length === 0) return absent(d[field]);
+    return d[field]
+      .map((delivered) => {
+        const numbers = held.filter((entry) => entry.source_field === field && sameTag(entry.quote, delivered)).map((entry) => entry.n);
+        for (const number of numbers) placed.add(number);
+        if (conflict !== null && sameTag(conflict.tag, delivered)) return `<span class="sent"><span class="tag contradicted">${esc(delivered)}</span> <span class="small">contradicted by the description</span></span>`;
+        const dropped = table.dropped.find((entry) => sameTag(entry.tag, delivered));
+        if (dropped) return `<span class="sent"><span class="tag dropped">${esc(delivered)}</span> <span class="small">not about the game (${esc(words(dropped.reason))})</span></span>`;
+        if (table.unknown.some((entry) => sameTag(entry.tag, delivered))) return `<span class="sent"><span class="tag unknown">${esc(delivered)}</span> <span class="small">unknown to the table, not guessed</span></span>`;
+        return `<span class="sent"><span class="tag table">${esc(delivered)}</span>${ref(numbers)}</span>`;
+      })
+      .join(" ");
+  };
+  // The order matters: the fields are drawn first, so that every label knows whether its words were found.
+  const fields = `<dl class="kv"><dt>features</dt><dd>${tags("features")}</dd><dt>themes</dt><dd>${tags("themes")}</dd><dt>tags</dt><dd>${tags("tags")}</dd></dl>`;
+  const prose = `<dl class="kv"><dt>title</dt><dd>${text("title")}</dd><dt>description</dt><dd>${text("description")}</dd></dl>`;
+
+  const fieldLine = (name, field) => {
+    if (field.status !== "asserted") {
+      const why = field.status === "conflict" ? "The supplier's tag and the description disagree, so nothing is asserted." : "Nothing in the record supports a label, so none is asserted.";
+      return `<li><strong>${name}</strong><span>${label("amber", field.status === "conflict" ? "conflicting" : "abstained")} <span class="small">${why}</span></span></li>`;
+    }
+    const chips = held
+      .filter((entry) => entry.field === name.toLowerCase())
+      .map((entry) => {
+        const textual = entry.source_field === "title" || entry.source_field === "description";
+        const lost = textual && !placed.has(entry.n) ? ` ${label("amber", "words not found in the record")}` : "";
+        return `<span class="sent">${tag(entry.method, entry.label)}${placed.has(entry.n) ? ref([entry.n]) : ""}${lost}</span>`;
+      })
+      .join(" ");
+    return `<li><strong>${name}</strong><span>${chips}</span></li>`;
+  };
+  const holds =
+    anchor.fields === null
+      ? `<p>${label("neutral", "no labels")} This version indexes the supplier's text as it is.</p>`
+      : `<ul class="fields">${fieldLine("Themes", anchor.fields.themes)}${fieldLine("Mechanics", anchor.fields.mechanics)}</ul>` +
+        `<p class="small">${tag("model", "blue")} was added by the model, ${tag("table", "plain")} by the lookup table. A number joins a label to the words it was read from.</p>`;
+
+  // One phrase the model read, as the shortest proof that a label of its own rests on the record's words.
+  const fromModel = held.filter((entry) => entry.method === "model" && placed.has(entry.n)).sort((a, b) => a.quote.length - b.quote.length)[0];
+  const phrase =
+    fromModel === undefined
+      ? '<p class="small">The index holds no label from the model for this record, so there is no phrase to show.</p>'
+      : `<blockquote data-phrase>“${esc(fromModel.quote)}”</blockquote><p>${tag("model", fromModel.label)}${ref([fromModel.n])} <span class="small">read from the ${esc(fromModel.source_field)}</span></p>`;
+
+  return (
+    `<section id="enrichment" class="block"><p class="kicker">2 · What the model added</p><h2>What the supplier sent for this game, and what was added</h2><p class="lede" data-story>${story(anchor, version)}</p>` +
+    `<div class="trio"><div class="card"><h3>The supplier's structured fields</h3>${fields}</div><div class="card holds"><h3>What ${esc(versionName(version))} holds</h3>${holds}</div><div class="card phrase"><h3>One phrase the model read</h3>${phrase}</div></div>` +
+    `<div class="card"><h3>The supplier's text, with the words each label was read from</h3>${prose}</div>` +
+    `${steps(anchor, version)}${rawRecord(anchor)}</section>`
+  );
+}
+
 function rawRecord(anchor) {
   const d = anchor.delivered;
-  const rows = [
-    ["title", d.title],
-    ["provider", d.provider],
-    ["category", d.category],
-    ["description", d.description],
-    ["features", d.features],
-    ["themes", d.themes],
-    ["tags", d.tags],
-    ...Object.entries(d.facts),
-  ];
+  const rows = [["title", d.title], ["provider", d.provider], ["category", d.category], ["description", d.description], ["features", d.features], ["themes", d.themes], ["tags", d.tags], ...Object.entries(d.facts)];
   const status = anchor.status_on_brand === "live" ? label("green", "live on this brand") : label("amber", `${words(anchor.status_on_brand)} on this brand`);
-  return stage(
-    1,
+  return drawer(
     "raw-record",
-    "What went in",
-    "Raw record",
-    `The record as the source delivered it, source row ${mono(d.source_record_id)}. ${status}`,
+    "The raw record, exactly as the supplier delivered it",
+    `Source row ${mono(d.source_record_id)}. ${status}`,
     `<dl class="raw">${rows.map(([key, value]) => `<dt>${esc(key)}</dt><dd>${absent(value)}</dd>`).join("")}</dl>`,
   );
 }
@@ -116,42 +406,6 @@ function evidenceRow(entry) {
 function evidenceList(labels, caption) {
   if (labels.length === 0) return `<p class="small">${esc(caption)}: nothing.</p>`;
   return `<p class="small">${esc(caption)}</p><ul class="evidence">${labels.map(evidenceRow).join("")}</ul>`;
-}
-
-/**
- * A text of the record with each quote marked where it sits, so the reader sees the words in place.
- * A quote that cannot be found in the text is counted and said, not dropped.
- */
-function quotedInContext(text, quotes, caption) {
-  const spans = [];
-  let missing = 0;
-  for (const quote of quotes) {
-    const start = quote === "" ? -1 : text.indexOf(quote);
-    if (start === -1) missing += 1;
-    else spans.push([start, start + quote.length]);
-  }
-  spans.sort((a, b) => a[0] - b[0]);
-  const merged = [];
-  for (const [start, end] of spans) {
-    const last = merged.at(-1);
-    if (last && start <= last[1]) last[1] = Math.max(last[1], end);
-    else merged.push([start, end]);
-  }
-  let html = "";
-  let cursor = 0;
-  for (const [start, end] of merged) {
-    html += `${esc(text.slice(cursor, start))}<mark>${esc(text.slice(start, end))}</mark>`;
-    cursor = end;
-  }
-  html += esc(text.slice(cursor));
-  const unplaced = missing === 0 ? "" : ` ${label("amber", `${missing} not found in this text`)}`;
-  return `<figure class="context"><figcaption class="small">${esc(caption)}${unplaced}</figcaption><p class="copy">${html}</p></figure>`;
-}
-
-function fieldLine(name, field) {
-  if (field.status === "asserted") return `<li><strong>${esc(name)}</strong> ${field.labels.map((entry) => tag(entry.method, entry.label)).join(" ")}</li>`;
-  const why = field.status === "conflict" ? `conflicting: ${words(field.conflict_reason ?? "")}. No label is asserted.` : "abstained: nothing in the record supports a label.";
-  return `<li><strong>${esc(name)}</strong> ${label("amber", field.status === "conflict" ? "conflicting" : "abstained")} <span class="small">${esc(why)}</span></li>`;
 }
 
 function conflictNote(conflict) {
@@ -172,144 +426,65 @@ function conflictNote(conflict) {
   );
 }
 
-function enrichment(anchor, version, state) {
+/** Every step of enrichment for this record, with the model and prompt behind each of the model's labels. */
+function steps(anchor, version) {
   const { table, model, conflict, cleaned } = anchor.steps;
   const step = (kind, number, name, who, body) => `<li class="${kind}"><div class="sh"><span class="n">Step ${number}</span><h4>${name}</h4>${who}</div>${body}</li>`;
-  const steps = [];
-
-  steps.push(
-    step("code", 1, "Cleaning", label("neutral", "code only"), `<p class="small">Title: ${esc(cleaned.title)}. Description: ${cleaned.description === null ? "none delivered" : "kept word for word, with any markup removed"}.</p>`),
-  );
+  const list = [];
+  list.push(step("code", 1, "Cleaning", label("neutral", "code only"), `<p class="small">Title: ${esc(cleaned.title)}. Description: ${cleaned.description === null ? "none delivered" : "kept word for word, with any markup removed"}.</p>`));
 
   let tableBody = evidenceList([...table.themes, ...table.mechanics], "Labels the table found in the delivered tags");
   if (table.dropped.length > 0) tableBody += `<p class="small">Dropped as not an attribute of the game: ${table.dropped.map((entry) => `${mono(entry.tag)} (${esc(words(entry.reason))})`).join(", ")}.</p>`;
   if (table.unknown.length > 0) tableBody += `<p class="small">Unknown to the table, and not guessed: ${table.unknown.map((entry) => mono(entry.tag)).join(", ")}.</p>`;
   if (conflict !== null) tableBody += conflictNote(conflict);
-  steps.push(step("code", 2, "Synonym table", label("neutral", "a lookup, no model"), tableBody));
+  list.push(step("code", 2, "Synonym table", label("neutral", "a lookup, no model"), tableBody));
 
   const thin = anchor.thin ? `${label("amber", "thin")} The table left this record without a usable label for its themes or its mechanics.` : "The table found labels for both fields, so the record is not thin.";
-  steps.push(step("code", 3, "Thin rule", label("neutral", "a rule"), `<p>${thin}</p>`));
+  list.push(step("code", 3, "Thin rule", label("neutral", "a rule"), `<p>${thin}</p>`));
 
-  const modelLabels = [...model.themes, ...model.mechanics];
   const used = model.used ? label("blue", "used in this version") : label("neutral", "not used in this version");
-  let modelBody = `<p>${used} <span class="small">The model was asked once for this record, offline, and its answer is stored. No model is called when a request arrives.</span></p>${evidenceList(modelLabels, "Labels the model asserted, each with the words it copied from the record")}`;
-  for (const field of ["title", "description"]) {
-    const quotes = modelLabels.filter((entry) => entry.source_field === field).map((entry) => entry.quote);
-    if (quotes.length > 0 && typeof cleaned[field] === "string") modelBody += quotedInContext(cleaned[field], quotes, `Those words, where they sit in the cleaned ${field}`);
-  }
+  let modelBody =
+    `<p>${used} <span class="small">The model was asked once for this record, offline, and its answer is stored. No model is called when a request arrives.</span></p>` +
+    evidenceList([...model.themes, ...model.mechanics], "Labels the model asserted, each with the words it copied from the record");
   if (model.stripped.length > 0) modelBody += `<p class="small">Stripped from the model's answer: ${model.stripped.map((entry) => `${esc(entry.label)} (${esc(words(entry.reason))})`).join(", ")}.</p>`;
-  steps.push(step("model", 4, "Model", label("blue", "asked offline"), modelBody));
+  list.push(step("model", 4, "Model", label("blue", "asked offline"), modelBody));
 
+  const fieldLine = (name, field) => {
+    if (field.status === "asserted") return `<li><strong>${esc(name)}</strong> ${field.labels.map((entry) => tag(entry.method, entry.label)).join(" ")}</li>`;
+    const why = field.status === "conflict" ? `conflicting: ${words(field.conflict_reason ?? "")}. No label is asserted.` : "abstained: nothing in the record supports a label.";
+    return `<li><strong>${esc(name)}</strong> ${label("amber", field.status === "conflict" ? "conflicting" : "abstained")} <span class="small">${esc(why)}</span></li>`;
+  };
   const fields =
     anchor.fields === null
       ? `<p>${label("neutral", "no labels")} ${esc(versionName(version))} embeds the delivered text as it is and asserts no label.</p>`
       : `<ul class="fields">${fieldLine("Themes", anchor.fields.themes)}${fieldLine("Mechanics", anchor.fields.mechanics)}</ul>`;
-  const holds = `<li class="holds"><div class="sh"><h4>What ${esc(versionName(version))} holds for this record</h4></div>${fields}<details><summary>The text that was embedded</summary><pre>${esc(anchor.text)}</pre></details></li>`;
+  list.push(`<li class="holds"><div class="sh"><h4>What ${esc(versionName(version))} holds for this record</h4></div>${fields}<p class="small">The text that was embedded:</p><pre>${esc(anchor.text)}</pre></li>`);
 
-  return stage(
-    2,
-    "enrichment",
-    "What each step added",
-    "Enrichment",
-    `Every label sits beside the words it was read from. ${tag("model", "blue")} came from the model, ${tag("table", "plain")} from the synonym table.`,
-    `<ol class="steps">${steps.join("")}${holds}</ol>`,
-    state,
-  );
+  return drawer("steps", "Step by step: cleaning, lookup table, thin rule, model", "Who did what to this record, with the model and the prompt behind each of the model's labels.", `<ol class="steps">${list.join("")}</ol>`);
 }
 
-/** How many removed games a filter lists in the open, before the list folds away. */
-const SHORT_LIST = 5;
-
-function removals(trace) {
-  if (trace.filters.length === 0) return stage(3, "removals", "What was removed", "Removals", "The request was declined before any filter ran.", "", "skipped");
-  const first = trace.filters[0];
-  const start = first.removed.length + first.remaining;
-  const rows = trace.filters
-    .map((step) => {
-      const list =
-        step.removed.length === 0
-          ? ""
-          : `<details${step.removed.length <= SHORT_LIST ? " open" : ""}><summary>${step.removed.length === 1 ? "The one removed" : `The ${count(step.removed.length)} removed`}</summary><ul class="removed">${step.removed
-              .map((entry) => `<li><span>${game(entry)}</span><span class="why">${esc(words(entry.why))}</span></li>`)
-              .join("")}</ul></details>`;
-      const removed = step.removed.length === 0 ? "removed 0" : `<b>removed ${count(step.removed.length)}</b>`;
-      return (
-        `<li><div class="fh"><span class="fname" title="${esc(step.filter)}">${esc(words(step.filter))}</span><span class="counts num">${removed} · <i>${count(step.remaining)} left</i></span></div>` +
-        `<span class="track"><span class="fill" style="width:${width(start === 0 ? 0 : step.remaining / start)}"></span></span><p class="small">${esc(step.rule)}</p>${list}</li>`
-      );
-    })
-    .join("");
-  return stage(
-    3,
-    "removals",
-    "What was removed",
-    "Removals",
-    `The filters in the order they ran, and how much of the catalogue's ${count(start)} games each left. Availability comes first: a game that is not live on the brand is removed before anything is scored.`,
-    `<ol class="funnel">${rows}</ol>`,
-  );
-}
-
-function scores(trace) {
-  if (trace.scores.length === 0) return stage(4, "scores", "What was scored", "Scores", "Nothing was scored for this request.", "", "skipped");
-  let floorDrawn = false;
-  const floorRow = `<tr class="floor"><td colspan="4">${label("neutral", "similarity floor")} <span class="num">${esc(trace.floor)}</span> <span class="small">${esc(trace.floor_rule)}</span></td></tr>`;
-  const rows = trace.scores
-    .map((entry) => {
-      const below = entry.score < trace.floor;
-      const line = below && !floorDrawn ? floorRow : "";
-      if (below) floorDrawn = true;
-      const bar = `<span class="track"><span class="fill${below ? " quiet" : ""}" style="width:${width(entry.score)}"></span><span class="at" style="left:${width(trace.floor)}" title="similarity floor"></span></span>`;
-      return `${line}<tr${below ? ' class="below"' : ""}><td class="num">${esc(entry.rank)}</td><td>${game(entry)}</td><td class="num">${esc(entry.score)}</td><td class="barcell">${bar}</td></tr>`;
-    })
-    .join("");
-  return stage(
-    4,
-    "scores",
-    "What was scored",
-    "Scores",
-    `${plural(trace.scores.length, "candidate was", "candidates were")} scored against the game that was asked about. The tick on each bar is the similarity floor: a score under it is never shown to a player.`,
-    `<div class="scroll tall" tabindex="0" role="region" aria-label="Scores of every candidate"><table class="scores"><thead><tr><th class="num">Rank</th><th>Game</th><th class="num">Score</th><th>From 0 to 1</th></tr></thead><tbody>${rows}${floorDrawn ? "" : floorRow}</tbody></table></div>` +
-      `<p class="small">All ${count(trace.scores.length)} are in the list above, best first; it scrolls.</p>`,
-  );
-}
-
-function outcome(response) {
-  if (response.outcome === "declined") {
-    return stage(
-      5,
-      "outcome",
-      "What came out",
-      "Outcome",
-      "The service declined. This is an answer, not an error.",
-      `<div class="callout amber"><p data-decline>${label("amber", "declined")} ${mono(response.decline.reason)}</p><p>${esc(response.decline.detail)}</p><p><strong>A player would see nothing.</strong></p></div>`,
-      "declined",
-    );
-  }
-  const items = response.results
-    .map((entry, index) => `<li style="--i:${index}"><span class="rank num">${esc(entry.rank)}</span><span>${game(entry)}</span><span class="score num">score ${esc(entry.score)}</span></li>`)
-    .join("");
-  return stage(5, "outcome", "What came out", "Outcome", `${label("green", "result")} ${plural(response.results.length, "related game", "related games")}, best first.`, `<ol class="results" data-results>${items}</ol>`);
-}
+// ---------------------------------------------------------------------------
+// One request: the three answers, then where it came from
+// ---------------------------------------------------------------------------
 
 function provenance(response) {
-  const timings = response.trace ? Object.entries(response.trace.timings_ms).map(([step, ms]) => `${esc(words(step))} ${esc(ms)} ms`).join(" · ") : "";
-  return `<p class="provenance">Index ${mono(response.served.index_hash.slice(0, 12))} · version ${mono(response.served.version)} · ${timings}.</p>`;
+  const timings = response.trace ? Object.entries(response.trace.timings_ms).map(([stage, ms]) => `${esc(words(stage))} ${esc(ms)} ms`).join(" · ") : "";
+  return drawer("provenance", "Index, version and timings of this request", "", `<p class="provenance">Index ${mono(response.served.index_hash.slice(0, 12))} · version ${mono(response.served.version)} · ${timings}.</p>`);
 }
 
-/** The trace for one response of /api/recommendations or /api/inspect. */
-export function renderTrace(response) {
+/**
+ * One response of /api/recommendations or /api/inspect: the result or the decline first, the evidence beneath it.
+ *
+ * Everything in `extras` is optional and comes from this service too:
+ * `neighbours` maps each recommended game to its own record in the same version, for what it has in common;
+ * `versions` maps each version to its answer to the same request; `evaluation` is the evaluation;
+ * `focus` is a game to point out on the path; `look` is the line an example brought with it.
+ */
+export function renderTrace(response, extras = {}) {
   const trace = response.trace;
-  const inspection =
-    response.inspection && !response.inspection.is_served_version
-      ? `<p class="callout blue"><span>${label("neutral", "inspection")} This is ${esc(versionName(response.served.version))}, shown for comparison. Players are served ${esc(versionName(response.inspection.served_version))}.</span></p>`
-      : "";
-  const head = `<h2 class="trace-title">${esc(trace?.anchor ? trace.anchor.title : response.request.game_id)} <span class="small">on ${esc(response.request.brand)}</span></h2>${inspection}`;
-  if (!trace || trace.anchor === null) return `${head}<div class="rail solo">${outcome(response)}</div>${provenance(response)}`;
-  const leadsToSkipped = trace.filters.length === 0 ? "done before-skipped" : "done";
-  return `${head}${traceFlow(response)}<div class="rail">${rawRecord(trace.anchor)}${enrichment(trace.anchor, response.served.version, leadsToSkipped)}${removals(trace)}${scores(trace)}${outcome(response)}</div>${provenance(response)}`;
+  if (!trace || trace.anchor === null) return `${answer(response, extras)}${provenance(response)}`;
+  return `${answer(response, extras)}${added(trace.anchor, response.served.version)}${path(response, extras.focus)}${provenance(response)}`;
 }
-
-const url = (path, params) => `${path}?${new URLSearchParams(params).toString()}`;
 
 /**
  * The options of the game picker for one brand. A game that a link asks for and the index does not hold
@@ -327,14 +502,177 @@ export function gameOptions(catalogue, brand, asked) {
   return options;
 }
 
-/** Fetches and renders the trace. `get` is the only way a view reaches data. */
+/**
+ * Fetches and renders one request. `get` is the only way a view reaches data.
+ * With `request.versions` it also asks every other version, to say beside the result what changes without the model.
+ */
 export async function traceView(get, request) {
   const params = { game: request.game, brand: request.brand };
   const response =
     request.version === undefined || request.version === request.served
       ? await get(url("/api/recommendations", { ...params, trace: "1" }))
       : await get(url("/api/inspect", { ...params, version: request.version }));
-  return renderTrace(response);
+  // Each recommended game's own record in the same version, to show what it has in common with the game played.
+  const neighbours = {};
+  for (const entry of response.results) neighbours[entry.game_id] = await get(url("/api/inspect", { game: entry.game_id, brand: request.brand, version: response.served.version }));
+  let versions;
+  if (request.versions !== undefined) {
+    versions = {};
+    for (const version of request.versions) versions[version] = version === response.served.version ? response : await get(url("/api/inspect", { ...params, version }));
+  }
+  return renderTrace(response, { neighbours, versions, evaluation: request.evaluation, focus: request.focus, look: request.look });
+}
+
+// ---------------------------------------------------------------------------
+// Examples: one game for each thing worth seeing, found in the service's own responses
+// ---------------------------------------------------------------------------
+
+/** How many requests one search may make before it gives up and says it found none. */
+const SEARCH_LIMIT = 40;
+
+const EXAMPLES = [
+  ["thin", "A thin record gains labels"],
+  ["plain", "Already well described: the model adds nothing"],
+  ["conflict", "A tag contradicts the description"],
+  ["filter", "A plausible game is removed"],
+  ["decline", "A decline instead of a guess"],
+  ["versions", "The versions disagree"],
+  ["failure", "A failure the evaluation found"],
+];
+
+/**
+ * Looks through the catalogue and the evaluation for one game that shows each of the five things.
+ * No game is named in the code: change the catalogue and the examples change with it. An example the
+ * data does not hold is returned as not found, and shown as such.
+ */
+export async function findExamples(get, catalogue, evaluation) {
+  const home = [...catalogue.brands].sort((a, b) => b.live - a.live)[0]?.brand;
+  const byId = new Map(catalogue.games.map((entry) => [entry.game_id, entry]));
+  const liveOn = (entry, brand) => entry?.status[brand] === "live";
+  const served = catalogue.served.version;
+  const link = (params) => `/?${new URLSearchParams(params)}`;
+  const recommend = (id, brand, trace) => get(url("/api/recommendations", trace ? { game: id, brand, trace: "1" } : { game: id, brand }));
+
+  const finders = {
+    /** Among the thin records that are live and get results, the one the model added most labels to. */
+    async thin() {
+      let asked = 0;
+      let best = null;
+      for (const entry of catalogue.games) {
+        if (!entry.thin || entry.conflict || entry.evidence === "none" || !liveOn(entry, home)) continue;
+        if ((asked += 1) > SEARCH_LIMIT) break;
+        const response = await recommend(entry.game_id, home, true);
+        const fromModel = heldLabels(response.trace?.anchor).filter((held) => held.method === "model").length;
+        if (response.outcome === "results" && fromModel > (best?.fromModel ?? 0)) best = { entry, fromModel };
+      }
+      if (best === null) return null;
+      const { entry, fromModel } = best;
+      return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `${entry.title}: the supplier's tags gave no label, and the model added ${fromModel} from the text.` };
+    },
+    async filter() {
+      let asked = 0;
+      for (const { brand: other } of [...catalogue.brands].filter((entry) => entry.brand !== home).sort((a, b) => b.live - a.live)) {
+        for (const entry of catalogue.games) {
+          if (!liveOn(entry, home) || !liveOn(entry, other)) continue;
+          if ((asked += 1) > SEARCH_LIMIT) return null;
+          const best = (await recommend(entry.game_id, other, false)).results[0];
+          if (best === undefined || liveOn(byId.get(best.game_id), home)) continue;
+          const here = await recommend(entry.game_id, home, true);
+          const removed = here.trace?.filters.flatMap((step) => step.removed).find((gone) => gone.game_id === best.game_id);
+          if (removed === undefined) continue;
+          return {
+            game: entry.game_id,
+            brand: home,
+            focus: best.game_id,
+            href: link({ game: entry.game_id, brand: home, focus: best.game_id }),
+            target: "removals",
+            note: `${best.title} is the best match for ${entry.title} on ${other}, and is ${words(removed.why)} on ${home}.`,
+          };
+        }
+      }
+      return null;
+    },
+    async decline() {
+      let asked = 0;
+      const live = catalogue.games.filter((entry) => liveOn(entry, home));
+      for (const entry of [...live.filter((entry) => entry.evidence === "none"), ...live.filter((entry) => entry.evidence !== "none")]) {
+        if ((asked += 1) > SEARCH_LIMIT) break;
+        const response = await recommend(entry.game_id, home, false);
+        if (response.outcome === "declined") return { game: entry.game_id, brand: home, href: link({ game: entry.game_id, brand: home }), note: `${entry.title}: declined, ${words(response.decline.reason)}.` };
+      }
+      return null;
+    },
+    async conflict() {
+      const listed = (evaluation?.report.conflict_games.games ?? []).filter((entry) => liveOn(byId.get(entry.game_id), home));
+      const pick = listed.find((entry) => entry.mechanics[served]?.status === "asserted") ?? listed[0];
+      if (pick === undefined) return null;
+      return { game: pick.game_id, brand: home, target: "enrichment", href: link({ game: pick.game_id, brand: home, show: "added" }), note: `${pick.title}: the tag says ${words(pick.tag_asserts)}, the description says ${pick.description_states.map(words).join(", ")}.` };
+    },
+    /** Among the evaluation's check games, the one whose list changes most between the first version and the served one. */
+    async versions() {
+      const check = evaluation?.report.check_games;
+      const names = Object.keys(check?.results ?? {});
+      const ids = (version, index) => (check.results[version]?.[index]?.results ?? []).map((entry) => entry.game_id);
+      let best = null;
+      for (const [index, anchor] of (check?.results[served] ?? []).entries()) {
+        if (!byId.has(anchor.anchor)) continue;
+        const [first, mine] = [ids(names[0], index), ids(served, index)];
+        const changed = first.filter((id) => !mine.includes(id)).length + mine.filter((id) => !first.includes(id)).length;
+        if (changed > (best?.changed ?? 0)) best = { anchor: anchor.anchor, changed, first: first.length, mine: mine.length };
+      }
+      if (best === null) return null;
+      return {
+        game: best.anchor,
+        brand: check.brand,
+        target: "versions",
+        href: link({ game: best.anchor, brand: check.brand, show: "versions" }),
+        note: `${byId.get(best.anchor).title}: ${plural(best.first, "game", "games")} from ${versionName(names[0])}, ${best.mine} from ${versionName(served)}, not all the same.`,
+      };
+    },
+    /** A record the supplier described well: the table's labels were enough, and this version holds none from the model. */
+    async plain() {
+      let asked = 0;
+      for (const entry of catalogue.games) {
+        if (entry.thin || entry.conflict || entry.evidence !== "description" || !liveOn(entry, home)) continue;
+        if ((asked += 1) > SEARCH_LIMIT) break;
+        const response = await recommend(entry.game_id, home, true);
+        const held = heldLabels(response.trace?.anchor);
+        if (response.outcome === "results" && held.length > 0 && held.every((label) => label.method !== "model")) {
+          return { game: entry.game_id, brand: home, target: "enrichment", href: link({ game: entry.game_id, brand: home, show: "added" }), note: `${entry.title}: the supplier's tags already gave ${plural(held.length, "label", "labels")}; the model adds nothing.` };
+        }
+      }
+      return null;
+    },
+    /** One of the real failures the evaluation lists, on a brand where the game is live if there is one. */
+    async failure() {
+      const real = (evaluation?.report.gallery.real ?? []).filter((entry) => byId.has(entry.game_id));
+      const pick = real.find((entry) => liveOn(byId.get(entry.game_id), home)) ?? real[0];
+      if (pick === undefined) return null;
+      const brand = liveOn(byId.get(pick.game_id), home) ? home : (catalogue.brands.find((entry) => liveOn(byId.get(pick.game_id), entry.brand))?.brand ?? home);
+      const version = pick.version && pick.version !== served ? { version: pick.version } : {};
+      return { game: pick.game_id, brand, href: link({ game: pick.game_id, brand, ...version }), note: `${byId.get(pick.game_id).title}: ${String(pick.what).split(". ")[0].replace(/\.$/, "")}.` };
+    },
+  };
+
+  const examples = [];
+  for (const [kind, name] of EXAMPLES) {
+    const found = home === undefined ? null : await finders[kind]();
+    examples.push(found === null ? { kind, name, found: false, note: "No game in this catalogue shows it." } : { kind, name, found: true, ...found });
+  }
+  return examples;
+}
+
+/** The examples as links. `current` is the page's own query string, so the open example is marked. */
+export function renderExamples(examples, current = "") {
+  const items = examples
+    .map((example) => {
+      const inner = `<strong>${esc(example.name)}</strong><span class="small" title="${esc(example.note)}">${esc(example.note)}</span>`;
+      if (!example.found) return `<li class="missing">${inner}</li>`;
+      const here = example.href === `/${current}`;
+      return `<li><a href="${esc(example.href)}" data-example="${esc(example.kind)}"${here ? ' aria-current="true"' : ""}>${inner}</a></li>`;
+    })
+    .join("");
+  return `<p class="kicker">Or open an example found in this catalogue</p><ol class="examples">${items}</ol>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -401,10 +739,9 @@ export async function compareView(get, request) {
 }
 
 // ---------------------------------------------------------------------------
-// Evaluation: the race, where it helps, the checks behind the verdict, the gallery
+// Was the model worth it: the verdict, one chart, and the detail behind it in drawers
 // ---------------------------------------------------------------------------
 
-const pct = (value) => (value === null || value === undefined ? "–" : `${(value * 100).toFixed(1)}%`);
 const share = (value) => (value.rate === null ? `none of ${count(value.of)}` : `${pct(value.rate)} <span class="small">${count(value.count)} of ${count(value.of)}</span>`);
 const mini = (value) => (value === null || value === undefined ? "" : `<span class="mini"><i style="width:${width(value)}"></i></span>`);
 const passLabel = (ok) => (ok ? label("green", "pass") : label("red", "fail"));
@@ -435,50 +772,62 @@ export function renderEvaluation(evaluation) {
   const { report, verdict } = evaluation;
   const versions = Object.keys(report.matching);
   const decision = report.decision;
-  const markName = (id) => evaluation.marks.find((mark) => mark.id === id)?.label ?? id;
   const out = [];
 
-  const shipped =
-    verdict.ships === null
-      ? `<span class="big">Nothing ships</span> ${label("red", "not serving")}`
-      : `<span class="big">${esc(versionName(verdict.ships))}</span> ${label("green", "ships")}`;
+  // The answer first: which version is served, what that cost and bought, and the gate's own reason.
+  const served = verdict.ships;
+  const servedRow = served === null ? undefined : report.matching[served];
+  const facts =
+    servedRow === undefined
+      ? ""
+      : `<p>It ${decision.versions[served]?.passed ? "passes every pass mark" : "does not pass every pass mark"}, puts ${pct(servedRow.pairwise.pooled.rate)} of the pairs of games it was tested on in the right order, ` +
+        `and took ${plural(servedRow.cost.model_calls, "model call", "model calls")} ($${esc(servedRow.cost.estimated_usd.toFixed(4))}) to build.</p>`;
+  const headline =
+    served === null
+      ? `<p class="ships"><span class="big">Nothing is served</span> ${label("red", "not serving")}</p>`
+      : `<p class="ships"><span class="big">${esc(versionName(served))}</span> ${label("green", "served")}</p>`;
   const ownerTone = report.owner_check.status === "answered" ? "green" : "amber";
   out.push(
-    `<div class="verdict${verdict.ships === null ? " failed" : ""}"><p class="kicker">The release gate's verdict</p>` +
-      `<p class="ships">${shipped} <button type="button" id="what-if-open" class="icon" aria-expanded="false" aria-controls="what-if" title="Explore other pass marks">${GEAR}<span>What if the pass marks were different?</span></button></p>` +
-      `<p>${esc(verdict.reason)}</p><p class="small">Verdict for index ${mono(verdict.index_hash.slice(0, 12))}, reached with the pass marks committed in ${mono(evaluation.thresholds_file)} (decided ${esc(evaluation.thresholds.decided_on)}).</p>` +
-      `<p>${label(ownerTone, `owner's check ${report.owner_check.status}`)} <span class="small">${esc(report.owner_check.note)}</span></p></div><div id="what-if" hidden></div>`,
+    `<div class="verdict${served === null ? " failed" : ""}">${headline}${facts}` +
+      `<p class="small">In the release gate's own words: ${esc(verdict.reason)}</p>` +
+      `<p class="small">${label(ownerTone, `owner's check ${report.owner_check.status}`)} ${esc(report.owner_check.note)}</p></div>`,
   );
 
-  // The race. Quality is drawn from zero, with the committed pass mark as a tick; cost against the dearest version.
-  const accuracyMark = evaluation.marks.find((mark) => mark.measure === "pairwise_accuracy");
-  const passMark = accuracyMark ? evaluation.thresholds[accuracyMark.group]?.[accuracyMark.key] : undefined;
-  const dearest = Math.max(...versions.map((version) => report.matching[version].cost.estimated_usd));
-  const raceRows = versions
+  const detailRows = versions
     .map((version) => {
       const row = report.matching[version];
-      const state = decision.versions[version];
-      const tick = typeof passMark === "number" ? `<span class="at" style="left:${width(passMark)}" title="pass mark ${esc(passMark)}"></span>` : "";
-      const quality = row.pairwise.pooled.rate === null ? "" : `<span class="track"><span class="fill" style="width:${width(row.pairwise.pooled.rate)}"></span>${tick}</span>`;
-      const cost = `<span class="track"><span class="fill blue" style="width:${width(dearest > 0 ? row.cost.estimated_usd / dearest : 0)}"></span></span>`;
       return (
-        `<tr role="row"><th scope="row" role="rowheader">${esc(versionName(version))}${version === verdict.ships ? `<br>${label("green", "ships")}` : ""}</th>` +
-        `<td role="cell" data-th="Ranking quality"><span class="figure">${pct(row.pairwise.pooled.rate)}</span><span class="small">${count(row.pairwise.pooled.count)} of ${count(row.pairwise.pooled.of)} pairs in the right order</span>${quality}` +
-        `<span class="small">mean per game ${pct(row.pairwise.per_game.mean)} over ${count(row.pairwise.per_game.games)} games</span><span class="small">wrongly shown: ${count(row.wrongly_shown.count)} of ${count(row.wrongly_shown.results_judged)} results judged</span></td>` +
-        `<td role="cell" data-th="Cost of building it"><span class="figure">$${esc(row.cost.estimated_usd.toFixed(4))}</span><span class="small">${plural(row.cost.model_calls, "model call", "model calls")} · ${esc(row.cost.seconds.toFixed(1))} s of calls</span>${cost}</td>` +
-        `<td role="cell" class="gate" data-th="Pass marks">${passLabel(state.passed)}${state.failed_marks.length > 0 ? `<span class="small">${esc(state.failed_marks.map(markName).join(", "))}</span>` : ""}</td></tr>`
+        `<tr><th scope="row">${esc(versionName(version))}</th><td class="num">${share(row.pairwise.pooled)}</td><td class="num">${pct(row.pairwise.per_game.mean)}<span class="small">${count(row.pairwise.per_game.games)} games</span></td>` +
+        `<td class="num">${count(row.wrongly_shown.count)}<span class="small">of ${count(row.wrongly_shown.results_judged)} judged</span></td><td class="num">${count(row.cost.model_calls)}</td><td class="num">$${esc(row.cost.estimated_usd.toFixed(4))}</td><td class="num">${esc(row.cost.seconds.toFixed(1))} s</td></tr>`
       );
     })
     .join("");
+  const markRows = evaluation.marks
+    .map((mark) => {
+      const cells = versions
+        .map((version) => {
+          const result = decision.versions[version].marks?.find((entry) => entry.mark === mark.id);
+          if (result === undefined) return '<td class="num">–</td>';
+          if (!result.applies) return `<td class="num">${label("neutral", "does not apply")}</td>`;
+          return `<td class="num">${passLabel(result.pass)}<span class="small">measured ${esc(result.measured === null ? "nothing" : result.measured)}</span></td>`;
+        })
+        .join("");
+      const committed = evaluation.thresholds[mark.group]?.[mark.key];
+      return `<tr><th scope="row">${esc(mark.label)}<span class="small">${mark.direction === "min" ? "at least" : "at most"} ${esc(committed ?? "")}</span></th>${cells}</tr>`;
+    })
+    .join("");
+  const versionHeads = (list) => list.map((version) => `<th scope="col" class="num">${esc(versionName(version))}${version === served ? `<br>${label("green", "served")}` : ""}</th>`).join("");
   out.push(
-    section(
+    `<div id="pass-marks"><h3>The pass marks, version by version</h3><p class="small">The marks the release gate applies, as committed in ${mono(evaluation.thresholds_file)} (decided ${esc(evaluation.thresholds.decided_on)}), and what each version measured.</p>` +
+      `<div class="scroll"><table class="measures"><thead><tr><th scope="col">Pass mark</th>${versionHeads(versions)}</tr></thead><tbody>${markRows}</tbody></table></div></div>` +
+      `<p><button type="button" id="what-if-open" class="icon" aria-expanded="false" aria-controls="what-if" title="Explore other pass marks">${GEAR}<span>What if the pass marks were different?</span></button></p><div id="what-if" hidden></div>` +
+      `<p class="callout" data-limits><span>${label("neutral", "what this does not show")} The catalogue is fictional, and its answer key, its text, the enrichment and the reviewer all come from one vendor's models, which can share blind spots. These numbers show direction and the absence of glaring failure, not production accuracy.</span></p>`,
+    drawer(
       "race",
-      "The race",
-      "Ranking quality against cost",
-      "Pairwise accuracy: for each game, how often a game the plan calls related scores above one it calls unrelated. Cost is what building that version of the index took.",
-      `<table class="race" role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Version</th><th role="columnheader">Ranking quality</th><th role="columnheader">Cost of building it</th><th role="columnheader">Pass marks</th></tr></thead><tbody role="rowgroup">${raceRows}</tbody></table>` +
-        `<p class="small">Quality bars run from 0 to 100%${typeof passMark === "number" ? `; the tick is the committed pass mark, ${esc(passMark)}` : ""}. Cost bars are drawn against the dearest version. ` +
-        `Check games on ${esc(report.check_games.brand)}: ${report.check_games.games.map(mono).join(" ")}. A result is wrongly shown when the rule calls it unrelated and the reviewer also says no.</p>`,
+      "The numbers behind the chart beside the result",
+      `Counts beside every rate. Verdict for index ${mono(verdict.index_hash.slice(0, 12))}.`,
+      `<div class="scroll"><table><thead><tr><th>Version</th><th class="num">Pairs in the right order</th><th class="num">Mean per game</th><th class="num">Wrongly shown</th><th class="num">Model calls</th><th class="num">Est. cost</th><th class="num">Call time</th></tr></thead><tbody>${detailRows}</tbody></table></div>` +
+        `<p class="small">Check games on ${esc(report.check_games.brand)}: ${report.check_games.games.map(mono).join(" ")}. A result is wrongly shown when the rule calls it unrelated and the reviewer also says no.</p>`,
     ),
   );
 
@@ -489,7 +838,6 @@ export function renderEvaluation(evaluation) {
     ["by_thin", "thin", "Thin"],
     ["by_thin", "not_thin", "Not thin"],
   ];
-  const versionHeads = (list) => list.map((version) => `<th scope="col" class="num">${esc(versionName(version))}${version === verdict.ships ? `<br>${label("green", "ships")}` : ""}</th>`).join("");
   const helpRows = conditions
     .map(
       ([group, key, name]) =>
@@ -502,10 +850,9 @@ export function renderEvaluation(evaluation) {
     )
     .join("");
   out.push(
-    section(
+    drawer(
       "where-it-helps",
-      "Where it helps",
-      "The same result, by the condition of the record",
+      "Where the model helps: the same result by the condition of the record",
       "Pairwise accuracy, mean per game, split by what the record that was asked about had to offer. Read across a row to see what each version adds for that kind of record.",
       `<div class="scroll"><table class="by-condition"><thead><tr><th scope="col">Record</th>${versionHeads(versions)}</tr></thead><tbody>${helpRows}</tbody></table></div>`,
     ),
@@ -531,10 +878,9 @@ export function renderEvaluation(evaluation) {
     .join("");
   const control = report.control;
   out.push(
-    section(
+    drawer(
       "enrichment-measures",
-      "The labels",
-      "Is enrichment safe to automate?",
+      "Is enrichment safe to automate? Label measures, tag conflicts and the reviewer",
       "Counts beside every rate. Raw text asserts no labels, so these measures do not apply to it.",
       `<div class="scroll"><table class="measures"><thead><tr><th scope="col">Measure</th>${versionHeads(labelled)}</tr></thead><tbody>${enrichRows}</tbody></table></div>` +
         `<h4>Where a tag contradicts the description: ${plural(report.conflict_games.games.length, "game", "games")}</h4><p class="small">${esc(report.conflict_games.note)}</p>` +
@@ -565,10 +911,9 @@ export function renderEvaluation(evaluation) {
   );
 
   out.push(
-    section(
+    drawer(
       "gallery",
-      "Failures",
-      "What went wrong, and what was planted",
+      "Failures: what went wrong, and what was planted on purpose",
       "Real failures the evaluation found in the system's own output, and, listed apart, the mess that was planted in the catalogue on purpose.",
       `<div class="gallery"><h4>Real failures: ${esc(report.gallery.real.length)}</h4>${galleryList(report.gallery.real)}</div><div class="gallery"><h4>Planted on purpose: ${esc(report.gallery.injected.length)}</h4>${galleryList(report.gallery.injected)}</div>`,
     ),
@@ -639,10 +984,10 @@ export async function whatIfView(get, evaluation, values) {
 }
 
 // ---------------------------------------------------------------------------
-// States that are not a trace
+// States that are not a request
 // ---------------------------------------------------------------------------
 
-export const renderEmpty = () => `<p class="lede">Choose a brand and a game. The page will follow the request through five steps, from the raw record to the result or the reason for declining.</p>${flow(null)}`;
+export const renderEmpty = () => '<p class="lede">Choose a game and a brand, or open an example. The page will show what the system would recommend, and why.</p>';
 export const renderLoading = () => "<p>Loading</p>";
 export const renderBadInput = (message) => `<p>${label("amber", "bad request")} ${esc(message)}</p>`;
 export const renderFailed = (message) => `<p>${label("red", "failed")} ${esc(message)} Nothing is shown because nothing was received.</p>`;
