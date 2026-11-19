@@ -67,7 +67,7 @@ button { cursor: pointer; }
 .menu > summary::-webkit-details-marker { display: none; }
 .menu > summary::after { content: " ▾"; color: var(--muted); }
 .menu[open] > summary { border-color: var(--green); }
-.menu-body { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: min(420px, calc(100vw - 32px)); max-height: 70vh; overflow-y: auto; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 6px; padding: 6px; animation: rise 0.18s ease-out both; }
+.menu-body { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 110px); overflow-y: auto; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 6px; padding: 6px; animation: rise 0.18s ease-out both; }
 ol.examples { display: flex; flex-direction: column; gap: 2px; }
 ol.examples a, ol.examples li.missing { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 4px; text-decoration: none; color: var(--text); font-size: 0.9rem; line-height: 1.35; }
 ol.examples a:hover { background: var(--panel); }

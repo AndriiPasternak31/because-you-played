@@ -25,7 +25,6 @@ flowchart LR
 | The reusable artifact: nine pieces that start the next repository | [`docs/starter-kit.md`](docs/starter-kit.md) |
 | The briefs given to the agents, and three explainer pages | [`docs/process/`](docs/process/README.md) |
 | A two-minute walkthrough | **To be added by the owner: link to the recording** |
-| Screenshots of the console | [`docs/screenshots/`](docs/screenshots/), listed with their links in [`docs/features/interface.md`](docs/features/interface.md#the-examples) |
 
 ## Run, evaluate, regenerate
 
