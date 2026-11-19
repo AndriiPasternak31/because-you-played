@@ -8,6 +8,7 @@
  * Nothing is repaired.
  *
  * Every attempt is stored beside the data, so the index can be rebuilt without a key.
+ * A stored file carries a seal over its whole content; one that was edited afterwards is refused.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,7 +25,7 @@ import {
   PRICES,
   type Live,
 } from "./costs.ts";
-import { parseJsonFrom, readText, sha256 } from "./io.ts";
+import { parseJsonFrom, readText, sealed, sha256, unseal } from "./io.ts";
 import { LabelSchema, SOURCE_FIELDS, type Label, type SourceField } from "./synonyms.ts";
 
 export const ENRICHMENT_MODEL = "gpt-6.2-sol";
@@ -240,7 +241,7 @@ export function enrichmentDir(responsesDir: string, promptVersion: string = PROM
 }
 
 export function readEnrichmentFile(path: string): EnrichmentFile {
-  const parsed = EnrichmentFileSchema.safeParse(parseJsonFrom(readText(path), path));
+  const parsed = EnrichmentFileSchema.safeParse(unseal(parseJsonFrom(readText(path), path), path));
   if (!parsed.success) throw new Error(`${path} is not a valid enrichment response file: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
 }
@@ -297,7 +298,7 @@ export async function obtainEnrichment(
     const { attempt, retryable } = await callOnce(request, record, options.live);
     options.live.budget.settle(worstCaseUsd, attempt.usage === null ? 0 : enrichmentUsd(attempt.usage));
     file.attempts.push(attempt);
-    writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
+    writeFileSync(path, `${JSON.stringify(sealed(file), null, 2)}\n`);
     options.log(
       `${record.game_id}: ${attempt.outcome} in ${attempt.seconds.toFixed(1)}s` + (attempt.reason === null ? "" : ` (${attempt.reason})`),
     );

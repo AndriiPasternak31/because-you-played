@@ -52,3 +52,41 @@ export function readJsonLines<T>(path: string, parse: (value: unknown, source: s
       return [parse(parseJsonFrom(line, source), source)];
     });
 }
+
+/** JSON with object keys sorted at every depth, so that a hash does not depend on key order. */
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+const SEAL = "seal_sha256";
+
+/**
+ * A stored response with its seal: the SHA-256 of everything else in it. The seal is set when
+ * the pipeline stores a response, so a later edit of any part of the file no longer matches it.
+ */
+export function sealed<T extends object>(content: T): T & { seal_sha256: string } {
+  const { [SEAL]: _previous, ...rest } = JSON.parse(JSON.stringify(content)) as Record<string, unknown>;
+  return { ...(rest as T), [SEAL]: sha256(stableJson(rest)) };
+}
+
+/** The content of a stored response without its seal. Throws, naming the file, when the two do not match. */
+export function unseal(stored: unknown, source: string): unknown {
+  if (stored === null || typeof stored !== "object" || Array.isArray(stored) || typeof (stored as Record<string, unknown>)[SEAL] !== "string") {
+    throw new Error(`${source} carries no seal, so nothing shows it is what the pipeline stored. Restore it from version control.`);
+  }
+  const { [SEAL]: seal, ...rest } = stored as Record<string, unknown>;
+  if (sha256(stableJson(rest)) !== seal) {
+    throw new Error(
+      `${source} does not match its seal: it was changed after the pipeline stored it. ` +
+        "Restore it from version control, or delete it and re-run with --live.",
+    );
+  }
+  return rest;
+}

@@ -18,7 +18,7 @@ import { z } from "zod";
 import { CanonicalRecordSchema } from "./canonical.ts";
 import { BYTES_PER_VECTOR, DIMENSIONS, EMBEDDING_MODEL, assertUsableVectors } from "./embed.ts";
 import { ENRICHMENT_MODEL, ModelOutputSchema, PROMPT_VERSION, quoteIsVerbatim } from "./enrich.ts";
-import { assertReadable, parseJsonFrom, readBytes, sha256 } from "./io.ts";
+import { assertReadable, parseJsonFrom, readBytes, sha256, stableJson } from "./io.ts";
 import type { BuildReport, Ledger } from "./report.ts";
 import { TableOutputSchema } from "./synonyms.ts";
 import { ConflictSchema, EVIDENCE_LEVELS, THIN_RULE, VERSIONS, VersionContentSchema, isQuotedFromText, type Version } from "./versions.ts";
@@ -71,18 +71,6 @@ export interface Index {
 }
 
 const vectorsFile = (version: Version): string => `vectors.${version}.f32`;
-
-/** JSON with object keys sorted at every depth, so that a hash does not depend on key order. */
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
 
 /** Sets the hash that seals a manifest. Exported so that a test can re-seal a copy it has altered on purpose. */
 export function sealManifest(manifest: Omit<Manifest, "index_hash"> & { index_hash?: string }): Manifest {
@@ -256,6 +244,25 @@ function validateIndex(read: (name: string) => Buffer | null, where: string): In
       return [version, floats];
     }),
   ) as Record<Version, Float32Array>;
+
+  // One vector per text: the same text must not sit at two points, in any version or for any game.
+  const firstWithText = new Map<string, { version: Version; row: number }>();
+  for (const version of VERSIONS) {
+    records.forEach((record, row) => {
+      const earlier = firstWithText.get(record.versions[version].text_sha256);
+      if (earlier === undefined) {
+        firstWithText.set(record.versions[version].text_sha256, { version, row });
+        return;
+      }
+      const mine = vectors[version].subarray(row * DIMENSIONS, (row + 1) * DIMENSIONS);
+      const theirs = vectors[earlier.version].subarray(earlier.row * DIMENSIONS, (earlier.row + 1) * DIMENSIONS);
+      if (mine.some((value, column) => value !== theirs[column])) {
+        fail(
+          `${record.game_id} in ${version} and ${records[earlier.row]?.game_id} in ${earlier.version} have the same text and different vectors`,
+        );
+      }
+    });
+  }
 
   return {
     manifest,

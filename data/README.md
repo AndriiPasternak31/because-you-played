@@ -18,8 +18,8 @@ A fictional catalogue of online slot games, built to look like something a real 
 | `generation/retired-attempts.jsonl` | Accounting for attempts whose responses were later replaced: outcome, time and tokens, without bodies | Anyone |
 | `generation/ledger.json` | Tokens, estimated cost, seconds per record and retries, computed from the two files above | Anyone |
 | `generation/mess-report.json` | Row counts per kind of mess, identity cases and offering statuses | Anyone |
-| `pipeline/responses/` | Every stored model attempt, and every stored embedding response with the game and text hash of what it embedded | The pipeline |
-| `index/` | The index the pipeline builds: canonical records, four versions of each game's text with labels and quotes, what became of each conflict between a tag and the description, vectors, ledger | Everything |
+| `pipeline/responses/` | Every stored model attempt, and every stored embedding response with the game and text hash of what it embedded. Each file is sealed with a hash of its content, and one edited by hand is refused | The pipeline |
+| `index/` | The index the pipeline builds: canonical records, four versions of each game's text with labels and quotes, what became of each conflict between a tag and the description, vectors (one per text, shared by every version that holds that text), ledger | Everything |
 
 `generation/` is hidden from the enrichment pipeline and the service. It exists so that evaluation can tell a fact that was recoverable from the raw row from one that was genuinely unknowable, where the right answer is to abstain.
 
