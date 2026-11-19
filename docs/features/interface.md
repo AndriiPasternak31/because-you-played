@@ -34,12 +34,12 @@ No build step and no framework.
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| UI-1 | Everything the console shows for a request comes from the service's response to that request. The console asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | - |
-| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure | `npm test -- "UI-2:"` | - |
-| UI-3 | The page is served, and for every brand and game in its pickers the trace renders without an error, in every version | `npm test -- "UI-3:"` | - |
-| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | - |
-| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | - |
-| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | - |
+| UI-1 | Everything the console shows for a request comes from the service's response to that request. The console asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | `aee8e18` |
+| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure | `npm test -- "UI-2:"` | `aee8e18` |
+| UI-3 | The page is served, and for every brand and game in its pickers the trace renders without an error, in every version | `npm test -- "UI-3:"` | `aee8e18` |
+| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | `aee8e18` |
+| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | `aee8e18` |
+| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | `aee8e18` |
 
 What each proof does:
 
