@@ -25,6 +25,7 @@ flowchart LR
 | The reusable artifact: nine pieces that start the next repository | [`docs/starter-kit.md`](docs/starter-kit.md) |
 | The briefs given to the agents, and three explainer pages | [`docs/process/`](docs/process/README.md) |
 | A two-minute walkthrough | **To be added by the owner: link to the recording** |
+| Screenshots of the console | **To be added with the interface pull request** |
 
 ## Run, evaluate, regenerate
 
@@ -66,7 +67,7 @@ A decline is a normal answer, a 200 with a reason and no results. Routes, the te
 npm run eval
 ```
 
-It scores the committed index against the answer key, replays the reviewer model's stored answers, applies the pass marks in [`eval/thresholds.json`](eval/thresholds.json), and writes the report and the verdict under `eval/results/`. It exits 0 when a version may be served and 1 when none passes. The service starts only on a passing verdict for exactly the index it loads.
+It scores the committed index against the answer key, replays the reviewer model's stored answers, applies the pass marks in [`eval/thresholds.json`](eval/thresholds.json), and writes the report, the verdict and a record of every run under `eval/results/`. It exits 0 when a version may be served and 1 when none passes. The service starts only on a passing verdict for exactly the index it loads, and it applies the pass marks to the report again at the start, so a verdict edited by hand is refused.
 
 `npm test` is a different thing: it proves software behaviour, such as "no game that is not live on the brand is ever scored". Each test is named after the invariant it proves, and the invariants are listed in [`docs/features/`](docs/features/).
 
@@ -129,18 +130,20 @@ The full record, the questions the generator had to assume answers to and the pi
 
 ## Results
 
-From the report `npm run eval` writes, which a test compares byte for byte with a fresh run. The pass marks are in [`eval/thresholds.json`](eval/thresholds.json) and every definition is in [the plan](eval/refs/evaluation-plan.md).
+The latest of three evaluation runs, from the report `npm run eval` writes, which a test compares byte for byte with a fresh run. The pass marks are in [`eval/thresholds.json`](eval/thresholds.json) and every definition is in [the plan](eval/refs/evaluation-plan.md).
 
 | Version | Related ranked above unrelated | Labels right | Labels recovered | Recovered with no tag to lean on | Model calls | Est. cost | Pass marks |
 |---|---|---|---|---|---|---|---|
 | Raw text | 76.0% | adds no labels | adds no labels | adds no labels | 0 | $0.0002 | pass |
 | Synonym table | 76.6% | 380 of 380 | 380 of 442 | 0 of 50 | 0 | $0.0001 | fails recovery with no tag: it reads tags only |
-| **Model where thin** | 80.5% | 440 of 440 | 440 of 442 | 48 of 50 | 31 | $0.1160 | pass |
-| Model everywhere | 80.1% | 438 of 438 | 438 of 442 | 50 of 50 | 100 | $0.3908 | pass |
+| **Model where thin** | 80.5% | 440 of 440, 1 held back | 440 of 442 | 48 of 50 | 31 | $0.1160 | pass |
+| Model everywhere | 80.1% | 438 of 438, 1 held back | 438 of 442 | 50 of 50 | 100 | $0.3908 | pass |
 
 - **"Model where thin" ships.** It is the cheapest passing version within the margin of the best. Calling the model on all 100 records instead of 31 did not rank better.
 - **"Related ranked above unrelated"** takes a game, one game the answer key calls related and one it calls unrelated, and asks how often the related one scores higher. Guessing gives 50%.
-- **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The console's Failures view shows them.
+- **One label is held back.** It is the subject of one of the owner's six questions, so the reviewer's answer on it is not in the repository yet. The pass mark counts it as wrong, 440 of 441, which passes whatever the answer turns out to be.
+- **Every run is on record** in [`eval/results/runs.json`](eval/results/runs.json), three so far. The same version shipped in each, and the synonym table failed the same mark in each. The first run was on the index from before the tag-conflict rule was reversed: there the shipped version recovered 423 of 442 labels and ranked at 80.6%.
+- **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The console shows them.
 
 Every count, the split by how thin a record is, and the readings chosen where the plan left a detail open are in [`docs/features/service.md`](docs/features/service.md).
 
@@ -149,7 +152,7 @@ Every count, the split by how thin a record is, and the readings chosen where th
 - **One vendor's models wrote the catalogue text, did the enrichment and act as the reviewer of disputed cases.** Related models can share blind spots, so their agreement is weaker evidence than it looks.
 - **The catalogue is easier than real supplier data.** Its descriptions state each mechanic plainly. The numbers show direction and the absence of glaring failure, not production accuracy.
 - **"No wrongly shown game" rests on a lenient reviewer.** The reviewer model was asked about five results the rule calls unrelated, and said yes to all five.
-- **The outside check is outstanding.** Six questions the owner answers himself, without seeing the reviewer's answers, have not been answered yet.
+- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself, and the reviewer's answers to those six are kept out of the repository until he has. Before that safeguard existed he was told the reviewer's answer to one of them in conversation. So the check reports five answers given blind, and the sixth apart.
 - **Where a tag contradicts the description, the description is the correct side in all five planted cases.** So the comparison cannot show what trusting the text costs when the tag is right.
 - **A contradiction in German text is not detected.** The rule reads English phrases only.
 - **"Related" means shared themes and mechanics in the answer key.** It is not a measure of what players go on to play.
@@ -215,7 +218,7 @@ None of this monitoring is built.
 |---|---|---|
 | Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
 | The build: the owner's attention | About 4 hours, in two sittings | The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
-| The build: agents' running time | Roughly 6 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
+| The build: agents' running time | Roughly 6 to 7 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
 |---|---|
@@ -257,7 +260,7 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 ## Process material
 
 - **Briefs.** Eight of the briefs given to builder and reviewer agents, cleaned of private details with every cut marked: [`docs/process/`](docs/process/README.md).
-- **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [build status](https://because-you-played-status.vercel.app/), [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation). The product itself runs locally.
+- **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation), and the [build status page](https://because-you-played-status.vercel.app/), which was behind a password while the repository was private. The product itself runs locally.
 - **The rules the agents worked under:** [`AGENTS.md`](AGENTS.md), [`REVIEW.md`](REVIEW.md), [`.claude/settings.json`](.claude/settings.json), [the pull-request template](.github/pull_request_template.md), [`LEARNINGS.md`](LEARNINGS.md), and the enrichment prompt in [`prompts/`](prompts/).
 - **The record of each change** is its pull request: what was checked, what was not verified, and what review found.
 

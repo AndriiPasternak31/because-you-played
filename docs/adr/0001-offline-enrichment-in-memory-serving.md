@@ -52,7 +52,7 @@ The diagram shows the proposal. In this repository the artifact store is the rep
 |---|---|---|
 | Model calls are offline only | The pipeline calls the models and stores every response. The evaluation and the service replay them with no key | A scheduled batch job. Only its role can read the model key |
 | The index is a hashed artifact | Files in the repository, with one hash that changes when anything in them does | A versioned object in an artifact store. Rolling back is pointing at the previous version |
-| Serving is gated | The service refuses to start without a passing verdict for exactly the index it loads | A new version receives traffic only after its instances have started, so a failed gate leaves the old version serving |
+| Serving is gated | The service refuses to start without a passing verdict for exactly the index it loads. It applies the pass marks to the report again at the start, so a verdict edited by hand is refused | A new version receives traffic only after its instances have started, so a failed gate leaves the old version serving |
 | Ranking is an exact scan in memory | A pass over every vector of the served version, after the availability filter | Stateless containers behind a load balancer, in more than one zone. Each holds the whole index |
 | Availability is separate from the index | Its own file, read at the start. A change needs a restart and no new evaluation | Its own feed, refreshed without a deploy. See "How it scales" |
 | A weak answer is a decline | One of four reason codes and no results | The page hides the rail. It never shows a weaker list |
@@ -75,7 +75,7 @@ AWS is assumed for the proposal, and nothing depends on it: the pieces are a bat
 
 The pipeline builds four versions of every game's text: as delivered, with labels from a plain synonym table, with the model called only on records the table leaves thin, and with the model called on every record. One evaluation scores all four against pass marks the owner committed before any result existed, and ships the cheapest version within a small margin of the best.
 
-So "is the model worth it" is answered by a run, and the answer can change. The current one is in [`eval/results/verdict.json`](../../eval/results/verdict.json), and the numbers behind it are in [`docs/features/service.md`](../features/service.md).
+So "is the model worth it" is answered by a run, and the answer can change. The current one is in [`eval/results/verdict.json`](../../eval/results/verdict.json), every run so far is in [`eval/results/runs.json`](../../eval/results/runs.json), and the numbers are set out in [`docs/features/service.md`](../features/service.md).
 
 ## Trade-offs accepted
 
