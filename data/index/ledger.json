@@ -1,0 +1,134 @@
+{
+  "prices": {
+    "read_on": "2026-11-19",
+    "enrichment_per_million_usd": {
+      "input": 2,
+      "cached_input": 0.1,
+      "output": 10
+    },
+    "embedding_per_million_usd": {
+      "input": 0.02
+    }
+  },
+  "versions": {
+    "raw": {
+      "enrichment": {
+        "records": 0,
+        "calls": 0,
+        "calls_by_outcome": {
+          "ok": 0,
+          "invalid_output": 0,
+          "refusal": 0,
+          "incomplete": 0,
+          "api_error": 0
+        },
+        "calls_with_unknown_usage": 0,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_usd": 0,
+        "seconds": 0
+      },
+      "embedding": {
+        "calls": 1,
+        "texts": 100,
+        "tokens": 7744,
+        "estimated_usd": 0.000155,
+        "seconds": 0.571
+      },
+      "estimated_usd": 0.000155,
+      "seconds": 0.571
+    },
+    "table": {
+      "enrichment": {
+        "records": 0,
+        "calls": 0,
+        "calls_by_outcome": {
+          "ok": 0,
+          "invalid_output": 0,
+          "refusal": 0,
+          "incomplete": 0,
+          "api_error": 0
+        },
+        "calls_with_unknown_usage": 0,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_usd": 0,
+        "seconds": 0
+      },
+      "embedding": {
+        "calls": 1,
+        "texts": 100,
+        "tokens": 7413,
+        "estimated_usd": 0.000148,
+        "seconds": 0.374
+      },
+      "estimated_usd": 0.000148,
+      "seconds": 0.374
+    },
+    "model_where_thin": {
+      "enrichment": {
+        "records": 31,
+        "calls": 31,
+        "calls_by_outcome": {
+          "ok": 31,
+          "invalid_output": 0,
+          "refusal": 0,
+          "incomplete": 0,
+          "api_error": 0
+        },
+        "calls_with_unknown_usage": 0,
+        "input_tokens": 37995,
+        "cached_input_tokens": 0,
+        "output_tokens": 3983,
+        "estimated_usd": 0.11582,
+        "seconds": 109.003
+      },
+      "embedding": {
+        "calls": 2,
+        "texts": 105,
+        "tokens": 8253,
+        "estimated_usd": 0.000165,
+        "seconds": 0.932
+      },
+      "estimated_usd": 0.115985,
+      "seconds": 109.935
+    },
+    "model_everywhere": {
+      "enrichment": {
+        "records": 100,
+        "calls": 100,
+        "calls_by_outcome": {
+          "ok": 100,
+          "invalid_output": 0,
+          "refusal": 0,
+          "incomplete": 0,
+          "api_error": 0
+        },
+        "calls_with_unknown_usage": 0,
+        "input_tokens": 123324,
+        "cached_input_tokens": 0,
+        "output_tokens": 14395,
+        "estimated_usd": 0.390598,
+        "seconds": 355.51
+      },
+      "embedding": {
+        "calls": 2,
+        "texts": 105,
+        "tokens": 8243,
+        "estimated_usd": 0.000165,
+        "seconds": 0.817
+      },
+      "estimated_usd": 0.390763,
+      "seconds": 356.327
+    }
+  },
+  "spent": {
+    "enrichment_usd_by_prompt_version": {
+      "enrich-v1": 0.390598
+    },
+    "embedding_usd": 0.000633,
+    "total_usd": 0.391231
+  }
+}
