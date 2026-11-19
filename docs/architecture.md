@@ -7,7 +7,7 @@ How the parts of the system fit together: what each part reads and writes, what 
 **What lives elsewhere.**
 
 - A part's status, where its code and files are, its invariants and the command that proves each: its part file. This file cites invariants by ID and does not restate them.
-- Why the system has this shape, the alternatives and the trade-offs: the decision record that #5 asks for.
+- Why the system has this shape, the alternatives and the trade-offs: the decision record, [`adr/0001-offline-enrichment-in-memory-serving.md`](adr/0001-offline-enrichment-in-memory-serving.md).
 - The rules for working here: [`AGENTS.md`](../AGENTS.md).
 
 **One word.** "Pipeline" in this file means the part described in [`pipeline.md`](features/pipeline.md): enrichment, embedding and the index. `AGENTS.md` also uses the word for all of the offline work, the dataset generator included.
