@@ -1,34 +1,26 @@
-<!-- Title: a Conventional Commits subject. It becomes the squash commit on main. -->
+<!-- Title: a Conventional Commits subject. It becomes the squash commit on main.
+     Keep this whole description short and plain: readable in under a minute.
+     No commit hashes, pasted logs, transcripts or lists of scripts. -->
 
 ## What changed
 
-<!-- The outcome in a few sentences, and the docs/features/ files updated with it. -->
+<!-- Two or three plain sentences, including anything that differs from the issue and why.
+     Add a small diagram or chart (mermaid renders here) when it explains the change faster than words. -->
 
-## Plan vs built
+## Checks
 
-<!-- Every deviation from the task or the plan, with its reason. "None" only if nothing deviated. -->
+<!-- One row per acceptance criterion. Name the command so anyone can re-run it; say pass or fail. Include tools/secret-scan.sh. -->
 
-## Evidence
-
-<!-- One row per acceptance criterion, each matched to a command shown below. A criterion with no command is not met. -->
-
-| Acceptance criterion | Command that proves it |
-|---|---|
-
-<!-- The full hash the commands ran on, then the commands as run with their real output, including tools/secret-scan.sh. -->
-
-Commit:
-
-```console
-```
+| What must be true | How it was checked | Result |
+|---|---|---|
 
 ## Not verified
 
-<!-- Every path, case or claim nothing was run against. How the interface looks and feels always belongs here: the owner judges that. -->
+<!-- A few bullets. How the interface looks and feels always belongs here: the owner judges that. -->
 
 ## Review
 
-<!-- See REVIEW.md. Who tried to break it (model, and that it started with a fresh context), on which commit, and the attempts with their output or a link to them. A review that did not run is written as "pending", never filled in. -->
+<!-- See REVIEW.md. "Pending" until a fresh reviewer has tried to break the change. Then one row per finding: what was found and how it was fixed. -->
 
-| Finding | How found (break attempt / reading / second model) | Reproduced (yes / no) | What happened (fixed / accepted by owner / unconfirmed / dropped) |
+| Found | How (ran it / read it / second model) | Reproduced | Fix |
 |---|---|---|---|
