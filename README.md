@@ -190,10 +190,9 @@ The decision record gives the reasons and the triggers.
 | Model-written text shown to players | Nothing checks it before a player reads it |
 | A second way of enriching, through OpenAI's Decisions API | Designed, and deliberately left as a follow-up: a yes-or-no call per label that returns a probability and no quote. It would enter the same ladder and face the same gate |
 | A load test, a metrics endpoint, dashboards | The claims made here are about correctness, and those are tested. No latency figure is claimed |
-| Continuous integration | Every check is one command and runs with no key, so it is a small addition. It was not needed to build this |
+| Continuous integration | Every check is one command and needs no key, so it is a small addition. Left for later |
 | Cloud deployment or infrastructure code | Out of scope for a local prototype. The decision record says how it would be deployed |
 | Hand-labelled reference data | Replaced by the generator's plan with a reviewer model and the owner's six-question check |
-| Polish of the console | It exists to show what the system did. How it looks is the owner's to judge, not an agent's |
 
 ## Metrics to watch in production
 
@@ -206,7 +205,7 @@ The decision record gives the reasons and the triggers.
 | Age and hash of the index and of the availability data being served | Stale availability is the regulated risk | Older than the agreed limit |
 | Per rebuild: the verdict, labels refused for a bad quote, tags the table did not know, fields left empty, model spend | How the model and the feed drift | A failed gate blocks the release by itself |
 | Launches from the rail against a holdout, with safer-gambling guardrails agreed beforehand | Whether the rail is worth showing. More clicks is not automatically better on a real-money product | Set with the policy owners |
-| A monthly sample of results judged by people | The answer key and the reviewer are models; real catalogues will contain mess the generator never made | Disagreement with the reviewer model |
+| A monthly sample of results judged by people | The answer key comes from the generator and the reviewer is a model; real catalogues will contain mess the generator never made | Disagreement with the reviewer model |
 
 None of this monitoring is built.
 
