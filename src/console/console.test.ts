@@ -10,7 +10,7 @@ import { VERSIONS } from "../pipeline/versions.ts";
 import { route } from "../service/http.ts";
 import type { Recommendation } from "../service/recommend.ts";
 import { loadService } from "../service/state.ts";
-import { compareView, esc, renderEvaluation, renderTrace, traceView, versionName, whatIfView } from "./view.js";
+import { compareView, esc, gameOptions, renderEvaluation, renderTrace, traceView, versionName, whatIfView } from "./view.js";
 
 const service = loadService();
 const games = service.index.records.map((record) => record.game_id);
@@ -72,6 +72,23 @@ test("UI-2: every declined request shows its reason, the word declined and no re
   assert.deepEqual([...seen].sort(), ["anchor_not_available", "insufficient_data", "nothing_above_floor", "unknown_game"]);
 });
 
+test("UI-2: a link that names a game the index does not hold shows the unknown-game decline, not a missing-parameter message", async () => {
+  const { get, asked } = getter();
+  const catalogue = await get("/api/catalogue");
+  const brand = brands[0] as string;
+  // The picker keeps the game the link asked for, so the request goes out as asked.
+  const options = gameOptions(catalogue, brand, "nope-00000");
+  assert.deepEqual(options[0], { value: "nope-00000", text: "nope-00000 · not in the index" });
+  assert.equal(options.length, games.length + 1);
+  // A game the index holds adds no option, and no link adds none.
+  assert.equal(gameOptions(catalogue, brand, games[0]).length, games.length);
+  assert.equal(gameOptions(catalogue, brand, null).length, games.length);
+  const html = await traceView(get, { game: options[0]?.value as string, brand, version: service.served.version, served: service.served.version });
+  assert.ok(asked.at(-1)?.includes("game=nope-00000"));
+  assert.ok(html.includes("<code>unknown_game</code>") && text(html).includes("declined"));
+  assert.ok(!text(html).includes("is required"));
+});
+
 test("UI-3: the page is served, and for every brand and game in its pickers the trace renders, in every version", async () => {
   const page = route(service, "GET", "/");
   assert.equal(page.status, 200);
@@ -100,6 +117,13 @@ test("UI-3: the page is served, and for every brand and game in its pickers the 
   assert.equal(rendered, catalogue.brands.length * catalogue.games.length * catalogue.versions.length);
   const evaluation = renderEvaluation(await get("/api/evaluation"));
   for (const part of ["race", "where-it-helps", "enrichment-measures", "gallery", "what-if-open"]) assert.ok(evaluation.includes(`id="${part}"`), part);
+  // While the owner's check is outstanding the panel says what is held back, and shows none of the six.
+  const report = service.report as { owner_check: { status: string; questions: unknown[] }; reviewer: { held_back: number } };
+  if (report.owner_check.status === "outstanding") {
+    assert.ok(evaluation.includes("data-held-back") && text(evaluation).includes(`${report.reviewer.held_back} of the reviewer's`));
+    assert.ok(text(evaluation).includes("not in the repository and not in any count on this page"));
+    assert.ok(!evaluation.includes("The owner's check</caption>"));
+  }
 });
 
 test("UI-4: the what-if panel says the gate reads only the committed file, shows the committed mark, and moving a mark flips pass and fail without touching a file", async () => {

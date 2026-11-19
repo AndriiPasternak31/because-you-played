@@ -162,7 +162,7 @@
             "label": "Precision",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 1,
+            "measured": 0.997732,
             "applies": true,
             "pass": true
           },
@@ -232,7 +232,7 @@
             "label": "Precision",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 1,
+            "measured": 0.997722,
             "applies": true,
             "pass": true
           },
@@ -327,7 +327,7 @@
     },
     "model_where_thin": {
       "enrichment": {
-        "precision": 1,
+        "precision": 0.997732,
         "recovery": 0.995475,
         "recovery_without_tags": 0.96,
         "missed_abstentions": 0,
@@ -340,7 +340,7 @@
     },
     "model_everywhere": {
       "enrichment": {
-        "precision": 1,
+        "precision": 0.997722,
         "recovery": 0.99095,
         "recovery_without_tags": 1,
         "missed_abstentions": 0,
@@ -361,7 +361,13 @@
         "rate": 1,
         "left_out": {
           "unclear": 0,
-          "unknowable": 0
+          "unknowable": 0,
+          "held_back": 0
+        },
+        "gate": {
+          "count": 380,
+          "of": 380,
+          "rate": 1
         }
       },
       "recovery": {
@@ -974,8 +980,14 @@
         "of": 440,
         "rate": 1,
         "left_out": {
-          "unclear": 1,
-          "unknowable": 0
+          "unclear": 0,
+          "unknowable": 0,
+          "held_back": 1
+        },
+        "gate": {
+          "count": 440,
+          "of": 441,
+          "rate": 0.997732
         }
       },
       "recovery": {
@@ -1030,8 +1042,14 @@
         "of": 438,
         "rate": 1,
         "left_out": {
-          "unclear": 1,
-          "unknowable": 0
+          "unclear": 0,
+          "unknowable": 0,
+          "held_back": 1
+        },
+        "gate": {
+          "count": 438,
+          "of": 439,
+          "rate": 0.997722
         }
       },
       "recovery": {
@@ -1297,20 +1315,22 @@
         ],
         "title": "Demigods of Farynthis",
         "question_id": "label.qfi-77843.adventure",
-        "reviewer": "withheld_until_the_owner_has_answered"
+        "reviewer": "held_back_until_the_owner_has_answered"
       }
     ]
   },
   "control": {
     "size": 20,
-    "agreed": 18,
+    "held_back": 5,
+    "reported": 15,
+    "agreed": 13,
     "applies": {
-      "agreed": 10,
-      "of": 10
+      "agreed": 7,
+      "of": 7
     },
     "does_not_apply": {
-      "agreed": 8,
-      "of": 10
+      "agreed": 6,
+      "of": 8
     },
     "list": [
       {
@@ -1384,15 +1404,6 @@
         "agrees": true
       },
       {
-        "game_id": "okk-71914",
-        "field": "mechanics",
-        "label": "hold_and_respin",
-        "agreed": "applies",
-        "question_id": "label.okk-71914.hold_and_respin",
-        "reviewer": "withheld_until_the_owner_has_answered",
-        "agrees": null
-      },
-      {
         "game_id": "okk-34630",
         "field": "mechanics",
         "label": "paylines",
@@ -1407,15 +1418,6 @@
         "agrees": true
       },
       {
-        "game_id": "okk-34630",
-        "field": "mechanics",
-        "label": "expanding_wilds",
-        "agreed": "applies",
-        "question_id": "label.okk-34630.expanding_wilds",
-        "reviewer": "withheld_until_the_owner_has_answered",
-        "agrees": null
-      },
-      {
         "game_id": "okk-34270",
         "field": "mechanics",
         "label": "sticky_wilds",
@@ -1428,33 +1430,6 @@
           "note": null
         },
         "agrees": true
-      },
-      {
-        "game_id": "drw-43988",
-        "field": "themes",
-        "label": "animals",
-        "agreed": "applies",
-        "question_id": "label.drw-43988.animals",
-        "reviewer": "withheld_until_the_owner_has_answered",
-        "agrees": null
-      },
-      {
-        "game_id": "okk-61708",
-        "field": "themes",
-        "label": "ocean_fishing",
-        "agreed": "does_not_apply",
-        "question_id": "label.okk-61708.ocean_fishing",
-        "reviewer": "withheld_until_the_owner_has_answered",
-        "agrees": null
-      },
-      {
-        "game_id": "ulv-59335",
-        "field": "themes",
-        "label": "east_asian",
-        "agreed": "does_not_apply",
-        "question_id": "label.ulv-59335.east_asian",
-        "reviewer": "withheld_until_the_owner_has_answered",
-        "agrees": null
       },
       {
         "game_id": "ulv-83322",
@@ -1572,55 +1547,23 @@
   },
   "owner_check": {
     "status": "outstanding",
-    "note": "Outstanding: the owner has not answered his 6 questions. Run \"npm run owner-check\". Until then the reviewer's answers to them are withheld here. Only 1 disagreement(s) exist, so 5 of the questions are drawn from the control sample.",
+    "note": "Outstanding: the owner has not answered his 6 questions. Run \"npm run owner-check\". Until he has, the reviewer's answers to them are held back: they are not in the tree, not read by this evaluation, and not in any count here. The control is reported over the other labels, and precision's pass mark counts a held-back label as wrong, so the verdict does not depend on them. Not blind: before answering label.qfi-77843.adventure the owner had been told the reviewer's answer to it, so that answer is not a blind check. Only 1 disagreement(s) exist, so 5 of the questions are drawn from the control sample.",
     "of": 6,
     "from_disagreements": 1,
     "from_control": 5,
     "matched": null,
-    "questions": [
-      {
-        "question_id": "label.qfi-77843.adventure",
-        "source": "disagreement",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      },
-      {
-        "question_id": "label.okk-71914.hold_and_respin",
-        "source": "control",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      },
-      {
-        "question_id": "label.okk-34630.expanding_wilds",
-        "source": "control",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      },
-      {
-        "question_id": "label.drw-43988.animals",
-        "source": "control",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      },
-      {
-        "question_id": "label.ulv-59335.east_asian",
-        "source": "control",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      },
-      {
-        "question_id": "label.okk-61708.ocean_fishing",
-        "source": "control",
-        "owner": null,
-        "reviewer": null,
-        "matched": null
-      }
-    ]
+    "blind": {
+      "of": 5,
+      "matched": null
+    },
+    "not_blind": {
+      "of": 1,
+      "matched": null,
+      "question_ids": [
+        "label.qfi-77843.adventure"
+      ]
+    },
+    "questions": []
   },
   "matching": {
     "raw": {
@@ -5392,14 +5335,16 @@
   "reviewer": {
     "model": "gpt-6-luna",
     "questions": 26,
+    "held_back": 6,
+    "answered": 20,
     "by_kind": {
-      "label": 21,
+      "label": 15,
       "recommendation": 5
     },
     "answers": {
-      "yes": 16,
-      "no": 8,
-      "unclear": 2
+      "yes": 13,
+      "no": 6,
+      "unclear": 1
     },
     "unclear": [
       {
@@ -5433,7 +5378,7 @@
               "method": "model"
             }
           ],
-          "reviewer": "withheld_until_the_owner_has_answered"
+          "reviewer": "held_back_until_the_owner_has_answered"
         }
       },
       {

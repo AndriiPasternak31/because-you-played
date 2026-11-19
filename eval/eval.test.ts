@@ -14,12 +14,12 @@ import { Budget, SpendLimitReached, type Live } from "../src/pipeline/costs.ts";
 import { sealManifest, type Index, type IndexRecord, type Manifest } from "../src/pipeline/index-store.ts";
 import { sha256 } from "../src/pipeline/io.ts";
 import { VERSIONS, type Version } from "../src/pipeline/versions.ts";
-import { analyse, finish, type Analysis, type EvalInputs } from "./evaluate.ts";
+import { HELD_BACK, analyse, finish, questionsToAnswer, type Analysis, type EvalInputs } from "./evaluate.ts";
 import { MARKS, decide, parseThresholds, type MarkResult, type Measured } from "./gate.ts";
 import { LABEL_VERSIONS, isWordForWord, pairwiseByGame, summarisePairwise } from "./measures.ts";
 import { ownerFile, ownerQuestions } from "./owner-check.ts";
 import { REVIEWER_MAX_USD, REVIEWER_MODEL, answerPath, interpret, labelQuestion, obtainAnswer, readTemplates, requestHash, storedSpend, type Question, type ReviewerAnswer } from "./reviewer.ts";
-import { DEFAULT_EVAL_PATHS, loadInputs, runEvaluation, type EvalPaths } from "./run.ts";
+import { DEFAULT_EVAL_PATHS, loadInputs, readHeldBack, runEvaluation, totalSpend, type EvalPaths } from "./run.ts";
 import { grade, type Truth } from "./truth.ts";
 
 const scratch = (name: string): string => mkdtempSync(join(tmpdir(), `${name}-`));
@@ -29,10 +29,10 @@ const quiet = (): void => {};
 const inputs = (): EvalInputs => loadInputs({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null });
 const base = analyse(inputs());
 
-/** Replays the committed reviewer answers. */
+/** Replays the committed reviewer answers: every question but the ones held back for the owner's check. */
 async function storedAnswers(analysis: Analysis): Promise<Map<string, ReviewerAnswer>> {
   const answers = new Map<string, ReviewerAnswer>();
-  for (const question of analysis.questions) answers.set(question.id, await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: quiet }));
+  for (const question of questionsToAnswer(analysis)) answers.set(question.id, await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: quiet }));
   return answers;
 }
 
@@ -60,13 +60,23 @@ test("EV-1: with no key the evaluation reproduces the committed report and verdi
   const verdictText = readFileSync(join(DEFAULT_EVAL_PATHS.outDir, "verdict.json"), "utf8");
   const reportFile = (JSON.parse(verdictText) as { report: { path: string } }).report.path;
   const committed = { report: readFileSync(join(DEFAULT_EVAL_PATHS.outDir, reportFile), "utf8"), verdict: verdictText };
+  const committedRuns = readFileSync(join(DEFAULT_EVAL_PATHS.outDir, "runs.json"), "utf8");
+  const recorded = (JSON.parse(committedRuns) as { runs: { index_hash: string; ships: string | null; recorded: string }[] }).runs;
+  assert.ok(recorded.length >= 3, "the record of runs has lost a run");
+  assert.equal(recorded.at(-1)?.index_hash, (JSON.parse(verdictText) as { index_hash: string }).index_hash);
+  assert.ok(recorded.slice(0, -1).every((run) => run.recorded.startsWith("by hand")) && recorded.at(-1)?.recorded.startsWith("by npm run eval"));
   const outputs: string[] = [];
   for (const run of [1, 2]) {
     const outDir = scratch(`ev1-${run}`);
+    // Run 1 starts from the record without its latest entry and has to add it; run 2 starts from the whole record and has to leave it alone.
+    const before = JSON.parse(committedRuns) as { note: string; runs: unknown[] };
+    writeFileSync(join(outDir, "runs.json"), run === 1 ? JSON.stringify({ ...before, runs: before.runs.slice(0, -1) }) : committedRuns);
     const result = cli(["--out-dir", outDir]);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(readFileSync(join(outDir, reportFile), "utf8"), committed.report, "the report differs from the committed one");
     assert.equal(readFileSync(join(outDir, "verdict.json"), "utf8"), committed.verdict, "the verdict differs from the committed one");
+    // The record of runs gains this run and keeps every other: started from the committed record, it comes out the same.
+    assert.equal(readFileSync(join(outDir, "runs.json"), "utf8"), committedRuns, "the record of runs differs from the committed one");
     outputs.push(result.stdout.replaceAll(outDir, "<out>"));
   }
   assert.equal(outputs[0], outputs[1]);
@@ -160,7 +170,7 @@ test("EV-1: on a deliberately bad index the gate fails, the command exits 1, and
   const paths: EvalPaths = { ...DEFAULT_EVAL_PATHS, dataDir, ownerAnswers: null, answersDir: scratch("ev1-bad-answers"), outDir: scratch("ev1-bad-out") };
   // The fixture's own questions, answered "no" by hand: the reviewer cannot rescue a result the rule calls unrelated.
   const analysis = analyse(loadInputs(paths));
-  for (const question of analysis.questions) writeAnswer(paths.answersDir, question, question.kind === "label" ? { answer: "no", quote: "" } : { answer: "no", in_common: "nothing" });
+  for (const question of questionsToAnswer(analysis)) writeAnswer(paths.answersDir, question, question.kind === "label" ? { answer: "no", quote: "" } : { answer: "no", in_common: "nothing" });
   const result = cli(["--data-dir", dataDir, "--answers-dir", paths.answersDir, "--out-dir", paths.outDir, "--owner-answers", join(paths.outDir, "none.json")]);
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /no version passes its marks, so the service will not start/);
@@ -365,9 +375,18 @@ test("EV-4: an invented quote, a quote cut from inside a word, a label on a fiel
   // The plan calls that label unknowable or never assigned; an unknowable one is left out of precision, as the plan says.
   const planted = spoke.disagreements.list.find((entry) => entry.game_id === silent.game_id);
   assert.ok(planted !== undefined);
+  // A disagreement is one of the owner's questions before any control label is, so its answer is held back:
+  // it stays out of the reported precision and counts as wrong for the pass mark.
   const precision = spoke.enrichment.model_everywhere.precision;
-  if (planted.plan === "unknowable") assert.equal(precision.left_out.unknowable, clean.enrichment.model_everywhere.precision.left_out.unknowable + 1);
-  else assert.equal(precision.of, clean.enrichment.model_everywhere.precision.of + 1);
+  const before = clean.enrichment.model_everywhere.precision;
+  if (planted.plan === "unknowable") assert.equal(precision.left_out.unknowable, before.left_out.unknowable + 1);
+  else {
+    assert.equal(planted.reviewer, HELD_BACK);
+    assert.deepEqual([precision.count, precision.of], [before.count, before.of]);
+    assert.equal(precision.left_out.held_back, before.left_out.held_back + 1);
+    assert.deepEqual([precision.gate.count, precision.gate.of], [before.gate.count, before.gate.of + 1]);
+    assert.equal(spoke.measured.model_everywhere.enrichment?.precision, precision.gate.rate);
+  }
 
   // Labels lost: recovery falls by exactly the labels removed that the plan calls recoverable.
   const lost = report(
@@ -416,7 +435,9 @@ test("EV-4: counts stand beside every rate, and the measures agree with a second
     assert.deepEqual([measured.recovery_without_tags.count, measured.recovery_without_tags.of], [recoveredWithoutTags, withoutTags]);
     assert.equal(measured.labels_asserted, asserted);
     assert.equal(measured.missed.not_asserted + measured.missed.conflict_rule, recoverable - recovered);
-    assert.equal(measured.precision.of + measured.precision.left_out.unclear + measured.precision.left_out.unknowable <= asserted, true);
+    const leftOut = measured.precision.left_out;
+    assert.equal(measured.precision.of + leftOut.unclear + leftOut.unknowable + leftOut.held_back, asserted, "every asserted label is counted once: decided, unclear, unknowable or held back");
+    assert.equal(measured.precision.gate.of, measured.precision.of + leftOut.held_back);
     assert.ok(recoverable > 100 && withoutTags > 10);
   }
   for (const version of VERSIONS) {
@@ -480,10 +501,11 @@ test("EV-5: the control is twenty labels the plan and every version agree on, ha
   const answers = await storedAnswers(base);
   const report = finish(base, (question) => answers.get(question.id) as ReviewerAnswer).report;
   assert.equal(report.control.size, 20);
-  assert.equal(report.control.applies.of, 10);
-  assert.equal(report.control.does_not_apply.of, 10);
+  assert.equal(base.control.filter((item) => item.agreed === "applies").length, 10);
+  assert.equal(base.control.filter((item) => item.agreed === "does_not_apply").length, 10);
   const { index, truth } = base.inputs;
   let agreed = 0;
+  let reported = 0;
   for (const item of base.control) {
     const record = index.records.find((candidate) => candidate.game_id === item.game_id) as IndexRecord;
     const row = truth.rows.get(record.canonical.source.record_id);
@@ -492,54 +514,103 @@ test("EV-5: the control is twenty labels the plan and every version agree on, ha
     const asserting = LABEL_VERSIONS.filter((version) => record.versions[version][item.field]?.labels.some((label) => label.label === item.label)).length;
     if (item.agreed === "applies") assert.ok(inPlan && asserting === LABEL_VERSIONS.length, `${item.game_id} ${item.label}`);
     else assert.ok(!assigned && asserting === 0, `${item.game_id} ${item.label}`);
+    // The count covers the labels whose answers are not held back for the owner's check.
+    if (base.heldBack.has(item.question_id)) continue;
+    reported += 1;
     const given = answers.get(item.question_id)?.answer;
     if ((item.agreed === "applies" && given === "yes") || (item.agreed === "does_not_apply" && given === "no")) agreed += 1;
   }
+  assert.equal(report.control.reported, reported);
+  assert.equal(report.control.held_back, 20 - reported);
+  assert.equal(report.control.list.length, reported);
   assert.equal(report.control.agreed, agreed);
   assert.equal(report.control.applies.agreed + report.control.does_not_apply.agreed, agreed);
+  assert.equal(report.control.applies.of + report.control.does_not_apply.of, reported);
 });
 
-test("EV-6: with no owner's answers the evaluation still reaches its verdict, says the check is outstanding, and withholds the reviewer's answers to his six questions", async () => {
+const sayAll = (word: "yes" | "no" | "unclear"): ReviewerAnswer => ({ answer: word, said: word, words: word === "yes" ? "some words" : "", note: null });
+
+test("EV-6: while the owner has not answered, nothing the evaluation writes depends on the reviewer's answers to his six questions", async () => {
+  const six = new Set(ownerQuestions(base).map((entry) => entry.question.id));
+  assert.equal(six.size, 6);
+  const others = new Map<string, ReviewerAnswer>();
+  for (const question of base.questions) {
+    if (!six.has(question.id)) others.set(question.id, await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: quiet }));
+  }
+  // The same evaluation, with the reviewer answering the six every way it could. What is written must not move.
+  const written = (["yes", "no", "unclear"] as const).map((word) => {
+    const { report, verdictFor } = finish(base, (question) => (six.has(question.id) ? sayAll(word) : (others.get(question.id) as ReviewerAnswer)));
+    return JSON.stringify({ report, verdict: verdictFor("report.json", "0") });
+  });
+  assert.equal(written[0], written[1], "the report or the verdict changes with the reviewer's answers to the owner's questions: they can be worked out from it");
+  assert.equal(written[0], written[2], "the report or the verdict changes with the reviewer's answers to the owner's questions: they can be worked out from it");
+  // And a verdict was reached all the same.
+  assert.ok((JSON.parse(written[0] as string) as { verdict: { passed: boolean; ships: string | null } }).verdict.ships !== null);
+});
+
+test("EV-6: the reviewer's answers to the owner's six are not in the tree, not read, not asked for and in no count, and the check is reported as outstanding", async () => {
+  const six = ownerQuestions(base);
+  const ids = new Set(six.map((entry) => entry.question.id));
+  assert.deepEqual([...base.heldBack].sort(), [...ids].sort());
+  // Not in the tree.
+  for (const id of ids) assert.ok(!existsSync(answerPath(DEFAULT_EVAL_PATHS.answersDir, id)), `the reviewer's answer to ${id} is stored in the tree`);
+  assert.equal(readdirSync(DEFAULT_EVAL_PATHS.answersDir).length, questionsToAnswer(base).length);
+  // Not read: an evaluation in which asking for one of them is an error still finishes.
   const answers = await storedAnswers(base);
-  const answer = (question: Question): ReviewerAnswer => answers.get(question.id) as ReviewerAnswer;
-  const open = finish(base, answer).report;
+  const open = finish(base, (question) => {
+    if (ids.has(question.id)) throw new Error(`the held-back answer to ${question.id} was asked for`);
+    return answers.get(question.id) as ReviewerAnswer;
+  }).report;
+  // Reported plainly, with nothing about the six but how many there are and where they come from.
   assert.equal(open.owner_check.status, "outstanding");
+  assert.match(open.owner_check.note, /^Outstanding: the owner has not answered his 6 questions.*held back/);
   assert.equal(open.owner_check.of, 6);
   assert.equal(open.owner_check.matched, null);
-  assert.match(open.owner_check.note, /^Outstanding: the owner has not answered/);
+  assert.deepEqual(open.owner_check.questions, []);
   assert.equal(open.owner_check.from_disagreements, Math.min(6, open.disagreements.count));
   assert.equal(open.owner_check.from_control, 6 - open.owner_check.from_disagreements);
   if (open.disagreements.count < 6) assert.match(open.owner_check.note, /drawn from the control sample/);
-  const six = ownerQuestions(base);
-  assert.equal(new Set(six.map((entry) => entry.question.id)).size, 6);
-  // Every disagreement is among the six before any control question is.
-  for (const entry of open.disagreements.list.slice(0, 6)) assert.ok(six.some((asked) => asked.question.id === entry.question_id));
-  // Nowhere in the report is the reviewer's answer to one of the six.
-  const text = JSON.stringify(open);
-  for (const { question } of six) {
-    const given = answers.get(question.id) as ReviewerAnswer;
-    if (given.words.length > 12) assert.ok(!text.includes(JSON.stringify(given.words).slice(1, -1)), `the reviewer's quote for ${question.id} is in the report`);
-    for (const entry of [...open.disagreements.list, ...open.control.list].filter((item) => item.question_id === question.id)) assert.equal(entry.reviewer, "withheld_until_the_owner_has_answered");
-    assert.ok(open.owner_check.questions.every((item) => item.reviewer === null && item.owner === null));
+  // Every disagreement is among the six before any control label is.
+  for (const entry of open.disagreements.list.slice(0, 6)) assert.ok(ids.has(entry.question_id));
+  // In no count: the control and the reviewer's totals cover the other questions only, and no list holds one of the six with an answer.
+  assert.equal(open.control.reported + open.control.held_back, open.control.size);
+  assert.equal(open.control.held_back, open.owner_check.from_control);
+  assert.ok(open.control.list.every((item) => !ids.has(item.question_id)));
+  assert.equal(open.reviewer.held_back, 6);
+  assert.equal(open.reviewer.answered, open.reviewer.questions - 6);
+  assert.equal(open.reviewer.answers.yes + open.reviewer.answers.no + open.reviewer.answers.unclear, open.reviewer.answered);
+  assert.ok(open.reviewer.unclear.every((entry) => !ids.has(entry.question_id)));
+  for (const entry of open.disagreements.list.filter((item) => ids.has(item.question_id))) assert.equal(entry.reviewer, HELD_BACK);
+  // The derivation that worked on the earlier report finds nothing to start from.
+  for (const id of ids) assert.equal(open.control.list.find((item) => item.question_id === id), undefined);
+  for (const version of LABEL_VERSIONS) {
+    const precision = open.enrichment[version].precision;
+    const asked = open.disagreements.list.filter((entry) => ids.has(entry.question_id) && entry.plan === "not_assigned" && entry.asserted_by.some((by) => by.version === version)).length;
+    assert.equal(precision.left_out.held_back, asked);
+    assert.equal(precision.gate.of, precision.of + asked, "a held-back label must count as wrong for the pass mark");
   }
+  // The committed files hold what this run holds.
+  const committed = JSON.parse(readFileSync(join(DEFAULT_EVAL_PATHS.outDir, open.prompt_version, "report.json"), "utf8")) as typeof open;
+  assert.equal(committed.owner_check.status, "outstanding");
+  assert.deepEqual(committed.owner_check.questions, []);
+  assert.ok(committed.control.list.every((item) => !ids.has(item.question_id)));
 
-  // Once he has answered, the report counts the matches and the verdict is the same.
-  const reviewerSaid = six.map(({ question }) => (answers.get(question.id) as ReviewerAnswer).answer);
-  const flipped = reviewerSaid.map((word, position) => (position < 2 ? (word === "yes" ? "no" : "yes") : word));
-  const answered = finish(analyse({ ...inputs(), ownerAnswers: ownerFile(base, flipped, "2026-11-19") }), answer).report;
-  assert.equal(answered.owner_check.status, "answered");
-  assert.equal(answered.owner_check.matched, 4);
-  assert.match(answered.owner_check.note, /the reviewer matched the owner on 4 of 6/);
-  assert.deepEqual(answered.decision, open.decision);
-  assert.deepEqual(answered.measured, open.measured);
-  assert.ok(answered.disagreements.list.every((entry) => typeof entry.reviewer !== "string"));
+  // A stored answer to one of the six, appearing in the tree while the check is outstanding, stops the evaluation.
+  const leaky = scratch("ev6-leak");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, leaky, { recursive: true });
+  writeAnswer(leaky, six[0]?.question as Question, { answer: "no", quote: "" });
+  const stopped = cli(["--out-dir", scratch("ev6-leak-out"), "--answers-dir", leaky, "--owner-answers", join(leaky, "no-owner.json")]);
+  assert.equal(stopped.status, 1);
+  assert.match(stopped.stderr, /is stored in .* while the owner has not answered his check/);
 
-  // Answers to other questions, or to a question whose text has changed, are refused.
-  const file = ownerFile(base, reviewerSaid, "2026-11-19");
-  const other = { ...file, answers: file.answers.map((entry, position) => (position === 0 ? { ...entry, question_id: "label.nothing.fantasy" } : entry)) };
-  assert.throws(() => finish(analyse({ ...inputs(), ownerAnswers: other }), answer), /other questions than the six/);
-  const changed = { ...file, answers: file.answers.map((entry, position) => (position === 0 ? { ...entry, question_sha256: "0".repeat(64) } : entry)) };
-  assert.throws(() => finish(analyse({ ...inputs(), ownerAnswers: changed }), answer), /text has since changed/);
+  // Not asked for: a live run, while the check is outstanding, makes no call for the six. Here it has nothing to ask at all.
+  const dir = scratch("ev6-live");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, dir, { recursive: true });
+  let calls = 0;
+  const live: Live = { apiKey: "test-key", budget: new Budget(REVIEWER_MAX_USD, 0), retryDelayMs: 0, transport: () => ((calls += 1), Promise.resolve({ status: 500, body: {} })) };
+  await runEvaluation({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null, answersDir: dir, outDir: scratch("ev6-live-out") }, live, quiet);
+  assert.equal(calls, 0);
+  for (const id of ids) assert.ok(!existsSync(answerPath(dir, id)));
 
   // The owner's check needs a person at a terminal, and writes nothing without one.
   const out = join(scratch("ev6"), "owner-check.json");
@@ -547,6 +618,76 @@ test("EV-6: with no owner's answers the evaluation still reaches its verdict, sa
   assert.equal(piped.status, 1);
   assert.match(piped.stderr, /needs a person at a terminal/);
   assert.ok(!existsSync(out));
+});
+
+test("EV-6: once the owner has answered, the reviewer's six are brought back or asked, and the answer he had been told beforehand is counted apart from the blind ones", async () => {
+  const six = ownerQuestions(base);
+  const disclosed = readHeldBack(DEFAULT_EVAL_PATHS.heldBack).disclosed_to_the_owner_before_he_answered.map((entry) => entry.question_id);
+  assert.equal(disclosed.length, 1, "the record of what the owner was told has changed");
+  assert.ok(six.some((entry) => entry.question.id === disclosed[0]));
+  const stored = await storedAnswers(base);
+  // The owner says yes to everything; the reviewer, in this test, says yes to the first three in id order and no to the rest.
+  const order = six.map((entry) => entry.question.id).sort();
+  const reviewerSays = new Map(order.map((id, position) => [id, sayAll(position < 3 ? "yes" : "no")]));
+  const answered = analyse({ ...inputs(), ownerAnswers: ownerFile(base, six.map(() => "yes"), "2026-11-19") });
+  assert.equal(answered.heldBack.size, 0);
+  const report = finish(answered, (question) => reviewerSays.get(question.id) ?? (stored.get(question.id) as ReviewerAnswer)).report;
+  assert.equal(report.owner_check.status, "answered");
+  assert.equal(report.owner_check.matched, 3);
+  const blindMatches = order.filter((id, position) => position < 3 && id !== disclosed[0]).length;
+  assert.deepEqual(report.owner_check.blind, { of: 5, matched: blindMatches });
+  assert.deepEqual(report.owner_check.not_blind, { of: 1, matched: 3 - blindMatches, question_ids: disclosed });
+  assert.equal(report.owner_check.questions.length, 6);
+  assert.equal(report.owner_check.questions.find((entry) => entry.question_id === disclosed[0])?.blind, false);
+  assert.match(report.owner_check.note, new RegExp(`^Answered: on the 5 questions he answered blind, the reviewer matched the owner on ${blindMatches}\\.`));
+  assert.match(report.owner_check.note, /had been told the reviewer's answer to it, so that answer is not a blind check/);
+  // Nothing is held back any more: the control is over all twenty, and every disagreement shows its answer.
+  assert.equal(report.control.held_back, 0);
+  assert.equal(report.control.reported, 20);
+  assert.equal(report.reviewer.held_back, 0);
+  assert.ok(report.disagreements.list.every((entry) => typeof entry.reviewer !== "string"));
+  // The verdict is the one reached while the check was outstanding, whatever the six turn out to be.
+  const outstanding = finish(base, (question) => stored.get(question.id) as ReviewerAnswer).report;
+  assert.equal(report.decision.ships, outstanding.decision.ships);
+  for (const word of ["yes", "no", "unclear"] as const) {
+    const other = finish(answered, (question) => (reviewerSays.has(question.id) ? sayAll(word) : (stored.get(question.id) as ReviewerAnswer))).report;
+    assert.equal(other.decision.ships, outstanding.decision.ships, `the verdict would change if the reviewer said ${word}`);
+  }
+
+  // Answers to other questions, or to a question whose text has changed, are refused.
+  const file = ownerFile(base, six.map(() => "yes"), "2026-11-19");
+  const other = { ...file, answers: file.answers.map((entry, position) => (position === 0 ? { ...entry, question_id: "label.nothing.fantasy" } : entry)) };
+  assert.throws(() => finish(analyse({ ...inputs(), ownerAnswers: other }), (question) => stored.get(question.id) ?? sayAll("no")), /other questions than the six/);
+  const changed = { ...file, answers: file.answers.map((entry, position) => (position === 0 ? { ...entry, question_sha256: "0".repeat(64) } : entry)) };
+  assert.throws(() => finish(analyse({ ...inputs(), ownerAnswers: changed }), (question) => stored.get(question.id) ?? sayAll("no")), /text has since changed/);
+
+  // The command, given the owner's answers and no reviewer answers to his six, says where they are and how to bring them back.
+  const ownerPath = join(scratch("ev6-owner"), "owner-check.json");
+  writeFileSync(ownerPath, JSON.stringify(file));
+  const missing = cli(["--out-dir", scratch("ev6-answered-out"), "--owner-answers", ownerPath]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /the owner has answered, and the reviewer's answers to 6 of his questions are not in/);
+  assert.match(missing.stderr, /git checkout [0-9a-f]{40} -- .*label\./);
+  assert.match(missing.stderr, /npm run eval -- --live/);
+  // Asked live, exactly the six are asked, stored, and scored.
+  const dir = scratch("ev6-reveal");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, dir, { recursive: true });
+  const asked: string[] = [];
+  const usage = { input_tokens: 200, output_tokens: 20, input_tokens_details: { cached_tokens: 0 } };
+  const live: Live = {
+    apiKey: "test-key",
+    budget: new Budget(REVIEWER_MAX_USD, totalSpend(dir, readHeldBack(DEFAULT_EVAL_PATHS.heldBack)).usd),
+    retryDelayMs: 0,
+    transport: (_url, _key, request) => {
+      asked.push((request as { input: string }).input);
+      return Promise.resolve({ status: 200, body: { ...(envelope({ answer: "no", quote: "" }) as object), usage } });
+    },
+  };
+  const revealed = await runEvaluation({ ...DEFAULT_EVAL_PATHS, ownerAnswers: ownerPath, answersDir: dir, outDir: scratch("ev6-reveal-out") }, live, quiet);
+  assert.deepEqual([...asked].sort(), six.map((entry) => entry.question.text).sort());
+  for (const { question } of six) assert.ok(existsSync(answerPath(dir, question.id)));
+  assert.equal(revealed.report.owner_check.status, "answered");
+  assert.equal(revealed.report.owner_check.matched, 0);
 });
 
 test("EV-7: a live reviewer call is refused before it could pass the spend limit, stores what it got, and leaves the key in no file", async () => {
@@ -592,8 +733,20 @@ test("EV-7: a live reviewer call is refused before it could pass the spend limit
 
   // The committed answers are within the limit, and every one of them is used by the evaluation.
   const committed = storedSpend(DEFAULT_EVAL_PATHS.answersDir);
-  assert.ok(committed.usd > 0 && committed.usd <= REVIEWER_MAX_USD);
-  assert.equal(committed.files, base.questions.length);
+  assert.equal(committed.files, questionsToAnswer(base).length);
+  // What the held-back answers cost is still counted against the limit, as one total.
+  const heldBack = readHeldBack(DEFAULT_EVAL_PATHS.heldBack);
+  const total = totalSpend(DEFAULT_EVAL_PATHS.answersDir, heldBack);
+  assert.equal(total.calls, committed.calls + heldBack.spend.calls);
+  assert.equal(total.usd, Math.round((committed.usd + heldBack.spend.usd) * 1e6) / 1e6);
+  assert.ok(committed.usd > 0 && heldBack.spend.usd > 0 && total.usd <= REVIEWER_MAX_USD);
+  // Restored in part, their cost could be counted wrongly: that is refused.
+  const partly = scratch("ev7-partly");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, partly, { recursive: true });
+  const one = ownerQuestions(base).find((entry) => heldBack.question_ids.includes(entry.question.id))?.question;
+  assert.ok(one !== undefined);
+  writeAnswer(partly, one, { answer: "no", quote: "" });
+  assert.throws(() => totalSpend(partly, heldBack), /restore all of them or none/);
 });
 
 test("EV-8: the gallery holds three to five real failures from the system's own output, apart from the mess that was planted", async () => {

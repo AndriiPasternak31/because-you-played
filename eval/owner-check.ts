@@ -3,8 +3,10 @@
  *
  *   npm run owner-check
  *
- * It prints each question exactly as the reviewer was asked it, and never the reviewer's answer.
- * It writes the owner's answers to eval/refs/owner-check.json, which the owner then commits himself.
+ * It prints each question exactly as the reviewer was asked it, and never the reviewer's answer:
+ * while the owner has not answered, those answers are not in the tree and this command has none to show.
+ * It writes the owner's answers to eval/refs/owner-check.json, which the owner then commits himself,
+ * and then says how to bring the reviewer's answers back.
  * It refuses to run without a terminal, so that no script or agent can answer in the owner's place.
  */
 import { existsSync, writeFileSync } from "node:fs";
@@ -12,8 +14,8 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { sha256 } from "../src/pipeline/io.ts";
 import { analyse, type Analysis, type OwnerAnswers } from "./evaluate.ts";
-import { DEFAULT_EVAL_PATHS, OWNER_ANSWERS_PATH, loadInputs } from "./run.ts";
-import type { Question } from "./reviewer.ts";
+import { DEFAULT_EVAL_PATHS, OWNER_ANSWERS_PATH, loadInputs, readHeldBack } from "./run.ts";
+import { answerPath, type Question } from "./reviewer.ts";
 
 const WORDS = { y: "yes", yes: "yes", n: "no", no: "no", u: "unclear", unclear: "unclear" } as const;
 
@@ -76,7 +78,17 @@ async function main(): Promise<void> {
   for (const { question } of questions) answers.push(given.get(question.id) as "yes" | "no" | "unclear");
   const file = ownerFile(analysis, answers, new Date().toISOString().slice(0, 10));
   writeFileSync(values.out, `${JSON.stringify(file, null, 2)}\n`);
-  console.log(`\nWrote ${values.out}. Now:\n  npm run eval                      # reports how many of the six the reviewer matched\n  git add ${values.out} eval/results && git commit -m "docs(eval): add the owner's six check answers"`);
+  const heldBack = readHeldBack(DEFAULT_EVAL_PATHS.heldBack);
+  const files = questions.map(({ question }) => answerPath(DEFAULT_EVAL_PATHS.answersDir, question.id));
+  console.log(
+    `\nWrote ${values.out}. Your answers are in; the reviewer's can now come back. In this order:\n\n` +
+      `  1. Bring back the reviewer's six answers as it gave them on ${heldBack.asked_on}:\n` +
+      `       git checkout ${heldBack.answers_stored_in_commit} -- ${files.join(" ")}\n` +
+      "     If that commit is not in this clone, ask the reviewer again instead (six calls, under one cent, needs OPENAI_API_KEY):\n" +
+      "       npm run eval -- --live\n" +
+      "  2. npm run eval          # reports how many of the six the reviewer matched\n" +
+      `  3. git add ${values.out} eval/reviewer/answers eval/results && git commit -m "docs(eval): add the owner's six check answers"`,
+  );
 }
 
 if (import.meta.main) {

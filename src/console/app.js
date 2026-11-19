@@ -1,6 +1,6 @@
 // The glue between the page and the views: it reads the controls, calls the service's own
 // GET routes, and puts the HTML a view returns into the page. All rendering is in view.js.
-import { compareView, renderBadInput, renderEmpty, renderEvaluation, renderFailed, renderLoading, traceView, versionName, whatIfView } from "/console/view.js";
+import { compareView, gameOptions, renderBadInput, renderEmpty, renderEvaluation, renderFailed, renderLoading, traceView, versionName, whatIfView } from "/console/view.js";
 
 class BadInput extends Error {}
 
@@ -18,19 +18,12 @@ const option = (value, text) => Object.assign(document.createElement("option"), 
 
 let catalogue = null;
 let evaluation = null;
+// A game a link asked for. If the index does not hold it, it still gets an option, so the service's decline is shown.
+let askedGame = null;
 
 function fillGames() {
-  const brand = $("brand").value;
   const chosen = $("game").value;
-  $("game").replaceChildren(
-    ...catalogue.games.map((game) => {
-      const notes = [game.status[brand].replaceAll("_", " ")];
-      if (game.evidence === "none") notes.push("nearly empty");
-      else if (game.conflict) notes.push("conflicting tag");
-      else if (game.thin) notes.push("thin");
-      return option(game.game_id, `${game.title} · ${game.game_id} · ${notes.join(", ")}`);
-    }),
-  );
+  $("game").replaceChildren(...gameOptions(catalogue, $("brand").value, askedGame).map((entry) => option(entry.value, entry.text)));
   if (chosen) $("game").value = chosen;
 }
 
@@ -77,6 +70,7 @@ async function start() {
 
   const asked = new URLSearchParams(location.search);
   if (asked.has("brand")) $("brand").value = asked.get("brand");
+  askedGame = asked.get("game");
   fillGames();
   if (asked.has("game")) $("game").value = asked.get("game");
   if (asked.has("version")) $("version").value = asked.get("version");

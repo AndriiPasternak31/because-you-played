@@ -10,6 +10,7 @@ export function renderWhatIf(evaluation: unknown, whatIf: unknown): string;
 export function traceView(get: Get, request: { game: string; brand: string; version?: string; served?: string }): Promise<string>;
 export function compareView(get: Get, request: { game: string; brand: string; versions: readonly string[]; served: string }): Promise<string>;
 export function whatIfView(get: Get, evaluation: unknown, values: Record<string, string>): Promise<string>;
+export function gameOptions(catalogue: unknown, brand: string, asked?: string | null): { value: string; text: string }[];
 export function renderEmpty(): string;
 export function renderLoading(): string;
 export function renderBadInput(message: string): string;
