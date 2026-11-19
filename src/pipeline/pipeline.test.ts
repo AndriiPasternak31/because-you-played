@@ -19,6 +19,7 @@ import {
   enrichmentDir,
   interpretResponse,
   obtainEnrichment,
+  quoteIsVerbatim,
   readEnrichmentFile,
   type ModelOutput,
 } from "./enrich.ts";
@@ -263,6 +264,45 @@ test("PL-2: a label outside the list, a quote that is not in the record and a re
   assert.equal(report.enrichment.labels_kept, 3);
 });
 
+test("PL-2: a quote is whole words: a piece taken from inside a word is not a quote, and a label backed by one is stripped", () => {
+  const record = recordFrom({ name: "Cowboys of Testvale", description: "A party of art thieves meets a sphinx and its riddles. Die Götter der Unterwelt warten." });
+  const cases: [Label["source_field"], string, boolean][] = [
+    ["description", "ri", false], // inside "riddles"
+    ["description", "sphinx and its rid", false], // ends inside a word
+    ["description", "phinx and its riddles", false], // starts inside a word
+    ["description", "ötter der Unterwelt", false], // starts inside a word with a non-ASCII letter
+    ["description", "Die Gött", false],
+    ["title", "Cow", false],
+    ["title", "boys of Testvale", false],
+    ["description", "its riddles", true], // ends at a full stop
+    ["description", "A party", true], // starts the text
+    ["description", "Unterwelt warten.", true], // ends the text
+    ["description", "Die Götter", true],
+    ["description", "art", true], // inside "party" first, then a word of its own
+    ["title", "Cowboys", true],
+    ["title", "Cowboys of Testvale", true],
+  ];
+  for (const [sourceField, quote, expected] of cases) {
+    assert.equal(quoteIsVerbatim(record, sourceField, quote), expected, `"${quote}" in the ${sourceField}`);
+  }
+  // Through the checker: the label is stripped and counted, not kept.
+  const result = interpretResponse(
+    completed({
+      themes: [
+        { label: "ancient_egypt", quote: "ri", source_field: "description" },
+        { label: "western", quote: "Cow", source_field: "title" },
+        { label: "mythology", quote: "its riddles", source_field: "description" },
+      ],
+      mechanics: [],
+    }),
+    record,
+  );
+  assert.equal(result.outcome, "ok");
+  if (result.outcome !== "ok") return;
+  assert.deepEqual(result.themes.map((label) => label.label), ["mythology"]);
+  assert.deepEqual(result.stripped.map((entry) => `${entry.label}:${entry.reason}`), ["ancient_egypt:invented_quote", "western:invented_quote"]);
+});
+
 test("PL-2: every label in the built index is a vocabulary term whose quote is word for word in its source field", async () => {
   const { records } = await currentIndex();
   let checked = 0;
@@ -280,7 +320,9 @@ test("PL-2: every label in the built index is a vocabulary term whose quote is w
             label.source_field === "title" ? [canonical.title]
             : label.source_field === "description" ? [canonical.description ?? ""]
             : canonical.source_tags[label.source_field];
-          assert.ok(label.quote.trim().length >= 2 && source.some((text) => text.includes(label.quote)), `${where}: quote "${label.quote}" not found`);
+          const escaped = label.quote.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const asWholeWords = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "u");
+          assert.ok(label.quote.trim().length >= 2 && source.some((text) => asWholeWords.test(text)), `${where}: quote "${label.quote}" not found as whole words`);
           if (label.method === "model") {
             assert.deepEqual([label.model, label.prompt_version], [ENRICHMENT_MODEL, PROMPT_VERSION], where);
             fromModel += 1;
@@ -449,6 +491,24 @@ test("PL-4: loading fails, naming the fault, on each kind of corrupted copy of t
         const label = record.versions.table.themes?.labels[0];
         assert.ok(label);
         label.quote = "words that were never delivered";
+        lines[position] = JSON.stringify(record);
+        writeFileSync(join(dir, "records.jsonl"), lines.join("\n"));
+        reseal(dir);
+      },
+    },
+    {
+      name: "a quote cut to a piece of a word, with the hashes brought up to date",
+      expect: /the quote for "\w+" in model_everywhere is not in its description/,
+      corrupt: (dir) => {
+        const lines = readFileSync(join(dir, "records.jsonl"), "utf8").split("\n");
+        const cuttable = (label: Label): boolean => label.source_field === "description" && /^[a-z]{3}/i.test(label.quote);
+        const position = lines.findIndex((line) => line.length > 0 && labelsOf(JSON.parse(line) as IndexRecord, "model_everywhere").some(cuttable));
+        const record = JSON.parse(lines[position] ?? "") as IndexRecord;
+        const label = labelsOf(record, "model_everywhere").find(cuttable);
+        assert.ok(label);
+        // Still a run of characters of the description, but it now starts inside a word.
+        label.quote = label.quote.slice(1);
+        assert.ok(record.canonical.description?.includes(label.quote));
         lines[position] = JSON.stringify(record);
         writeFileSync(join(dir, "records.jsonl"), lines.join("\n"));
         reseal(dir);

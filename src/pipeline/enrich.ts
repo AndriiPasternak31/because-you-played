@@ -86,14 +86,30 @@ export const ModelOutputSchema = z.strictObject({
 });
 export type ModelOutput = z.infer<typeof ModelOutputSchema>;
 
-/** True when the quote is in the named field of the record, word for word. */
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+
+/**
+ * True when `quote` occurs in `text` as whole words: where it begins or ends with a letter or a
+ * digit, the text does not carry on with one. "ri" is in "riddles" but is not a quote from it.
+ */
+function occursAsWholeWords(text: string, quote: string): boolean {
+  const isWord = (character: string | undefined): boolean => character !== undefined && WORD_CHARACTER.test(character);
+  for (let start = text.indexOf(quote); start !== -1; start = text.indexOf(quote, start + 1)) {
+    const end = start + quote.length;
+    const cutsInto = (isWord(quote[0]) && isWord(text[start - 1])) || (isWord(quote.at(-1)) && isWord(text[end]));
+    if (!cutsInto) return true;
+  }
+  return false;
+}
+
+/** True when the quote is in the named field of the record, word for word: the same characters, as whole words. */
 export function quoteIsVerbatim(record: CanonicalRecord, sourceField: SourceField, quote: string): boolean {
   if (quote.trim().length < 2) return false;
   switch (sourceField) {
     case "title":
-      return record.title.includes(quote);
+      return occursAsWholeWords(record.title, quote);
     case "description":
-      return record.description !== null && record.description.includes(quote);
+      return record.description !== null && occursAsWholeWords(record.description, quote);
     case "features":
     case "themes":
       // A tag is quoted whole, so "Wild" cannot stand for the tag "Wild West".

@@ -29,6 +29,7 @@ What they are for is in [`eval/refs/evaluation-plan.md`](../../eval/refs/evaluat
 - **One stored answer per record serves both model versions.** The model is asked once per record, and the request never depends on the table. `model_where_thin` reads the answer only for thin records, and its cost on record is the cost of those calls alone.
 - **Thin** (`thin-v1`, in `versions.ts` and in the manifest): the table leaves the record's themes or its mechanics without a usable label, because no delivered tag mapped to that field or because the mechanics tags are in conflict. The rule reads the raw record and the table's output and nothing else. 31 of 100 records are thin.
 - **Conflict.** A tag maps to one win system (paylines, ways or cluster pays) and the description names a win system but not that one; or the labels of one record assert two win systems. The mechanics field then holds no label in any version and adds nothing to the text. 5 records.
+- **What a conflict costs the two model versions.** On those 5 games the rule also withholds the model's own mechanics: 17 labels, every one quoted from the description, and in all 5 the model had followed the description's win system and not the tag's. So `model_where_thin` and `model_everywhere` carry themes only on those games, and the ladder cannot show there whether the model resolves a contradiction that the table cannot. The labels are not lost: they stay in each record's `model` entry.
 - **A field with no label adds no line to the text.** Its status says why: `abstained` or `conflict`.
 
 ## Code
@@ -127,9 +128,9 @@ A live run stops before any call that could take the total past `--max-usd` (def
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
 | PL-1 | Canonical facts are written by code only. A model answer has no place for a fact or an availability status, and one that carries either is rejected whole | `npm test -- "PL-1:"` | `7108ffa` |
-| PL-2 | Every label is a term of its field's vocabulary and carries a quote found word for word in the field it names, with its provenance. Anything else is stripped and counted | `npm test -- "PL-2:"` | `7108ffa` |
+| PL-2 | Every label is a term of its field's vocabulary and carries a quote found word for word in the field it names, as whole words, with its provenance. Anything else is stripped and counted | `npm test -- "PL-2:"` | - |
 | PL-3 | A refusal, a cut-short answer, malformed output and an API error are each rejected and counted under their own name. None is repaired | `npm test -- "PL-3:"` | `7108ffa` |
-| PL-4 | The index carries its version, model ids, prompt version, dimensions, catalogue hash and thin rule. Loading fails on a non-finite value, a wrong dimension, misaligned ids, a hash mismatch, an altered quote or another catalogue | `npm test -- "PL-4:"` | `7108ffa` |
+| PL-4 | The index carries its version, model ids, prompt version, dimensions, catalogue hash and thin rule. Loading fails on a non-finite value, a wrong dimension, misaligned ids, a hash mismatch, an altered quote or another catalogue | `npm test -- "PL-4:"` | - |
 | PL-5 | The synonym table maps delivered tags onto the 24 labels by lookup. Non-attribute and merchandising tags are dropped. A tag it does not know is counted and listed, never guessed | `npm test -- "PL-5:"` | `7108ffa` |
 | PL-6 | The model's answers do not reach the `raw` or `table` version, and reach `model_where_thin` on thin records only. The thin rule is recorded in the index | `npm test -- "PL-6:"` | `7108ffa` |
 | PL-7 | A field whose tags and description conflict has no label and adds nothing to any version's text | `npm test -- "PL-7:"` | `7108ffa` |
@@ -144,9 +145,9 @@ The colon in the pattern matters: without it `PL-1` also matches PL-10 to PL-12.
 What each proof does:
 
 - **PL-1** sends answers carrying `rtp`, a `facts` object, a `status` inside a label and an `availability` list, and expects each rejected whole; it checks that the schema sent to the model is closed to two keys. It rebuilds the index and compares every canonical record with what the canonicaliser alone makes of the raw rows, and every fact with the delivered value.
-- **PL-2** answers with a label outside the list, a mechanic in the themes field, an invented quote, real words attributed to the wrong field, part of a tag, an empty quote and a repeated label, and expects each stripped under its reason and counted. It then re-checks every label of the rebuilt index with its own substring test, not the pipeline's.
+- **PL-2** answers with a label outside the list, a mechanic in the themes field, an invented quote, real words attributed to the wrong field, part of a tag, an empty quote and a repeated label, and expects each stripped under its reason and counted. It takes quotes that start or end inside a word, such as "ri" from "riddles", and expects each refused, beside whole-word quotes at the start, the end and before punctuation that must pass. It then re-checks every label of the rebuilt index with its own whole-word test, not the pipeline's.
 - **PL-3** feeds a refusal, a cut-short answer and nine malformed answers that a lenient reader could have fixed. Through a transport that needs no network it plays a server error, a refusal and a cut-short answer for one record, and checks the three stored attempts, their counts, and that the record ends with no labels; then an error a retry cannot cure, and one that keeps coming.
-- **PL-4** corrupts a copy of the index nine ways. For the faults a file hash would catch first, it brings the hashes up to date so that the deeper check has to catch them.
+- **PL-4** corrupts a copy of the index ten ways, one of them a quote cut to a piece of a word. For the faults a file hash would catch first, it brings the hashes up to date so that the deeper check has to catch them.
 - **PL-5** runs the table over tags it knows, near-misses, non-attributes and merchandising labels, and checks that all 24 labels are reachable and that every delivered tag is accounted for.
 - **PL-6** builds every record twice, with no model labels and with loud ones, and compares the versions; then checks every record of the rebuilt index against the rule restated in the test.
 - **PL-7** builds one record with and without the contradiction, so that the control shows the same tags do reach the text otherwise.
@@ -158,12 +159,14 @@ What each proof does:
 
 Each proof was also checked the other way: 27 one-line breaks of the pipeline code were tried, one at a time, to see the matching proof fail. 25 failed at once. One did not, because the proof read the committed index instead of running the code; the proofs over the whole index now rebuild it first. The other was a badly made break that showed only on some runs; made to show on every run, it fails PL-9.
 
+A fresh review then found a fault none of those breaks had: the quote check was a substring test, so it took a piece of a word for a quote. No stored label was affected and the index did not change. The check now requires whole words, and PL-2 and PL-4 fail without that.
+
 ## Known limits
 
 - **No bad output came back in the live run.** All 100 answers were accepted and no label was stripped. The handling of a refusal, a cut-short answer, malformed output, a label outside the list, an invented quote and an API error is proved on constructed responses only.
-- **A verbatim quote is not a good quote.** Code checks that the words are in the field, not that they support the label. Whether the labels are right is the evaluation's question.
+- **A verbatim quote is not a good quote.** Code checks that the words are in the field as whole words, not that they support the label. Whether the labels are right is the evaluation's question.
 - **The synonym table was written against this catalogue's tags.** It knows all 105 spellings here, so nothing is unknown in this build. A new feed will bring spellings it does not know.
-- **The conflict rule reads English only**, by phrase. A contradiction in one of the five German descriptions is not seen. A conflict blanks the whole mechanics field, including features that were not in dispute.
+- **The conflict rule reads English only**, by phrase. A contradiction in one of the five German descriptions is not seen. A conflict blanks the whole mechanics field, including features that were not in dispute and the model's labels; "The four versions" says what that costs.
 - **`raw` is exempt from the conflict rule.** It is the delivered text, contradiction included; it has no descriptor fields to blank.
 - **Boilerplate is not detected.** A filler description counts as a description, in the text and in `evidence`.
 - **Costs are estimates:** reported tokens at list price, read on the date recorded in `ledger.json`. Seconds are call durations added up; calls ran eight at a time, so they are not time on the clock.
