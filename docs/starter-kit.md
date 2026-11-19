@@ -36,23 +36,24 @@ Step 2 is where the time goes. The product rules are the part worth it: they are
 
 ## What it produced here
 
-The review record of the merged pull requests, taken from their Review tables. #9 was merged without a review, and the reviews of the pull requests still open are not counted.
+The review record up to this note, taken from the Review tables of #8, #10, #11 and #12. #9 was merged without a review.
 
 | Pull request | Findings | Found by running | Found by reading | Reproduced as a failure | What happened |
 |---|---|---|---|---|---|
 | #8 documents | 8 | 1 | 7 | 2 | All 8 led to a change |
 | #10 catalogue | 4 | 3 | 1 | 4 | 2 fixed, 1 partly fixed and written down as a limit, 1 left as it was, the owner's call |
 | #11 pipeline | 6 | 5 | 1 | 3 | 3 fixed, 1 reversed by the owner's decision, 2 written down as limits |
-| **All** | **18** | **9** | **9** | **9** | |
+| #12 service, evaluation, console | 6 | 4 | 2 | 4 | Two block the merge and two are minor. What was done about each is in #12 |
+| **All** | **24** | **13** | **11** | **13** | |
 
 | How it was found | Findings | A failure anyone can reproduce | No failure shown |
 |---|---|---|---|
-| Ran it | 9 | 7 | 2 |
-| Read it | 9 | 2 | 7 |
+| Ran it | 13 | 11 | 2 |
+| Read it | 11 | 2 | 9 |
 
-- **Of 9 findings made by running the change, 7 were failures anyone could reproduce.** The other 2 showed the code doing what its documents said; the owner reversed one of those rules anyway.
-- **Of 9 made by reading, 2 were.** Both were then confirmed by a search or a count. The other 7 could not be shown by a command; each still led to an edit or a written limit.
-- **Among the reproduced ones:** evidence that did not run from a fresh clone; a proof that stayed green with its invariant broken; an error that did not name the broken file; a quote check that took a piece of a word for a quote; a stored response edited by hand and accepted silently; the same text given slightly different vectors in different versions, which would have added noise to the one comparison the project exists to show.
+- **Of 13 findings made by running the change, 11 were failures anyone could reproduce.** The other 2 showed the code doing what its documents said; the owner reversed one of those rules anyway.
+- **Of 11 made by reading, 2 were.** Both were then confirmed by a search or a count. The other 9 could not be shown by a command, or were about wording.
+- **Among the reproduced ones:** evidence that did not run from a fresh clone; a proof that stayed green with its invariant broken; an error that did not name the broken file; a quote check that took a piece of a word for a quote; a stored response edited by hand and accepted silently; the same text given slightly different vectors in different versions, which would have added noise to the one comparison the project exists to show; a service that served a version its own report said had failed, once the verdict file was edited by hand.
 - **In #10 and #11 the fixes came with new proofs**, named in those Review tables, and the classes of mistake are in [`LEARNINGS.md`](../LEARNINGS.md).
 
-**How far this goes.** It is a log of what review produced on three pull requests. No reading-only review was run beside it, the builders and the reviewers were models of one family, and 18 findings are few. It shows that the protocol found real faults here. It does not compare review methods.
+**How far this goes.** It is a log of what review produced on four pull requests. No reading-only review was run beside it, the builders and the reviewers were models of one family, and 24 findings are few. It shows that the protocol found real faults here. It does not compare review methods.
