@@ -28,16 +28,20 @@ export interface EvalPaths {
   dataDir: string;
   thresholds: string;
   plan: string;
-  ownerAnswers: string;
+  /** Null: do not read the owner's answers. */
+  ownerAnswers: string | null;
   answersDir: string;
   outDir: string;
 }
+
+/** Where the owner commits his six answers. Agents never write here. */
+export const OWNER_ANSWERS_PATH = "eval/refs/owner-check.json";
 
 export const DEFAULT_EVAL_PATHS: EvalPaths = {
   dataDir: "data",
   thresholds: "eval/thresholds.json",
   plan: "eval/refs/evaluation-plan.md",
-  ownerAnswers: "eval/refs/owner-check.json",
+  ownerAnswers: OWNER_ANSWERS_PATH,
   answersDir: "eval/reviewer/answers",
   outDir: "eval/results",
 };
@@ -70,7 +74,7 @@ export function loadInputs(paths: EvalPaths): EvalInputs {
     }
   })();
   let ownerAnswers: OwnerAnswers | null = null;
-  if (existsSync(paths.ownerAnswers)) {
+  if (paths.ownerAnswers !== null && existsSync(paths.ownerAnswers)) {
     const parsed = OwnerAnswersSchema.safeParse(readJson(paths.ownerAnswers, "the owner's answers"));
     if (!parsed.success) throw new Error(`${paths.ownerAnswers} is not a file of owner's answers: ${z.prettifyError(parsed.error)}`);
     ownerAnswers = parsed.data;
@@ -215,7 +219,7 @@ async function main(): Promise<void> {
       "data-dir": { type: "string", default: DEFAULT_EVAL_PATHS.dataDir },
       thresholds: { type: "string", default: DEFAULT_EVAL_PATHS.thresholds },
       plan: { type: "string", default: DEFAULT_EVAL_PATHS.plan },
-      "owner-answers": { type: "string", default: DEFAULT_EVAL_PATHS.ownerAnswers },
+      "owner-answers": { type: "string", default: OWNER_ANSWERS_PATH },
       "answers-dir": { type: "string", default: DEFAULT_EVAL_PATHS.answersDir },
       "out-dir": { type: "string", default: DEFAULT_EVAL_PATHS.outDir },
       live: { type: "boolean", default: false },
