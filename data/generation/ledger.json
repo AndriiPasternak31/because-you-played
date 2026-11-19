@@ -1,0 +1,155 @@
+{
+  "model": "gpt-6.2-sol",
+  "prompt_version": "truth-v3",
+  "price_per_million_usd": {
+    "input": 2,
+    "cached_input": 0.1,
+    "cache_write_30m": 2.5,
+    "cache_write_12h": 5,
+    "output": 10
+  },
+  "records": 14,
+  "attempts": 15,
+  "retries": 1,
+  "attempts_by_outcome": {
+    "ok": 14,
+    "invalid_output": 1,
+    "refusal": 0,
+    "incomplete": 0,
+    "api_error": 0
+  },
+  "records_by_result": {
+    "succeeded_first_try": 13,
+    "succeeded_after_retry": 1,
+    "no_accepted_response": 0
+  },
+  "tokens": {
+    "input": 23637,
+    "cached_input": 0,
+    "cache_write": 0,
+    "output": 4403,
+    "reasoning": 0
+  },
+  "attempts_with_unknown_usage": 0,
+  "estimated_usd": 0.091304,
+  "seconds": {
+    "total": 66.58,
+    "per_record_mean": 4.756,
+    "per_record_median": 4.497,
+    "per_record_max": 8.599
+  },
+  "per_record": [
+    {
+      "slot": 0,
+      "attempts": 1,
+      "seconds": 4.943,
+      "input_tokens": 1563,
+      "output_tokens": 294,
+      "estimated_usd": 0.006066
+    },
+    {
+      "slot": 1,
+      "attempts": 1,
+      "seconds": 4.469,
+      "input_tokens": 1553,
+      "output_tokens": 296,
+      "estimated_usd": 0.006066
+    },
+    {
+      "slot": 2,
+      "attempts": 1,
+      "seconds": 4.9,
+      "input_tokens": 1719,
+      "output_tokens": 315,
+      "estimated_usd": 0.006588
+    },
+    {
+      "slot": 3,
+      "attempts": 1,
+      "seconds": 3.829,
+      "input_tokens": 1545,
+      "output_tokens": 279,
+      "estimated_usd": 0.00588
+    },
+    {
+      "slot": 4,
+      "attempts": 1,
+      "seconds": 4.089,
+      "input_tokens": 1591,
+      "output_tokens": 279,
+      "estimated_usd": 0.005972
+    },
+    {
+      "slot": 5,
+      "attempts": 1,
+      "seconds": 4.633,
+      "input_tokens": 1541,
+      "output_tokens": 280,
+      "estimated_usd": 0.005882
+    },
+    {
+      "slot": 6,
+      "attempts": 1,
+      "seconds": 3.863,
+      "input_tokens": 1518,
+      "output_tokens": 254,
+      "estimated_usd": 0.005576
+    },
+    {
+      "slot": 7,
+      "attempts": 1,
+      "seconds": 4.739,
+      "input_tokens": 1539,
+      "output_tokens": 288,
+      "estimated_usd": 0.005958
+    },
+    {
+      "slot": 8,
+      "attempts": 1,
+      "seconds": 5.476,
+      "input_tokens": 1553,
+      "output_tokens": 408,
+      "estimated_usd": 0.007186
+    },
+    {
+      "slot": 9,
+      "attempts": 1,
+      "seconds": 4.411,
+      "input_tokens": 1561,
+      "output_tokens": 310,
+      "estimated_usd": 0.006222
+    },
+    {
+      "slot": 10,
+      "attempts": 1,
+      "seconds": 4.26,
+      "input_tokens": 1564,
+      "output_tokens": 289,
+      "estimated_usd": 0.006018
+    },
+    {
+      "slot": 11,
+      "attempts": 1,
+      "seconds": 4.525,
+      "input_tokens": 1556,
+      "output_tokens": 284,
+      "estimated_usd": 0.005952
+    },
+    {
+      "slot": 12,
+      "attempts": 1,
+      "seconds": 3.844,
+      "input_tokens": 1684,
+      "output_tokens": 256,
+      "estimated_usd": 0.005928
+    },
+    {
+      "slot": 13,
+      "attempts": 2,
+      "seconds": 8.599,
+      "input_tokens": 3150,
+      "output_tokens": 571,
+      "estimated_usd": 0.01201
+    }
+  ]
+}
