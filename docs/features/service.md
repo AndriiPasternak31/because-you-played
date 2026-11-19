@@ -214,7 +214,7 @@ What each proof does:
 - **EV-5** gives the reviewer's reader a true quote, two stitched phrases, an empty quote, other capitals, a piece of a word and the label's own meaning.
 - **EV-7** plays a live call through a stand-in for the network at the limit, with two unreadable answers, and with a rejected key.
 
-Each proof was also checked the other way: 26 one-line breaks of the code were tried, one at a time. 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own.
+Each proof was also checked the other way: one-line breaks of the service, the evaluation and the console were tried, one at a time. Of the first 26, 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own, and a second pass of 27 breaks turned every proof red.
 
 ## Known limits
 
