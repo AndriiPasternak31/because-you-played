@@ -88,7 +88,7 @@ export interface Miss {
   field: FieldName;
   label: Term;
   via: string[];
-  /** `conflict_rule`: the pipeline blanked the whole mechanics field because a tag contradicts the description. */
+  /** `conflict_rule`: the field is empty in this version because a tag contradicts the description and nothing resolved it. */
   cause: "not_asserted" | "conflict_rule";
 }
 

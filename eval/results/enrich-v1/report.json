@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "index_hash": "f71546c3b26c451d731a9c2ec8e3fda19678505d5e9f971285901fbb25787ffb",
+  "index_hash": "ee88d4282ea6bf37be6dbe5cab9ab83b6f81629c71e3df29cdd855d45b784d03",
   "prompt_version": "enrich-v1",
   "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
   "seed": "evaluation-v1",
@@ -171,7 +171,7 @@
             "label": "Recovery",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 0.957014,
+            "measured": 0.995475,
             "applies": true,
             "pass": true
           },
@@ -180,7 +180,7 @@
             "label": "Recovery without tags",
             "direction": "min",
             "threshold": 0.6,
-            "measured": 0.86,
+            "measured": 0.96,
             "applies": true,
             "pass": true
           },
@@ -207,7 +207,7 @@
             "label": "Pairwise accuracy",
             "direction": "min",
             "threshold": 0.75,
-            "measured": 0.805866,
+            "measured": 0.805002,
             "applies": true,
             "pass": true
           },
@@ -222,7 +222,7 @@
           }
         ],
         "failed_marks": [],
-        "pairwise_accuracy": 0.805866
+        "pairwise_accuracy": 0.805002
       },
       "model_everywhere": {
         "passed": true,
@@ -241,7 +241,7 @@
             "label": "Recovery",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 0.952489,
+            "measured": 0.99095,
             "applies": true,
             "pass": true
           },
@@ -250,7 +250,7 @@
             "label": "Recovery without tags",
             "direction": "min",
             "threshold": 0.6,
-            "measured": 0.9,
+            "measured": 1,
             "applies": true,
             "pass": true
           },
@@ -277,7 +277,7 @@
             "label": "Pairwise accuracy",
             "direction": "min",
             "threshold": 0.75,
-            "measured": 0.801688,
+            "measured": 0.800859,
             "applies": true,
             "pass": true
           },
@@ -292,17 +292,17 @@
           }
         ],
         "failed_marks": [],
-        "pairwise_accuracy": 0.801688
+        "pairwise_accuracy": 0.800859
       }
     },
     "best": {
       "version": "model_where_thin",
-      "pairwise_accuracy": 0.805866
+      "pairwise_accuracy": 0.805002
     },
     "margin": 0.02,
     "passed": true,
     "ships": "model_where_thin",
-    "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805866). Not passing: table (enrichment.min_recovery_without_tags)."
+    "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805002). Not passing: table (enrichment.min_recovery_without_tags)."
   },
   "measured": {
     "raw": {
@@ -328,26 +328,26 @@
     "model_where_thin": {
       "enrichment": {
         "precision": 1,
-        "recovery": 0.957014,
-        "recovery_without_tags": 0.86,
+        "recovery": 0.995475,
+        "recovery_without_tags": 0.96,
         "missed_abstentions": 0,
         "invalid_quotes": 0
       },
       "matching": {
-        "pairwise_accuracy": 0.805866,
+        "pairwise_accuracy": 0.805002,
         "wrongly_shown": 0
       }
     },
     "model_everywhere": {
       "enrichment": {
         "precision": 1,
-        "recovery": 0.952489,
-        "recovery_without_tags": 0.9,
+        "recovery": 0.99095,
+        "recovery_without_tags": 1,
         "missed_abstentions": 0,
         "invalid_quotes": 0
       },
       "matching": {
-        "pairwise_accuracy": 0.801688,
+        "pairwise_accuracy": 0.800859,
         "wrongly_shown": 0
       }
     }
@@ -968,10 +968,10 @@
       }
     },
     "model_where_thin": {
-      "labels_asserted": 424,
+      "labels_asserted": 441,
       "precision": {
-        "count": 423,
-        "of": 423,
+        "count": 440,
+        "of": 440,
         "rate": 1,
         "left_out": {
           "unclear": 1,
@@ -979,14 +979,14 @@
         }
       },
       "recovery": {
-        "count": 423,
+        "count": 440,
         "of": 442,
-        "rate": 0.957014
+        "rate": 0.995475
       },
       "recovery_without_tags": {
-        "count": 43,
+        "count": 48,
         "of": 50,
-        "rate": 0.86
+        "rate": 0.96
       },
       "missed_abstentions": {
         "count": 0,
@@ -995,100 +995,13 @@
       },
       "invalid_quotes": {
         "count": 0,
-        "of": 424,
+        "of": 441,
         "list": []
       },
       "missed": {
         "not_asserted": 2,
-        "conflict_rule": 17,
+        "conflict_rule": 0,
         "list": [
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "free_spins",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "hold_and_respin",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "cluster_pays",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "cascading_reels",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "ways",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "expanding_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
           {
             "game_id": "thr-86641",
             "field": "mechanics",
@@ -1099,45 +1012,6 @@
             "cause": "not_asserted"
           },
           {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "free_spins",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "sticky_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
             "game_id": "ulv-33643",
             "field": "mechanics",
             "label": "multipliers",
@@ -1145,54 +1019,15 @@
               "description"
             ],
             "cause": "not_asserted"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "expanding_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "hold_and_respin",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
           }
         ]
       }
     },
     "model_everywhere": {
-      "labels_asserted": 422,
+      "labels_asserted": 439,
       "precision": {
-        "count": 421,
-        "of": 421,
+        "count": 438,
+        "of": 438,
         "rate": 1,
         "left_out": {
           "unclear": 1,
@@ -1200,14 +1035,14 @@
         }
       },
       "recovery": {
-        "count": 421,
+        "count": 438,
         "of": 442,
-        "rate": 0.952489
+        "rate": 0.99095
       },
       "recovery_without_tags": {
-        "count": 45,
+        "count": 50,
         "of": 50,
-        "rate": 0.9
+        "rate": 1
       },
       "missed_abstentions": {
         "count": 0,
@@ -1216,100 +1051,13 @@
       },
       "invalid_quotes": {
         "count": 0,
-        "of": 422,
+        "of": 439,
         "list": []
       },
       "missed": {
         "not_asserted": 4,
-        "conflict_rule": 17,
+        "conflict_rule": 0,
         "list": [
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "free_spins",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-17457",
-            "field": "mechanics",
-            "label": "hold_and_respin",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "cluster_pays",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "cascading_reels",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "okk-56037",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "ways",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "thr-24389",
-            "field": "mechanics",
-            "label": "expanding_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
           {
             "game_id": "thr-32829",
             "field": "themes",
@@ -1329,45 +1077,6 @@
             "cause": "not_asserted"
           },
           {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "free_spins",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-18831",
-            "field": "mechanics",
-            "label": "sticky_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
             "game_id": "ulv-65029",
             "field": "themes",
             "label": "ancient_egypt",
@@ -1375,45 +1084,6 @@
               "source_tags"
             ],
             "cause": "not_asserted"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "paylines",
-            "via": [
-              "description"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "multipliers",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "expanding_wilds",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
-          },
-          {
-            "game_id": "ulv-72242",
-            "field": "mechanics",
-            "label": "hold_and_respin",
-            "via": [
-              "description",
-              "source_tags"
-            ],
-            "cause": "conflict_rule"
           },
           {
             "game_id": "ulv-93917",
@@ -1430,47 +1100,176 @@
     }
   },
   "conflict_games": {
-    "note": "On these games a delivered tag contradicts the description. The pipeline's conflict rule then asserts no mechanic at all, in the table version and in both model versions. Their missed mechanics are counted under missed.conflict_rule: the rule withheld them; the model did not fail to find them.",
+    "note": "On these games a delivered tag contradicts the description. The table cannot tell which side is right, so the table version asserts no mechanic for them; their missed mechanics there are counted under missed.conflict_rule. The two model versions carry the model's reading instead, each label quoted from the description or the title; a model label backed only by the disputed tag list is withheld.",
     "games": [
       {
         "game_id": "okk-17457",
         "title": "Wivrel the Cherry Seller",
         "tag": "Cluster Pays",
+        "tag_asserts": "cluster_pays",
         "description_states": [
           "paylines"
-        ]
+        ],
+        "model_reading_used": true,
+        "model_labels_withheld": [],
+        "mechanics": {
+          "table": {
+            "status": "conflict",
+            "labels": []
+          },
+          "model_where_thin": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "free_spins",
+              "hold_and_respin"
+            ]
+          },
+          "model_everywhere": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "free_spins",
+              "hold_and_respin"
+            ]
+          }
+        }
       },
       {
         "game_id": "okk-56037",
         "title": "Wenshao the Dragon Dancer",
         "tag": "Paylines",
+        "tag_asserts": "paylines",
         "description_states": [
           "cluster_pays"
-        ]
+        ],
+        "model_reading_used": true,
+        "model_labels_withheld": [],
+        "mechanics": {
+          "table": {
+            "status": "conflict",
+            "labels": []
+          },
+          "model_where_thin": {
+            "status": "asserted",
+            "labels": [
+              "cluster_pays",
+              "multipliers",
+              "cascading_reels"
+            ]
+          },
+          "model_everywhere": {
+            "status": "asserted",
+            "labels": [
+              "cluster_pays",
+              "multipliers",
+              "cascading_reels"
+            ]
+          }
+        }
       },
       {
         "game_id": "thr-24389",
         "title": "Velbrith Treasure Hunt",
         "tag": "paylines",
+        "tag_asserts": "paylines",
         "description_states": [
           "ways"
-        ]
+        ],
+        "model_reading_used": true,
+        "model_labels_withheld": [],
+        "mechanics": {
+          "table": {
+            "status": "conflict",
+            "labels": []
+          },
+          "model_where_thin": {
+            "status": "asserted",
+            "labels": [
+              "ways",
+              "multipliers",
+              "expanding_wilds"
+            ]
+          },
+          "model_everywhere": {
+            "status": "asserted",
+            "labels": [
+              "ways",
+              "multipliers",
+              "expanding_wilds"
+            ]
+          }
+        }
       },
       {
         "game_id": "ulv-18831",
         "title": "The Saloon of Ironscree",
         "tag": "Cluster Pays",
+        "tag_asserts": "cluster_pays",
         "description_states": [
           "paylines"
-        ]
+        ],
+        "model_reading_used": true,
+        "model_labels_withheld": [],
+        "mechanics": {
+          "table": {
+            "status": "conflict",
+            "labels": []
+          },
+          "model_where_thin": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "free_spins",
+              "multipliers",
+              "sticky_wilds"
+            ]
+          },
+          "model_everywhere": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "free_spins",
+              "multipliers",
+              "sticky_wilds"
+            ]
+          }
+        }
       },
       {
         "game_id": "ulv-72242",
         "title": "Mavrek's Polar Expedition",
         "tag": "Cluster Pays",
+        "tag_asserts": "cluster_pays",
         "description_states": [
           "paylines"
-        ]
+        ],
+        "model_reading_used": true,
+        "model_labels_withheld": [],
+        "mechanics": {
+          "table": {
+            "status": "conflict",
+            "labels": []
+          },
+          "model_where_thin": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "multipliers",
+              "expanding_wilds",
+              "hold_and_respin"
+            ]
+          },
+          "model_everywhere": {
+            "status": "asserted",
+            "labels": [
+              "paylines",
+              "multipliers",
+              "expanding_wilds",
+              "hold_and_respin"
+            ]
+          }
+        }
       }
     ]
   },
@@ -2029,26 +1828,26 @@
     "model_where_thin": {
       "pairwise": {
         "pooled": {
-          "count": 68086,
+          "count": 68013,
           "of": 84488,
-          "rate": 0.805866
+          "rate": 0.805002
         },
         "per_game": {
-          "mean": 0.828757,
+          "mean": 0.827658,
           "games": 100,
           "games_without_a_pair": 0
         }
       },
-      "gate_accuracy": 0.805866,
+      "gate_accuracy": 0.805002,
       "by_condition": {
         "description": {
           "pooled": {
-            "count": 39521,
+            "count": 39429,
             "of": 48714,
-            "rate": 0.811286
+            "rate": 0.809398
           },
           "per_game": {
-            "mean": 0.83529,
+            "mean": 0.833068,
             "games": 63,
             "games_without_a_pair": 0
           },
@@ -2056,12 +1855,12 @@
         },
         "tags_only": {
           "pooled": {
-            "count": 23705,
+            "count": 23716,
             "of": 29666,
-            "rate": 0.799063
+            "rate": 0.799434
           },
           "per_game": {
-            "mean": 0.81705,
+            "mean": 0.817501,
             "games": 30,
             "games_without_a_pair": 0
           },
@@ -2069,12 +1868,12 @@
         },
         "none": {
           "pooled": {
-            "count": 4860,
+            "count": 4868,
             "of": 6108,
-            "rate": 0.795678
+            "rate": 0.796988
           },
           "per_game": {
-            "mean": 0.820132,
+            "mean": 0.822511,
             "games": 7,
             "games_without_a_pair": 0
           },
@@ -2084,12 +1883,12 @@
       "by_thin": {
         "thin": {
           "pooled": {
-            "count": 20479,
+            "count": 20400,
             "of": 26018,
-            "rate": 0.787109
+            "rate": 0.784073
           },
           "per_game": {
-            "mean": 0.824523,
+            "mean": 0.820972,
             "games": 31,
             "games_without_a_pair": 0
           },
@@ -2097,12 +1896,12 @@
         },
         "not_thin": {
           "pooled": {
-            "count": 47607,
+            "count": 47613,
             "of": 58470,
-            "rate": 0.814212
+            "rate": 0.814315
           },
           "per_game": {
-            "mean": 0.830659,
+            "mean": 0.830663,
             "games": 69,
             "games_without_a_pair": 0
           },
@@ -2120,36 +1919,36 @@
         },
         "declined": 0
       },
-      "floor": 0.597216,
+      "floor": 0.59806,
       "cost": {
-        "estimated_usd": 0.115972,
+        "estimated_usd": 0.115985,
         "model_calls": 31,
-        "seconds": 109.397
+        "seconds": 109.935
       }
     },
     "model_everywhere": {
       "pairwise": {
         "pooled": {
-          "count": 67733,
+          "count": 67663,
           "of": 84488,
-          "rate": 0.801688
+          "rate": 0.800859
         },
         "per_game": {
-          "mean": 0.822298,
+          "mean": 0.821173,
           "games": 100,
           "games_without_a_pair": 0
         }
       },
-      "gate_accuracy": 0.801688,
+      "gate_accuracy": 0.800859,
       "by_condition": {
         "description": {
           "pooled": {
-            "count": 39297,
+            "count": 39208,
             "of": 48714,
-            "rate": 0.806688
+            "rate": 0.804861
           },
           "per_game": {
-            "mean": 0.829731,
+            "mean": 0.827477,
             "games": 63,
             "games_without_a_pair": 0
           },
@@ -2157,12 +1956,12 @@
         },
         "tags_only": {
           "pooled": {
-            "count": 23578,
+            "count": 23589,
             "of": 29666,
-            "rate": 0.794782
+            "rate": 0.795153
           },
           "per_game": {
-            "mean": 0.807261,
+            "mean": 0.807688,
             "games": 30,
             "games_without_a_pair": 0
           },
@@ -2170,12 +1969,12 @@
         },
         "none": {
           "pooled": {
-            "count": 4858,
+            "count": 4866,
             "of": 6108,
-            "rate": 0.79535
+            "rate": 0.79666
           },
           "per_game": {
-            "mean": 0.819855,
+            "mean": 0.822234,
             "games": 7,
             "games_without_a_pair": 0
           },
@@ -2185,12 +1984,12 @@
       "by_thin": {
         "thin": {
           "pooled": {
-            "count": 20491,
+            "count": 20414,
             "of": 26018,
-            "rate": 0.78757
+            "rate": 0.784611
           },
           "per_game": {
-            "mean": 0.824836,
+            "mean": 0.821387,
             "games": 31,
             "games_without_a_pair": 0
           },
@@ -2198,12 +1997,12 @@
         },
         "not_thin": {
           "pooled": {
-            "count": 47242,
+            "count": 47249,
             "of": 58470,
-            "rate": 0.80797
+            "rate": 0.80809
           },
           "per_game": {
-            "mean": 0.821158,
+            "mean": 0.821077,
             "games": 69,
             "games_without_a_pair": 0
           },
@@ -2212,20 +2011,20 @@
       },
       "wrongly_shown": {
         "count": 0,
-        "results_judged": 26,
+        "results_judged": 25,
         "by_grade": {
           "strong": 3,
-          "related": 14,
+          "related": 13,
           "weak": 6,
           "unrelated": 3
         },
         "declined": 0
       },
-      "floor": 0.596411,
+      "floor": 0.596795,
       "cost": {
-        "estimated_usd": 0.39075,
+        "estimated_usd": 0.390763,
         "model_calls": 100,
-        "seconds": 355.897
+        "seconds": 356.327
       }
     }
   },
@@ -3187,7 +2986,7 @@
               "game_id": "ulv-17288",
               "title": "Cowboys of Kestervale",
               "rank": 1,
-              "score": 0.660034,
+              "score": 0.676924,
               "grade": "related",
               "shared_in_plan": "western, paylines",
               "question_id": null,
@@ -3516,7 +3315,7 @@
               "game_id": "ulv-17288",
               "title": "Cowboys of Kestervale",
               "rank": 1,
-              "score": 0.660034,
+              "score": 0.676924,
               "grade": "related",
               "shared_in_plan": "western, paylines",
               "question_id": null,
@@ -3571,17 +3370,6 @@
               "score": 0.596803,
               "grade": "related",
               "shared_in_plan": "mythology, free spins",
-              "question_id": null,
-              "reviewer": null,
-              "wrongly_shown": false
-            },
-            {
-              "game_id": "okk-22439",
-              "title": "Ravethon the Demigod",
-              "rank": 5,
-              "score": 0.596721,
-              "grade": "related",
-              "shared_in_plan": "mythology, ways, free spins",
               "question_id": null,
               "reviewer": null,
               "wrongly_shown": false
@@ -4599,27 +4387,27 @@
     "model_where_thin": [
       [
         "drw-12933",
-        527,
+        525,
         576
       ],
       [
         "drw-21965",
-        598,
+        595,
         810
       ],
       [
         "drw-32945",
-        1150,
+        1149,
         1368
       ],
       [
         "drw-43988",
-        846,
+        841,
         1173
       ],
       [
         "drw-78552",
-        842,
+        838,
         1060
       ],
       [
@@ -4629,17 +4417,17 @@
       ],
       [
         "okk-17457",
-        660,
+        665,
         747
       ],
       [
         "okk-21375",
-        596,
+        593,
         767
       ],
       [
         "okk-22439",
-        749,
+        765,
         1025
       ],
       [
@@ -4654,12 +4442,12 @@
       ],
       [
         "okk-34270",
-        607,
+        605,
         648
       ],
       [
         "okk-34630",
-        1246,
+        1240,
         1769
       ],
       [
@@ -4674,22 +4462,22 @@
       ],
       [
         "okk-47004",
-        189,
+        187,
         344
       ],
       [
         "okk-47782",
-        1068,
+        1062,
         1380
       ],
       [
         "okk-50023",
-        1112,
+        1111,
         1278
       ],
       [
         "okk-50365",
-        1115,
+        1108,
         1320
       ],
       [
@@ -4700,6 +4488,508 @@
       [
         "okk-61708",
         513,
+        576
+      ],
+      [
+        "okk-62483",
+        702,
+        946
+      ],
+      [
+        "okk-62992",
+        433,
+        435
+      ],
+      [
+        "okk-63691",
+        230,
+        310
+      ],
+      [
+        "okk-63738",
+        533,
+        747
+      ],
+      [
+        "okk-67985",
+        374,
+        416
+      ],
+      [
+        "okk-71914",
+        957,
+        1525
+      ],
+      [
+        "okk-73145",
+        1005,
+        1330
+      ],
+      [
+        "okk-73186",
+        436,
+        568
+      ],
+      [
+        "okk-73233",
+        566,
+        576
+      ],
+      [
+        "okk-78064",
+        598,
+        688
+      ],
+      [
+        "okk-85222",
+        960,
+        1136
+      ],
+      [
+        "okk-91732",
+        399,
+        510
+      ],
+      [
+        "okk-94899",
+        756,
+        980
+      ],
+      [
+        "okk-96594",
+        222,
+        258
+      ],
+      [
+        "okk-97870",
+        168,
+        252
+      ],
+      [
+        "okk-99170",
+        383,
+        400
+      ],
+      [
+        "qfi-11336",
+        996,
+        1440
+      ],
+      [
+        "qfi-19776",
+        726,
+        897
+      ],
+      [
+        "qfi-21326",
+        368,
+        368
+      ],
+      [
+        "qfi-29033",
+        504,
+        504
+      ],
+      [
+        "qfi-31730",
+        744,
+        1024
+      ],
+      [
+        "qfi-40239",
+        320,
+        356
+      ],
+      [
+        "qfi-40818",
+        570,
+        994
+      ],
+      [
+        "qfi-66698",
+        612,
+        780
+      ],
+      [
+        "qfi-69472",
+        525,
+        650
+      ],
+      [
+        "qfi-70750",
+        924,
+        1209
+      ],
+      [
+        "qfi-76124",
+        365,
+        416
+      ],
+      [
+        "qfi-76450",
+        1185,
+        1554
+      ],
+      [
+        "qfi-77843",
+        455,
+        550
+      ],
+      [
+        "qfi-85475",
+        849,
+        1530
+      ],
+      [
+        "qfi-87623",
+        242,
+        246
+      ],
+      [
+        "qfi-93781",
+        1109,
+        1518
+      ],
+      [
+        "qfi-99178",
+        480,
+        657
+      ],
+      [
+        "thr-12663",
+        940,
+        1278
+      ],
+      [
+        "thr-24389",
+        572,
+        632
+      ],
+      [
+        "thr-27417",
+        616,
+        888
+      ],
+      [
+        "thr-27911",
+        954,
+        1095
+      ],
+      [
+        "thr-32829",
+        528,
+        567
+      ],
+      [
+        "thr-34310",
+        477,
+        497
+      ],
+      [
+        "thr-50071",
+        738,
+        738
+      ],
+      [
+        "thr-60491",
+        947,
+        1368
+      ],
+      [
+        "thr-61780",
+        531,
+        581
+      ],
+      [
+        "thr-78724",
+        1080,
+        1380
+      ],
+      [
+        "thr-82723",
+        275,
+        450
+      ],
+      [
+        "thr-85077",
+        875,
+        960
+      ],
+      [
+        "thr-86641",
+        1152,
+        1344
+      ],
+      [
+        "thr-90127",
+        1000,
+        1386
+      ],
+      [
+        "ulv-11634",
+        680,
+        702
+      ],
+      [
+        "ulv-11866",
+        884,
+        912
+      ],
+      [
+        "ulv-17288",
+        356,
+        360
+      ],
+      [
+        "ulv-18831",
+        313,
+        378
+      ],
+      [
+        "ulv-26904",
+        803,
+        864
+      ],
+      [
+        "ulv-33643",
+        1153,
+        1612
+      ],
+      [
+        "ulv-58615",
+        384,
+        528
+      ],
+      [
+        "ulv-59335",
+        556,
+        648
+      ],
+      [
+        "ulv-65029",
+        698,
+        702
+      ],
+      [
+        "ulv-67129",
+        532,
+        544
+      ],
+      [
+        "ulv-68129",
+        561,
+        576
+      ],
+      [
+        "ulv-72242",
+        916,
+        1035
+      ],
+      [
+        "ulv-83322",
+        330,
+        376
+      ],
+      [
+        "ulv-89770",
+        801,
+        912
+      ],
+      [
+        "ulv-93917",
+        1029,
+        1125
+      ],
+      [
+        "ulv-94864",
+        1043,
+        1421
+      ],
+      [
+        "ulv-97356",
+        308,
+        432
+      ],
+      [
+        "ulv-99151",
+        648,
+        672
+      ],
+      [
+        "wex-16097",
+        527,
+        636
+      ],
+      [
+        "wex-21348",
+        611,
+        708
+      ],
+      [
+        "wex-21398",
+        1211,
+        1380
+      ],
+      [
+        "wex-25660",
+        1161,
+        1593
+      ],
+      [
+        "wex-27347",
+        724,
+        756
+      ],
+      [
+        "wex-30732",
+        998,
+        1410
+      ],
+      [
+        "wex-33027",
+        685,
+        738
+      ],
+      [
+        "wex-33128",
+        1215,
+        1518
+      ],
+      [
+        "wex-39052",
+        732,
+        803
+      ],
+      [
+        "wex-45410",
+        478,
+        632
+      ],
+      [
+        "wex-63391",
+        954,
+        1092
+      ],
+      [
+        "wex-68783",
+        627,
+        759
+      ],
+      [
+        "wex-76928",
+        101,
+        176
+      ],
+      [
+        "wex-87930",
+        811,
+        912
+      ]
+    ],
+    "model_everywhere": [
+      [
+        "drw-12933",
+        524,
+        576
+      ],
+      [
+        "drw-21965",
+        597,
+        810
+      ],
+      [
+        "drw-32945",
+        1155,
+        1368
+      ],
+      [
+        "drw-43988",
+        843,
+        1173
+      ],
+      [
+        "drw-78552",
+        840,
+        1060
+      ],
+      [
+        "okk-10030",
+        413,
+        420
+      ],
+      [
+        "okk-17457",
+        665,
+        747
+      ],
+      [
+        "okk-21375",
+        596,
+        767
+      ],
+      [
+        "okk-22439",
+        774,
+        1025
+      ],
+      [
+        "okk-28746",
+        151,
+        186
+      ],
+      [
+        "okk-30988",
+        621,
+        648
+      ],
+      [
+        "okk-34270",
+        604,
+        648
+      ],
+      [
+        "okk-34630",
+        1238,
+        1769
+      ],
+      [
+        "okk-37859",
+        566,
+        568
+      ],
+      [
+        "okk-43364",
+        839,
+        1584
+      ],
+      [
+        "okk-47004",
+        187,
+        344
+      ],
+      [
+        "okk-47782",
+        1066,
+        1380
+      ],
+      [
+        "okk-50023",
+        1094,
+        1278
+      ],
+      [
+        "okk-50365",
+        1109,
+        1320
+      ],
+      [
+        "okk-56037",
+        394,
+        395
+      ],
+      [
+        "okk-61708",
+        512,
         576
       ],
       [
@@ -4719,509 +5009,7 @@
       ],
       [
         "okk-63738",
-        536,
-        747
-      ],
-      [
-        "okk-67985",
-        374,
-        416
-      ],
-      [
-        "okk-71914",
-        963,
-        1525
-      ],
-      [
-        "okk-73145",
-        1010,
-        1330
-      ],
-      [
-        "okk-73186",
-        438,
-        568
-      ],
-      [
-        "okk-73233",
-        566,
-        576
-      ],
-      [
-        "okk-78064",
-        598,
-        688
-      ],
-      [
-        "okk-85222",
-        963,
-        1136
-      ],
-      [
-        "okk-91732",
-        401,
-        510
-      ],
-      [
-        "okk-94899",
-        758,
-        980
-      ],
-      [
-        "okk-96594",
-        224,
-        258
-      ],
-      [
-        "okk-97870",
-        168,
-        252
-      ],
-      [
-        "okk-99170",
-        383,
-        400
-      ],
-      [
-        "qfi-11336",
-        1001,
-        1440
-      ],
-      [
-        "qfi-19776",
-        729,
-        897
-      ],
-      [
-        "qfi-21326",
-        368,
-        368
-      ],
-      [
-        "qfi-29033",
-        504,
-        504
-      ],
-      [
-        "qfi-31730",
-        750,
-        1024
-      ],
-      [
-        "qfi-40239",
-        320,
-        356
-      ],
-      [
-        "qfi-40818",
-        575,
-        994
-      ],
-      [
-        "qfi-66698",
-        615,
-        780
-      ],
-      [
-        "qfi-69472",
-        529,
-        650
-      ],
-      [
-        "qfi-70750",
-        940,
-        1209
-      ],
-      [
-        "qfi-76124",
-        365,
-        416
-      ],
-      [
-        "qfi-76450",
-        1180,
-        1554
-      ],
-      [
-        "qfi-77843",
-        455,
-        550
-      ],
-      [
-        "qfi-85475",
-        837,
-        1530
-      ],
-      [
-        "qfi-87623",
-        242,
-        246
-      ],
-      [
-        "qfi-93781",
-        1115,
-        1518
-      ],
-      [
-        "qfi-99178",
-        484,
-        657
-      ],
-      [
-        "thr-12663",
-        948,
-        1278
-      ],
-      [
-        "thr-24389",
-        574,
-        632
-      ],
-      [
-        "thr-27417",
-        606,
-        888
-      ],
-      [
-        "thr-27911",
-        956,
-        1095
-      ],
-      [
-        "thr-32829",
-        529,
-        567
-      ],
-      [
-        "thr-34310",
-        475,
-        497
-      ],
-      [
-        "thr-50071",
-        738,
-        738
-      ],
-      [
-        "thr-60491",
-        957,
-        1368
-      ],
-      [
-        "thr-61780",
-        531,
-        581
-      ],
-      [
-        "thr-78724",
-        1070,
-        1380
-      ],
-      [
-        "thr-82723",
-        268,
-        450
-      ],
-      [
-        "thr-85077",
-        845,
-        960
-      ],
-      [
-        "thr-86641",
-        1154,
-        1344
-      ],
-      [
-        "thr-90127",
-        1005,
-        1386
-      ],
-      [
-        "ulv-11634",
-        680,
-        702
-      ],
-      [
-        "ulv-11866",
-        883,
-        912
-      ],
-      [
-        "ulv-17288",
-        356,
-        360
-      ],
-      [
-        "ulv-18831",
-        335,
-        378
-      ],
-      [
-        "ulv-26904",
-        802,
-        864
-      ],
-      [
-        "ulv-33643",
-        1150,
-        1612
-      ],
-      [
-        "ulv-58615",
-        384,
-        528
-      ],
-      [
-        "ulv-59335",
-        558,
-        648
-      ],
-      [
-        "ulv-65029",
-        698,
-        702
-      ],
-      [
-        "ulv-67129",
-        532,
-        544
-      ],
-      [
-        "ulv-68129",
-        563,
-        576
-      ],
-      [
-        "ulv-72242",
-        945,
-        1035
-      ],
-      [
-        "ulv-83322",
-        330,
-        376
-      ],
-      [
-        "ulv-89770",
-        803,
-        912
-      ],
-      [
-        "ulv-93917",
-        1033,
-        1125
-      ],
-      [
-        "ulv-94864",
-        1035,
-        1421
-      ],
-      [
-        "ulv-97356",
-        303,
-        432
-      ],
-      [
-        "ulv-99151",
-        648,
-        672
-      ],
-      [
-        "wex-16097",
-        531,
-        636
-      ],
-      [
-        "wex-21348",
-        600,
-        708
-      ],
-      [
-        "wex-21398",
-        1211,
-        1380
-      ],
-      [
-        "wex-25660",
-        1165,
-        1593
-      ],
-      [
-        "wex-27347",
-        725,
-        756
-      ],
-      [
-        "wex-30732",
-        993,
-        1410
-      ],
-      [
-        "wex-33027",
-        685,
-        738
-      ],
-      [
-        "wex-33128",
-        1210,
-        1518
-      ],
-      [
-        "wex-39052",
-        733,
-        803
-      ],
-      [
-        "wex-45410",
-        479,
-        632
-      ],
-      [
-        "wex-63391",
-        940,
-        1092
-      ],
-      [
-        "wex-68783",
-        629,
-        759
-      ],
-      [
-        "wex-76928",
-        102,
-        176
-      ],
-      [
-        "wex-87930",
-        805,
-        912
-      ]
-    ],
-    "model_everywhere": [
-      [
-        "drw-12933",
-        526,
-        576
-      ],
-      [
-        "drw-21965",
-        600,
-        810
-      ],
-      [
-        "drw-32945",
-        1156,
-        1368
-      ],
-      [
-        "drw-43988",
-        848,
-        1173
-      ],
-      [
-        "drw-78552",
-        844,
-        1060
-      ],
-      [
-        "okk-10030",
-        413,
-        420
-      ],
-      [
-        "okk-17457",
-        660,
-        747
-      ],
-      [
-        "okk-21375",
-        599,
-        767
-      ],
-      [
-        "okk-22439",
-        759,
-        1025
-      ],
-      [
-        "okk-28746",
-        151,
-        186
-      ],
-      [
-        "okk-30988",
-        621,
-        648
-      ],
-      [
-        "okk-34270",
-        606,
-        648
-      ],
-      [
-        "okk-34630",
-        1244,
-        1769
-      ],
-      [
-        "okk-37859",
-        566,
-        568
-      ],
-      [
-        "okk-43364",
-        839,
-        1584
-      ],
-      [
-        "okk-47004",
-        189,
-        344
-      ],
-      [
-        "okk-47782",
-        1071,
-        1380
-      ],
-      [
-        "okk-50023",
-        1095,
-        1278
-      ],
-      [
-        "okk-50365",
-        1116,
-        1320
-      ],
-      [
-        "okk-56037",
-        394,
-        395
-      ],
-      [
-        "okk-61708",
-        512,
-        576
-      ],
-      [
-        "okk-62483",
-        712,
-        946
-      ],
-      [
-        "okk-62992",
-        433,
-        435
-      ],
-      [
-        "okk-63691",
-        230,
-        310
-      ],
-      [
-        "okk-63738",
-        538,
+        535,
         747
       ],
       [
@@ -5231,17 +5019,17 @@
       ],
       [
         "okk-71914",
-        960,
+        954,
         1525
       ],
       [
         "okk-73145",
-        1008,
+        1003,
         1330
       ],
       [
         "okk-73186",
-        444,
+        442,
         568
       ],
       [
@@ -5256,22 +5044,22 @@
       ],
       [
         "okk-85222",
-        959,
+        956,
         1136
       ],
       [
         "okk-91732",
-        401,
+        399,
         510
       ],
       [
         "okk-94899",
-        763,
+        761,
         980
       ],
       [
         "okk-96594",
-        224,
+        222,
         258
       ],
       [
@@ -5286,12 +5074,12 @@
       ],
       [
         "qfi-11336",
-        999,
+        994,
         1440
       ],
       [
         "qfi-19776",
-        731,
+        728,
         897
       ],
       [
@@ -5306,7 +5094,7 @@
       ],
       [
         "qfi-31730",
-        758,
+        751,
         1024
       ],
       [
@@ -5316,22 +5104,22 @@
       ],
       [
         "qfi-40818",
-        576,
+        571,
         994
       ],
       [
         "qfi-66698",
-        616,
+        613,
         780
       ],
       [
         "qfi-69472",
-        529,
+        525,
         650
       ],
       [
         "qfi-70750",
-        944,
+        928,
         1209
       ],
       [
@@ -5341,7 +5129,7 @@
       ],
       [
         "qfi-76450",
-        1182,
+        1187,
         1554
       ],
       [
@@ -5351,7 +5139,7 @@
       ],
       [
         "qfi-85475",
-        836,
+        848,
         1530
       ],
       [
@@ -5361,17 +5149,17 @@
       ],
       [
         "qfi-93781",
-        1115,
+        1109,
         1518
       ],
       [
         "qfi-99178",
-        483,
+        479,
         657
       ],
       [
         "thr-12663",
-        948,
+        940,
         1278
       ],
       [
@@ -5381,12 +5169,12 @@
       ],
       [
         "thr-27417",
-        597,
+        608,
         888
       ],
       [
         "thr-27911",
-        960,
+        958,
         1095
       ],
       [
@@ -5396,7 +5184,7 @@
       ],
       [
         "thr-34310",
-        473,
+        475,
         497
       ],
       [
@@ -5406,7 +5194,7 @@
       ],
       [
         "thr-60491",
-        961,
+        952,
         1368
       ],
       [
@@ -5416,27 +5204,27 @@
       ],
       [
         "thr-78724",
-        1072,
+        1083,
         1380
       ],
       [
         "thr-82723",
-        267,
+        274,
         450
       ],
       [
         "thr-85077",
-        848,
+        878,
         960
       ],
       [
         "thr-86641",
-        1157,
+        1156,
         1344
       ],
       [
         "thr-90127",
-        1006,
+        1001,
         1386
       ],
       [
@@ -5446,7 +5234,7 @@
       ],
       [
         "ulv-11866",
-        883,
+        884,
         912
       ],
       [
@@ -5456,32 +5244,32 @@
       ],
       [
         "ulv-18831",
-        334,
+        312,
         378
       ],
       [
         "ulv-26904",
-        799,
+        800,
         864
       ],
       [
         "ulv-33643",
-        1151,
+        1154,
         1612
       ],
       [
         "ulv-58615",
-        384,
+        383,
         528
       ],
       [
         "ulv-59335",
-        559,
+        557,
         648
       ],
       [
         "ulv-65029",
-        663,
+        661,
         702
       ],
       [
@@ -5491,37 +5279,37 @@
       ],
       [
         "ulv-68129",
-        535,
+        534,
         576
       ],
       [
         "ulv-72242",
-        944,
+        916,
         1035
       ],
       [
         "ulv-83322",
-        301,
+        298,
         376
       ],
       [
         "ulv-89770",
-        803,
+        801,
         912
       ],
       [
         "ulv-93917",
-        961,
+        959,
         1125
       ],
       [
         "ulv-94864",
-        1045,
+        1053,
         1421
       ],
       [
         "ulv-97356",
-        305,
+        310,
         432
       ],
       [
@@ -5531,12 +5319,12 @@
       ],
       [
         "wex-16097",
-        533,
+        529,
         636
       ],
       [
         "wex-21348",
-        604,
+        614,
         708
       ],
       [
@@ -5546,17 +5334,17 @@
       ],
       [
         "wex-25660",
-        1171,
+        1167,
         1593
       ],
       [
         "wex-27347",
-        725,
+        724,
         756
       ],
       [
         "wex-30732",
-        1010,
+        1014,
         1410
       ],
       [
@@ -5566,37 +5354,37 @@
       ],
       [
         "wex-33128",
-        1210,
+        1216,
         1518
       ],
       [
         "wex-39052",
-        735,
+        734,
         803
       ],
       [
         "wex-45410",
-        481,
+        480,
         632
       ],
       [
         "wex-63391",
-        940,
+        954,
         1092
       ],
       [
         "wex-68783",
-        631,
+        629,
         759
       ],
       [
         "wex-76928",
-        92,
+        91,
         176
       ],
       [
         "wex-87930",
-        807,
+        813,
         912
       ]
     ]
@@ -5660,6 +5448,8 @@
             "description"
           ],
           "plan_evidence": "a round of free spins",
+          "model_used_for_this_record": false,
+          "model_answer_holds_the_label": true,
           "description": "The cave-diving expedition to Rellavern is under the charge of a surveyor named Pell, who has allowed one slate for the passage and another for the finds. The flooded shrine bears carvings of Greek gods and the labours of Heracles. Pell notes them down without much comment. On the 7x7 grid, touching groups of identical symbols pay; their position in a row is of no consequence. There is a round of free spins. Sticky wilds stay put for subsequent spins, which saves at least one thing from shifting about."
         }
       },
@@ -5719,7 +5509,7 @@
         "version": "model_where_thin",
         "detail": {
           "brand": "tavrenmoor",
-          "floor": 0.597216,
+          "floor": 0.59806,
           "record_condition": "description",
           "strong_matches_live": [
             {
@@ -5749,7 +5539,7 @@
     "injected": [
       {
         "kind": "tag_planted_to_contradict_the_description",
-        "what": "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        "what": "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         "game_id": "okk-17457",
         "title": "Wivrel the Cherry Seller",
         "version": null,
@@ -5758,10 +5548,19 @@
           "tag_asserts": "cluster_pays",
           "description_states": "paylines",
           "planted_label_asserted_by": [],
-          "mechanics_status": {
+          "model_reading_used": true,
+          "mechanics": {
             "table": "conflict",
-            "model_where_thin": "conflict",
-            "model_everywhere": "conflict"
+            "model_where_thin": [
+              "paylines",
+              "free_spins",
+              "hold_and_respin"
+            ],
+            "model_everywhere": [
+              "paylines",
+              "free_spins",
+              "hold_and_respin"
+            ]
           }
         }
       },
@@ -5782,7 +5581,7 @@
       },
       {
         "kind": "tag_planted_to_contradict_the_description",
-        "what": "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        "what": "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         "game_id": "okk-56037",
         "title": "Wenshao the Dragon Dancer",
         "version": null,
@@ -5791,10 +5590,19 @@
           "tag_asserts": "paylines",
           "description_states": "cluster_pays",
           "planted_label_asserted_by": [],
-          "mechanics_status": {
+          "model_reading_used": true,
+          "mechanics": {
             "table": "conflict",
-            "model_where_thin": "conflict",
-            "model_everywhere": "conflict"
+            "model_where_thin": [
+              "cluster_pays",
+              "multipliers",
+              "cascading_reels"
+            ],
+            "model_everywhere": [
+              "cluster_pays",
+              "multipliers",
+              "cascading_reels"
+            ]
           }
         }
       },
@@ -5819,7 +5627,7 @@
       },
       {
         "kind": "tag_planted_to_contradict_the_description",
-        "what": "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        "what": "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         "game_id": "thr-24389",
         "title": "Velbrith Treasure Hunt",
         "version": null,
@@ -5828,10 +5636,19 @@
           "tag_asserts": "paylines",
           "description_states": "ways",
           "planted_label_asserted_by": [],
-          "mechanics_status": {
+          "model_reading_used": true,
+          "mechanics": {
             "table": "conflict",
-            "model_where_thin": "conflict",
-            "model_everywhere": "conflict"
+            "model_where_thin": [
+              "ways",
+              "multipliers",
+              "expanding_wilds"
+            ],
+            "model_everywhere": [
+              "ways",
+              "multipliers",
+              "expanding_wilds"
+            ]
           }
         }
       },
@@ -5883,7 +5700,7 @@
       },
       {
         "kind": "tag_planted_to_contradict_the_description",
-        "what": "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        "what": "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         "game_id": "ulv-18831",
         "title": "The Saloon of Ironscree",
         "version": null,
@@ -5892,16 +5709,27 @@
           "tag_asserts": "cluster_pays",
           "description_states": "paylines",
           "planted_label_asserted_by": [],
-          "mechanics_status": {
+          "model_reading_used": true,
+          "mechanics": {
             "table": "conflict",
-            "model_where_thin": "conflict",
-            "model_everywhere": "conflict"
+            "model_where_thin": [
+              "paylines",
+              "free_spins",
+              "multipliers",
+              "sticky_wilds"
+            ],
+            "model_everywhere": [
+              "paylines",
+              "free_spins",
+              "multipliers",
+              "sticky_wilds"
+            ]
           }
         }
       },
       {
         "kind": "tag_planted_to_contradict_the_description",
-        "what": "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        "what": "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         "game_id": "ulv-72242",
         "title": "Mavrek's Polar Expedition",
         "version": null,
@@ -5910,10 +5738,21 @@
           "tag_asserts": "cluster_pays",
           "description_states": "paylines",
           "planted_label_asserted_by": [],
-          "mechanics_status": {
+          "model_reading_used": true,
+          "mechanics": {
             "table": "conflict",
-            "model_where_thin": "conflict",
-            "model_everywhere": "conflict"
+            "model_where_thin": [
+              "paylines",
+              "multipliers",
+              "expanding_wilds",
+              "hold_and_respin"
+            ],
+            "model_everywhere": [
+              "paylines",
+              "multipliers",
+              "expanding_wilds",
+              "hold_and_respin"
+            ]
           }
         }
       },

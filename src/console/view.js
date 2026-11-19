@@ -80,8 +80,16 @@ function enrichment(anchor, version) {
   if (table.dropped.length > 0) parts.push(`<p class="small">Dropped as not an attribute of the game: ${table.dropped.map((entry) => `${mono(entry.tag)} (${esc(words(entry.reason))})`).join(", ")}.</p>`);
   if (table.unknown.length > 0) parts.push(`<p class="small">Unknown to the table, and not guessed: ${table.unknown.map((entry) => mono(entry.tag)).join(", ")}.</p>`);
   if (conflict !== null) {
+    const handled = conflict.model_reading_used
+      ? "The two model versions carry the model's reading of the description and title instead."
+      : "The model gave no reading from the description or title, so the field stays empty in every version.";
+    const withheld =
+      (conflict.model_labels_withheld ?? []).length === 0
+        ? ""
+        : ` Model labels not used, because they were backed by the disputed tag list: ${conflict.model_labels_withheld.map((entry) => `${esc(words(entry.label))} (${mono(entry.quote)})`).join(", ")}.`;
     parts.push(
-      `<p>${label("ochre", "conflicting")} The tag ${mono(conflict.tag)} asserts ${esc(words(conflict.tag_asserts))}, and the description says “${esc(conflict.description_quote)}” (${esc(conflict.description_states.map(words).join(", "))}). Code cannot tell which is right, so no mechanic is asserted.</p>`,
+      `<p data-conflict>${label("ochre", "conflicting")} The tag ${mono(conflict.tag)} asserts ${esc(words(conflict.tag_asserts))}, and the description says “${esc(conflict.description_quote)}” (${esc(conflict.description_states.map(words).join(", "))}). ` +
+        `The table cannot tell which is right, so the table version asserts no mechanic. ${handled}${withheld}</p>`,
     );
   }
   const thin = anchor.thin ? `${label("ochre", "thin")} The table left this record without a usable label for its themes or its mechanics.` : "The table found labels for both fields, so the record is not thin.";
@@ -308,7 +316,7 @@ export function renderEvaluation(evaluation) {
   const enrichRows = labelled
     .map((version) => {
       const row = report.enrichment[version];
-      return `<tr><th scope="row">${esc(versionName(version))}</th><td class="num">${share(row.precision)}</td><td class="num">${share(row.recovery)}</td><td class="num">${share(row.recovery_without_tags)}</td><td class="num">${esc(row.missed_abstentions.count)} <span class="small">of ${esc(row.missed_abstentions.of)}</span></td><td class="num">${esc(row.invalid_quotes.count)} <span class="small">of ${esc(row.invalid_quotes.of)}</span></td><td class="num">${esc(row.missed.not_asserted)} <span class="small">+ ${esc(row.missed.conflict_rule)} withheld by the conflict rule</span></td></tr>`;
+      return `<tr><th scope="row">${esc(versionName(version))}</th><td class="num">${share(row.precision)}</td><td class="num">${share(row.recovery)}</td><td class="num">${share(row.recovery_without_tags)}</td><td class="num">${esc(row.missed_abstentions.count)} <span class="small">of ${esc(row.missed_abstentions.of)}</span></td><td class="num">${esc(row.invalid_quotes.count)} <span class="small">of ${esc(row.invalid_quotes.of)}</span></td><td class="num">${esc(row.missed.not_asserted)} <span class="small">+ ${esc(row.missed.conflict_rule)} on a field left empty by a tag conflict</span></td></tr>`;
     })
     .join("");
   const disagreements = report.disagreements.list
@@ -322,7 +330,18 @@ export function renderEvaluation(evaluation) {
       "Is enrichment safe to automate?",
       "Counts beside every rate. Raw text asserts no labels, so these measures do not apply to it.",
       `<div class="scroll"><table><thead><tr><th>Version</th><th class="num">Precision</th><th class="num">Recovery</th><th class="num">Recovery without tags</th><th class="num">Missed abstentions</th><th class="num">Invalid quotes</th><th class="num">Recoverable labels not asserted</th></tr></thead><tbody>${enrichRows}</tbody></table></div>` +
-        `<p class="small">${esc(report.conflict_games.note)} Games: ${report.conflict_games.games.map((entry) => mono(entry.game_id)).join(" ")}.</p>` +
+        `<h4>Where a tag contradicts the description: ${esc(report.conflict_games.games.length)} games</h4><p class="small">${esc(report.conflict_games.note)}</p>` +
+        `<div class="scroll"><table><thead><tr><th>Game</th><th>The tag says</th><th>The description says</th>${labelled.map((version) => `<th>${esc(versionName(version))}</th>`).join("")}</tr></thead><tbody>${report.conflict_games.games
+          .map(
+            (entry) =>
+              `<tr><td>${esc(entry.title)} ${mono(entry.game_id)}</td><td>${mono(entry.tag)}</td><td>${esc(entry.description_states.map(words).join(", "))}</td>${labelled
+                .map((version) => {
+                  const field = entry.mechanics[version];
+                  return `<td>${field.status === "asserted" ? field.labels.map((term) => label(version === "table" ? "slate" : "plum", words(term))).join(" ") : label("ochre", field.status === "conflict" ? "conflicting" : field.status)}</td>`;
+                })
+                .join("")}</tr>`,
+          )
+          .join("")}</tbody></table></div>` +
         `<h4>Disagreements with the plan: ${esc(report.disagreements.count)}</h4><ul>${disagreements}</ul>` +
         `<h4>The reviewer, ${mono(report.reviewer.model)}</h4><p>Control: it agreed with the plan on ${esc(control.agreed)} of ${esc(control.size)} labels where the plan and the pipeline agree (${esc(control.applies.agreed)} of ${esc(control.applies.of)} where the label applies, ${esc(control.does_not_apply.agreed)} of ${esc(control.does_not_apply.of)} where it does not). ` +
         `It answered ${esc(report.reviewer.questions)} questions: ${esc(report.reviewer.answers.yes)} yes, ${esc(report.reviewer.answers.no)} no, ${esc(report.reviewer.answers.unclear)} unclear.</p>` +

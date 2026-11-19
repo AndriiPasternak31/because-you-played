@@ -155,9 +155,13 @@ export function formatReport(report: Report, spend: ReturnType<typeof storedSpen
   );
   out.push("raw asserts no labels, so these marks do not apply to it.");
   out.push(
-    `Recoverable labels not asserted: ${LABEL_VERSIONS.map((version) => `${version} ${report.enrichment[version].missed.not_asserted} + ${report.enrichment[version].missed.conflict_rule} withheld by the conflict rule`).join("; ")}.`,
+    `Recoverable labels not asserted: ${LABEL_VERSIONS.map((version) => `${version} ${report.enrichment[version].missed.not_asserted} + ${report.enrichment[version].missed.conflict_rule} on a field left empty by a tag conflict`).join("; ")}.`,
   );
-  out.push(`The conflict rule applies to ${report.conflict_games.games.length} games (${report.conflict_games.games.map((game) => game.game_id).join(", ")}): no mechanic is asserted for them in any version.`);
+  const conflicts = report.conflict_games.games;
+  out.push(
+    `A delivered tag contradicts the description on ${conflicts.length} games (${conflicts.map((game) => game.game_id).join(", ")}). The table version asserts no mechanic there; ` +
+      `the model's reading stands in the two model versions on ${conflicts.filter((game) => game.model_reading_used).length} of them.`,
+  );
   out.push(`Disagreements with the plan: ${report.disagreements.count}.`);
   for (const entry of report.disagreements.list) {
     const reviewer = typeof entry.reviewer === "string" ? "reviewer's answer withheld until the owner has answered" : `reviewer says ${entry.reviewer.answer}`;

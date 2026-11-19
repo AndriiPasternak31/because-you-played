@@ -250,11 +250,23 @@ export interface Report {
       recovery_without_tags: Rate;
       missed_abstentions: { count: number; of: number; list: EnrichmentCounts["missed_abstentions"] };
       invalid_quotes: { count: number; of: number; list: EnrichmentCounts["invalid_quotes"] };
-      /** Recoverable labels not asserted, by cause. `conflict_rule` is the pipeline's documented rule, not a label the model failed to find. */
+      /** Recoverable labels not asserted, by cause. `conflict_rule`: the field is empty because a tag contradicts the description and nothing resolved it. */
       missed: { not_asserted: number; conflict_rule: number; list: Miss[] };
     }
   >;
-  conflict_games: { note: string; games: { game_id: string; title: string; tag: string; description_states: string[] }[] };
+  conflict_games: {
+    note: string;
+    games: {
+      game_id: string;
+      title: string;
+      tag: string;
+      tag_asserts: string;
+      description_states: string[];
+      model_reading_used: boolean;
+      model_labels_withheld: string[];
+      mechanics: Record<LabelVersion, { status: string; labels: string[] }>;
+    }[];
+  };
   disagreements: { count: number; list: (Disagreement & { title: string; question_id: string; reviewer: Shown })[] };
   control: {
     size: number;
@@ -460,16 +472,27 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
     enrichment,
     conflict_games: {
       note:
-        "On these games a delivered tag contradicts the description. The pipeline's conflict rule then asserts no mechanic at all, in the table version and in both model versions. " +
-        "Their missed mechanics are counted under missed.conflict_rule: the rule withheld them; the model did not fail to find them.",
-      games: index.records
-        .filter((candidate) => candidate.conflict !== null)
-        .map((candidate) => ({
-          game_id: candidate.game_id,
-          title: candidate.canonical.title,
-          tag: candidate.conflict?.tag ?? "",
-          description_states: candidate.conflict?.description_states ?? [],
-        })),
+        "On these games a delivered tag contradicts the description. The table cannot tell which side is right, so the table version asserts no mechanic for them; " +
+        "their missed mechanics there are counted under missed.conflict_rule. The two model versions carry the model's reading instead, each label quoted from the description or the title; " +
+        "a model label backed only by the disputed tag list is withheld.",
+      games: index.records.flatMap((candidate) =>
+        candidate.conflict === null
+          ? []
+          : [
+              {
+                game_id: candidate.game_id,
+                title: candidate.canonical.title,
+                tag: candidate.conflict.tag,
+                tag_asserts: candidate.conflict.tag_asserts,
+                description_states: candidate.conflict.description_states,
+                model_reading_used: candidate.conflict.model_reading_used,
+                model_labels_withheld: candidate.conflict.model_labels_withheld.map((label) => label.label),
+                mechanics: Object.fromEntries(
+                  LABEL_VERSIONS.map((version) => [version, { status: candidate.versions[version].mechanics?.status ?? "none", labels: candidate.versions[version].mechanics?.labels.map((label) => label.label) ?? [] }]),
+                ) as Record<LabelVersion, { status: string; labels: string[] }>,
+              },
+            ],
+      ),
     },
     disagreements: {
       count: analysis.disagreements.length,
@@ -561,7 +584,15 @@ function gallery(analysis: Analysis, report: Report): Report["gallery"] {
         game_id: miss.game_id,
         title: title(miss.game_id),
         version,
-        detail: { label: miss.label, recoverable_via: miss.via, plan_evidence: evidence?.span ?? null, description: records.get(miss.game_id)?.canonical.description ?? null },
+        detail: {
+          label: miss.label,
+          recoverable_via: miss.via,
+          plan_evidence: evidence?.span ?? null,
+          // Whether the model was asked for this record in this version, and whether its stored answer holds the label.
+          model_used_for_this_record: version === "model_everywhere" || (version === "model_where_thin" && (records.get(miss.game_id)?.thin ?? false)),
+          model_answer_holds_the_label: [...(records.get(miss.game_id)?.model.themes ?? []), ...(records.get(miss.game_id)?.model.mechanics ?? [])].some((label) => label.label === miss.label),
+          description: records.get(miss.game_id)?.canonical.description ?? null,
+        },
       });
     }
   }
@@ -655,7 +686,7 @@ function gallery(analysis: Analysis, report: Report): Report["gallery"] {
     for (const conflicting of row.conflicting_tags) {
       injected.push({
         kind: "tag_planted_to_contradict_the_description",
-        what: "A delivered tag asserts one win system and the description states another. The conflict rule asserts no mechanic at all for the record.",
+        what: "A delivered tag asserts one win system and the description states another. The table asserts no mechanic for the record; the two model versions carry the model's reading of the text.",
         game_id: candidate.game_id,
         title: candidate.canonical.title,
         version: null,
@@ -664,7 +695,15 @@ function gallery(analysis: Analysis, report: Report): Report["gallery"] {
           tag_asserts: conflicting.asserts,
           description_states: conflicting.contradicts,
           planted_label_asserted_by: LABEL_VERSIONS.filter((labelVersion) => candidate.versions[labelVersion].mechanics?.labels.some((label) => label.label === conflicting.asserts)),
-          mechanics_status: Object.fromEntries(LABEL_VERSIONS.map((labelVersion) => [labelVersion, candidate.versions[labelVersion].mechanics?.status ?? null])),
+          model_reading_used: candidate.conflict?.model_reading_used ?? null,
+          mechanics: Object.fromEntries(
+            LABEL_VERSIONS.map((labelVersion) => [
+              labelVersion,
+              candidate.versions[labelVersion].mechanics?.status === "asserted"
+                ? (candidate.versions[labelVersion].mechanics?.labels.map((label) => label.label) ?? [])
+                : (candidate.versions[labelVersion].mechanics?.status ?? null),
+            ]),
+          ),
         },
       });
     }

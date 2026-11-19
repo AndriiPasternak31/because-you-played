@@ -155,3 +155,34 @@ test("UI-5: text from the catalogue and from a model reaches the page as text, n
     assert.ok(html.includes(esc(delivered)), `${record.game_id}: the delivered description is not on the page`);
   }
 });
+
+test("UI-6: for a game whose tag contradicts its description, the page shows the conflict and how each version handled it", async () => {
+  const { get } = getter();
+  const conflicts = service.index.records.filter((record) => record.conflict !== null);
+  assert.ok(conflicts.length > 0, "the index holds no conflict to show");
+  for (const record of conflicts) {
+    const brand = brands.find((candidate) => service.offerings.statusByBrand.get(candidate)?.get(record.game_id) === "live") ?? (brands[0] as string);
+    const page = async (version: string): Promise<string> => text(await traceView(get, { game: record.game_id, brand, version, served: service.served.version }));
+    const table = await page("table");
+    const model = await page("model_everywhere");
+    for (const html of [table, model]) {
+      assert.ok(html.includes(`The tag ${record.conflict?.tag} asserts`), `${record.game_id}: the contradicted tag is not named`);
+      assert.ok(html.includes("the table version asserts no mechanic"));
+    }
+    assert.ok(table.includes("Mechanics conflicting"), `${record.game_id}: the table version does not show its mechanics as conflicting`);
+    const used = record.versions.model_everywhere.mechanics?.labels ?? [];
+    if (record.conflict?.model_reading_used === true) {
+      assert.ok(used.length > 0 && !model.includes("Mechanics conflicting"));
+      for (const label of used) assert.ok(model.includes(`“${label.quote}”`), `${record.game_id}: the quote behind ${label.label} is not shown`);
+    } else {
+      assert.ok(model.includes("the field stays empty in every version"));
+    }
+    // Side by side: one column per version, the table's cell says conflicting and a resolved model cell lists labels.
+    const compare = await compareView(get, { game: record.game_id, brand, versions: VERSIONS, served: service.served.version });
+    const mechanics = compare.split("<tr>").find((row) => row.includes(">Mechanics</th>")) ?? "";
+    const cells = mechanics.split("<td>").slice(1);
+    assert.equal(cells.length, VERSIONS.length);
+    assert.ok((cells[VERSIONS.indexOf("table")] ?? "").includes("conflicting"));
+    if (record.conflict?.model_reading_used === true) assert.ok((cells[VERSIONS.indexOf("model_where_thin")] ?? "").includes('class="label plum"'));
+  }
+});
