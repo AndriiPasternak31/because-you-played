@@ -1,0 +1,449 @@
+<title>Because You Played Catalogue</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column. The spine is one game followed from plan to raw row; charts sit around it. Same dark look as the status page. */
+:root {
+  color-scheme: dark;
+  --bg: #090c0a; --panel: #0f1411; --panel-2: #141b17; --line: #1b2620; --line-strong: #2b3b33;
+  --text: #e4ede7; --muted: #8fa197;
+  --green: #35d07f; --green-deep: #123524; --mint: #a8f0c6;
+  --amber: #e8b44a; --amber-deep: #3a2c0f; --red: #f0806f; --blue: #7fb6e8;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 60px; }
+h1, h2, h3, p, ol, ul, dl, dd, figure { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.1rem, 6vw, 3.4rem); line-height: 1.04; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 700; font-size: clamp(1.4rem, 3.4vw, 1.8rem); line-height: 1.15; letter-spacing: -0.01em; text-wrap: balance; }
+h3 { font-size: 1.02rem; font-weight: 600; line-height: 1.3; }
+.label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 66ch; }
+section { display: flex; flex-direction: column; gap: 22px; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; }
+header { display: flex; flex-direction: column; gap: 22px; }
+.hero { display: flex; flex-direction: column; gap: 14px; }
+.hero .lede { color: var(--text); opacity: 0.88; font-size: 1.06rem; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 16px; border-top: 1px solid var(--line); padding-top: 18px; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--display); font-weight: 700; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--green); }
+.stat span { color: var(--muted); font-size: 0.9rem; }
+
+/* Three-step flow */
+.flow { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.step { background: var(--panel); border-top: 2px solid var(--line-strong); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.step.code { border-top-color: var(--green); }
+.step.model { border-top-color: var(--amber); }
+.who { align-self: flex-start; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.code .who { color: var(--green); background: var(--green-deep); }
+.model .who { color: var(--amber); background: var(--amber-deep); }
+.step p, .step li { color: var(--muted); font-size: 0.94rem; }
+.step ul { display: flex; flex-direction: column; gap: 4px; }
+.step li { padding-left: 14px; position: relative; }
+.step li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 6px; height: 1px; background: var(--muted); }
+.callout { border-left: 2px solid var(--green); background: var(--panel); padding: 14px 16px; }
+.callout p { font-weight: 500; }
+.rejects { display: grid; grid-template-columns: 1fr; gap: 8px 24px; }
+.rejects li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; color: var(--muted); font-size: 0.94rem; }
+.rejects li::before { content: "×"; color: var(--red); font-family: var(--mono); }
+
+/* Trace */
+.pair { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.card { background: var(--panel); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; border-top: 2px solid var(--line-strong); }
+.card.truth { border-top-color: var(--green); }
+.card.raw { border-top-color: var(--amber); }
+.kv { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); gap: 6px 12px; font-size: 0.92rem; }
+.kv dt { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); padding-top: 2px; }
+.kv dd { min-width: 0; overflow-wrap: anywhere; }
+.tagrow { display: flex; flex-wrap: wrap; gap: 5px; }
+.tg { font-family: var(--mono); font-size: 0.76rem; padding: 1px 7px; border-radius: 3px; border: 1px solid var(--line-strong); white-space: nowrap; }
+.tg.ok { color: var(--mint); border-color: var(--green-deep); background: var(--green-deep); }
+.tg.drift { color: var(--amber); border-color: var(--amber-deep); background: var(--amber-deep); }
+.tg.noise { color: var(--muted); text-decoration: line-through; }
+.tg.same { color: var(--text); }
+.gone { color: var(--red); font-family: var(--mono); font-size: 0.8rem; }
+.copy { background: var(--panel-2); padding: 14px 16px; font-size: 0.98rem; line-height: 1.7; max-width: none; }
+.copy mark { background: transparent; color: var(--text); border-bottom: 2px solid var(--green); padding-bottom: 1px; }
+.copy mark.m { border-bottom-color: var(--blue); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.84rem; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 0; border-bottom: 2px solid var(--green); margin-right: 6px; vertical-align: middle; }
+.legend i.m { border-bottom-color: var(--blue); }
+.legend i.sq { width: 10px; height: 10px; border: 0; border-radius: 2px; }
+.changes { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.change { display: grid; grid-template-columns: 1fr; gap: 4px 20px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 0.94rem; }
+.change .what { font-weight: 500; }
+.change .eg { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.change .eg b { color: var(--amber); font-weight: 500; }
+.change .eg s { color: var(--muted); }
+.verdict { display: grid; grid-template-columns: 1fr; gap: 14px; }
+
+/* Files */
+.zones { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.zone { background: var(--panel); padding: 16px; display: flex; flex-direction: column; gap: 10px; border-top: 2px solid var(--line-strong); min-width: 0; }
+.zone.open { border-top-color: var(--green); }
+.zone.hidden { border-top-color: var(--red); }
+.zone li { display: grid; grid-template-columns: 1fr; gap: 0; padding: 6px 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
+.zone li span { color: var(--muted); }
+.zone ul { display: flex; flex-direction: column; }
+
+/* Bars */
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group + .group { margin-top: 10px; }
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) 2.2rem; gap: 12px; align-items: center; font-size: 0.92rem; }
+.bar .t { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar .f { display: block; height: 100%; width: calc(var(--v) / 104 * 100%); background: var(--green); border-radius: 2px; transform-origin: left; animation: fill 0.8s cubic-bezier(.2,.7,.2,1) both; }
+.bar.ctl .f { background: var(--muted); }
+.bar .v { font-family: var(--mono); font-size: 0.82rem; text-align: right; font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 0.9rem; max-width: 70ch; }
+
+/* Tables */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+td.n { font-family: var(--mono); font-size: 0.84rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini { display: inline-block; width: 64px; height: 6px; background: var(--line); border-radius: 2px; overflow: hidden; vertical-align: middle; margin-left: 8px; }
+.mini i { display: block; height: 100%; width: calc(var(--p) * 100%); background: var(--green); }
+.mini.zero i { width: 0; }
+td .none { color: var(--red); }
+
+/* Stacked availability */
+.brands { display: flex; flex-direction: column; gap: 14px; }
+.brand { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.brand .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font-size: 0.94rem; }
+.brand .head span { color: var(--muted); font-family: var(--mono); font-size: 0.8rem; }
+.stack { display: flex; height: 14px; width: calc(var(--n) / 95 * 100%); min-width: 40px; border-radius: 2px; overflow: hidden; background: var(--line); }
+.stack i { display: block; height: 100%; flex: var(--k) 0 0; }
+.s-live { background: var(--green); } .s-wd { background: var(--red); } .s-dis { background: var(--muted); } .s-soon { background: var(--blue); }
+
+/* Ledger */
+.ledger { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.split { display: flex; height: 16px; border-radius: 2px; overflow: hidden; }
+.split i { display: block; height: 100%; flex: var(--k) 0 0; }
+.limits { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.limits li { padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--muted); max-width: 76ch; }
+.limits li b { color: var(--text); font-weight: 600; }
+footer { border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 0.9rem; }
+
+@media (min-width: 760px) {
+  .stats { grid-template-columns: repeat(4, 1fr); }
+  .flow { grid-template-columns: repeat(3, 1fr); }
+  .pair, .verdict { grid-template-columns: 1fr 1fr; }
+  .zones { grid-template-columns: repeat(3, 1fr); }
+  .rejects { grid-template-columns: 1fr 1fr; }
+  .change { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); align-items: baseline; }
+  .ledger { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .bar { grid-template-columns: minmax(0, 1fr) 2.2rem; }
+  .bar .t { grid-column: 1 / -1; grid-row: 2; }
+}
+@keyframes fill { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="label">Because You Played · the catalogue</span>
+    <div class="hero">
+      <h1>A clean catalogue, damaged on purpose</h1>
+      <p class="lede">A recommender is only tested by data that misbehaves. This catalogue is fictional. Every game starts as a clean, known record, and seeded code then damages it the way real supplier feeds are damaged. Because the damage is recorded, every defect can be counted and every answer checked.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>100</b><span>fictional slot games</span></div>
+      <div class="stat"><b>104</b><span>raw rows, duplicates included</span></div>
+      <div class="stat"><b>170</b><span>availability records</span></div>
+      <div class="stat"><b>20</b><span>kinds of mess, all counted</span></div>
+    </div>
+  </header>
+
+  <section aria-labelledby="h-how">
+    <div class="sec-head">
+      <h2 id="h-how">How one game is made</h2>
+      <p class="lede">Three steps. Code makes every decision and does all the damage. The model does one job in the middle: writing the prose.</p>
+    </div>
+    <ol class="flow">
+      <li class="step code">
+        <span class="who">Code · seeded</span>
+        <h3>1. Plan</h3>
+        <p>Decides what the game is before any text exists.</p>
+        <ul>
+          <li>Studio, themes and mechanics from a fixed list of 24 labels</li>
+          <li>Facts: RTP, volatility, grid, bet limits, release date</li>
+          <li>Which brands offer it, and with what status</li>
+          <li>Which defects its raw row will carry</li>
+        </ul>
+      </li>
+      <li class="step model">
+        <span class="who">Model</span>
+        <h3>2. Write</h3>
+        <p>Writes a title and a description that express the plan.</p>
+        <ul>
+          <li>One exact quote per planned theme and mechanic</li>
+          <li>Output must match a strict schema</li>
+          <li>A bad answer is rejected and stored, never repaired</li>
+        </ul>
+      </li>
+      <li class="step code">
+        <span class="who">Code · seeded</span>
+        <h3>3. Damage</h3>
+        <p>Turns the clean record into what a feed would deliver.</p>
+        <ul>
+          <li>Drops, misspells and pollutes tags</li>
+          <li>Removes or replaces descriptions</li>
+          <li>Reformats facts per studio</li>
+          <li>Records exactly what was lost</li>
+        </ul>
+      </li>
+    </ol>
+    <div class="callout"><p>The model never writes a fact or an availability record. Change every word it wrote and no fact, no offering and no defect moves. A test proves this.</p></div>
+    <div class="sec-head">
+      <p class="label">A model answer is rejected when it</p>
+    </div>
+    <ul class="rejects">
+      <li>quotes text that is not in its own description</li>
+      <li>mentions a mechanic the plan did not assign</li>
+      <li>states a number or a volatility the plan did not supply</li>
+      <li>uses a name that belongs to a real game, studio or brand</li>
+      <li>breaks a title rule, or comes too close to an existing title</li>
+      <li>is refused, cut short or malformed</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="h-trace">
+    <div class="sec-head">
+      <h2 id="h-trace">One game, before and after</h2>
+      <p class="lede">The same game as the generator knows it, and as the feed delivers it. The pipeline and the service only ever see the right-hand side.</p>
+    </div>
+    <div class="pair">
+      <div class="card truth">
+        <span class="label">Hidden truth</span>
+        <h3>The Wand of Nelvarith</h3>
+        <dl class="kv">
+          <dt>studio</dt><dd>Ulvenskar Games</dd>
+          <dt>themes</dt><dd><div class="tagrow"><span class="tg ok">fantasy</span><span class="tg ok">east_asian</span></div></dd>
+          <dt>mechanics</dt><dd><div class="tagrow"><span class="tg ok">paylines</span><span class="tg ok">pick_bonus</span><span class="tg ok">sticky_wilds</span></div></dd>
+          <dt>rtp</dt><dd class="mono">96.3</dd>
+          <dt>volatility</dt><dd class="mono">medium</dd>
+          <dt>max win</dt><dd class="mono">1000</dd>
+          <dt>grid, lines</dt><dd class="mono">3x3, 5</dd>
+          <dt>released</dt><dd class="mono">2023-09-01</dd>
+        </dl>
+      </div>
+      <div class="card raw">
+        <span class="label">Raw row from the feed</span>
+        <h3>The Wand of Nelvarith</h3>
+        <dl class="kv">
+          <dt>provider</dt><dd>Ulvenskar Games</dd>
+          <dt>themes</dt><dd><div class="tagrow"><span class="tg noise">Popular</span><span class="tg same">Fantasy</span><span class="tg drift">Asian</span></div></dd>
+          <dt>features</dt><dd><div class="tagrow"><span class="tg same">Paylines</span><span class="tg noise">RTP range</span><span class="tg drift">Bonus Pick</span><span class="tg drift">Locked Wilds</span></div></dd>
+          <dt>tags</dt><dd><div class="tagrow"><span class="tg noise">Exclusive</span></div></dd>
+          <dt>rtp</dt><dd class="mono">"96.30%"</dd>
+          <dt>volatility</dt><dd class="mono">"MID"</dd>
+          <dt>max_win</dt><dd class="mono">"x1000.00"</dd>
+          <dt>grid, lines</dt><dd class="mono">"3x3", 5</dd>
+          <dt>release_date</dt><dd><span class="gone">not sent by this studio</span></dd>
+        </dl>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="sq" style="background:var(--green-deep)"></i>label from the fixed list</span>
+      <span><i class="sq" style="background:var(--amber-deep)"></i>same meaning, different wording</span>
+      <span><s>struck through</s>: not an attribute of the game</span>
+    </div>
+
+    <div class="sec-head">
+      <p class="label">The description, with the quote behind each label</p>
+    </div>
+    <p class="copy">Charge up the <mark>spiral stairs of a wizard's tower</mark> as your apprentice guide lights the way with <mark>red paper lanterns painted with Chinese dragon dancers</mark>. On the 3x3 grid, you chase <mark class="m">matches along five fixed paylines</mark> while <mark class="m">sticky wilds stay put for later spins</mark>. When the pick bonus opens, you <mark class="m">choose sealed scrolls to uncover the prizes tucked inside</mark>. The wizard's wand crackles as you reach the top, where the action comes with medium volatility and a maximum win of 1,000x the bet.</p>
+    <div class="legend"><span><i></i>supports a theme</span><span><i class="m"></i>supports a mechanic</span></div>
+
+    <div class="sec-head">
+      <p class="label">What the damage step did to this row</p>
+    </div>
+    <div class="changes">
+      <div class="change"><span class="what">Tag wording drifted</span><span class="eg">pick_bonus → <b>"Bonus Pick"</b> · sticky_wilds → <b>"Locked Wilds"</b> · east_asian → <b>"Asian"</b></span></div>
+      <div class="change"><span class="what">Non-attributes mixed in</span><span class="eg"><s>"Popular"</s> · <s>"RTP range"</s> · <s>"Exclusive"</s> describe merchandising, not the game</span></div>
+      <div class="change"><span class="what">Facts reformatted</span><span class="eg">96.3 → <b>"96.30%"</b> · medium → <b>"MID"</b> · 1000 → <b>"x1000.00"</b></span></div>
+      <div class="change"><span class="what">A field never existed</span><span class="eg">this studio does not send a release date</span></div>
+    </div>
+
+    <div class="verdict">
+      <div class="callout">
+        <span class="label">What the record of damage says about this row</span>
+        <p>All five labels are still recoverable: each survives in a tag, in the description, or both. A correct pipeline should find all five.</p>
+      </div>
+      <div class="callout" style="border-left-color: var(--amber)">
+        <span class="label">Compare: a near-empty row</span>
+        <p>Another game arrives with a title and nothing else. Its theme can be read from the title. Its three mechanics cannot be known. The correct answer there is to abstain.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-files">
+    <div class="sec-head">
+      <h2 id="h-files">What is in the repository, and who may read it</h2>
+      <p class="lede">The clean truth is kept so that evaluation can tell a label that was recoverable from one that was unknowable. The pipeline and the service are never allowed to read it.</p>
+    </div>
+    <div class="zones">
+      <div class="zone open">
+        <span class="label">Pipeline and service read these</span>
+        <ul>
+          <li><code>catalogue.raw.jsonl</code><span>104 raw rows: an envelope around the payload the feed delivered</span></li>
+          <li><code>offerings.jsonl</code><span>170 records: game, brand, jurisdiction, status</span></li>
+        </ul>
+      </div>
+      <div class="zone hidden">
+        <span class="label">Hidden: generator and evaluation only</span>
+        <ul>
+          <li><code>truth.games.jsonl</code><span>100 games as they really are, with the quote behind each label</span></li>
+          <li><code>truth.rows.jsonl</code><span>Per raw row: defects applied, labels still recoverable, labels now unknowable</span></li>
+          <li><code>responses/</code><span>Every stored model answer, accepted or rejected</span></li>
+        </ul>
+      </div>
+      <div class="zone">
+        <span class="label">Reports anyone can read</span>
+        <ul>
+          <li><code>mess-report.json</code><span>Row counts per kind of mess</span></li>
+          <li><code>ledger.json</code><span>Tokens, cost, seconds, retries</span></li>
+          <li><code>retired-attempts.jsonl</code><span>What replaced answers cost</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Rebuilding from the stored answers needs no API key and gives the same bytes every time. A stored answer that is damaged, or that no longer matches the code that asked for it, stops the build and names the file.</p>
+  </section>
+
+  <section aria-labelledby="h-mess">
+    <div class="sec-head">
+      <h2 id="h-mess">The mess, counted</h2>
+      <p class="lede">Rows affected by each kind of mess, out of 104. A row can carry several, so the bars do not add up.</p>
+    </div>
+    <div class="group">
+      <span class="label">Descriptions</span>
+      <div class="bars">
+        <div class="bar" style="--v:40"><span>Missing (absent, null or empty)</span><span class="t"><i class="f"></i></span><span class="v">40</span></div>
+        <div class="bar" style="--v:16"><span>Boilerplate that says nothing</span><span class="t"><i class="f"></i></span><span class="v">16</span></div>
+        <div class="bar" style="--v:9"><span>Wrapped in markup</span><span class="t"><i class="f"></i></span><span class="v">9</span></div>
+        <div class="bar" style="--v:7"><span>One terse sentence</span><span class="t"><i class="f"></i></span><span class="v">7</span></div>
+        <div class="bar" style="--v:5"><span>Written in German</span><span class="t"><i class="f"></i></span><span class="v">5</span></div>
+        <div class="bar" style="--v:1"><span>Contains planted instructions</span><span class="t"><i class="f"></i></span><span class="v">1</span></div>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Tags</span>
+      <div class="bars">
+        <div class="bar" style="--v:43"><span>Spelling and synonym drift</span><span class="t"><i class="f"></i></span><span class="v">43</span></div>
+        <div class="bar" style="--v:23"><span>Non-attributes mixed in</span><span class="t"><i class="f"></i></span><span class="v">23</span></div>
+        <div class="bar" style="--v:13"><span>Missing</span><span class="t"><i class="f"></i></span><span class="v">13</span></div>
+        <div class="bar" style="--v:5"><span>Contradict the description</span><span class="t"><i class="f"></i></span><span class="v">5</span></div>
+        <div class="bar" style="--v:4"><span>Dropped, but the description still says it</span><span class="t"><i class="f"></i></span><span class="v">4</span></div>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Identity and titles</span>
+      <div class="bars">
+        <div class="bar" style="--v:16"><span>Decorated title</span><span class="t"><i class="f"></i></span><span class="v">16</span></div>
+        <div class="bar" style="--v:10"><span>Belongs to a family the feed does not state</span><span class="t"><i class="f"></i></span><span class="v">10</span></div>
+        <div class="bar" style="--v:8"><span>Same game delivered twice</span><span class="t"><i class="f"></i></span><span class="v">8</span></div>
+        <div class="bar" style="--v:7"><span>Same name, different studio</span><span class="t"><i class="f"></i></span><span class="v">7</span></div>
+        <div class="bar" style="--v:4"><span>Near-empty record</span><span class="t"><i class="f"></i></span><span class="v">4</span></div>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Facts and fields</span>
+      <div class="bars">
+        <div class="bar" style="--v:67"><span>Facts written in a studio's own format</span><span class="t"><i class="f"></i></span><span class="v">67</span></div>
+        <div class="bar" style="--v:65"><span>A field the studio never sends</span><span class="t"><i class="f"></i></span><span class="v">65</span></div>
+        <div class="bar" style="--v:11"><span>Several RTP builds in one string</span><span class="t"><i class="f"></i></span><span class="v">11</span></div>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Compound and control</span>
+      <div class="bars">
+        <div class="bar" style="--v:23"><span>Three or more content defects at once</span><span class="t"><i class="f"></i></span><span class="v">23</span></div>
+        <div class="bar ctl" style="--v:6"><span>Clean rows, kept as controls</span><span class="t"><i class="f"></i></span><span class="v">6</span></div>
+      </div>
+    </div>
+    <p class="note">These rates are chosen to exercise the pipeline. They are not estimates of how often each defect occurs in real feeds.</p>
+  </section>
+
+  <section aria-labelledby="h-studios">
+    <div class="sec-head">
+      <h2 id="h-studios">Gaps belong to studios, not to chance</h2>
+      <p class="lede">In real feeds a missing field is usually a habit of the supplier. The six invented studios each have habits, so the same gap repeats down a whole studio's rows.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Studio</th><th>Rows</th><th>Sends a description</th><th>Sends a themes list</th><th>Sends a family field</th></tr></thead>
+        <tbody>
+          <tr><td>Okkelund Studios</td><td class="n">34</td><td class="n">28<span class="mini" style="--p:.82"><i></i></span></td><td class="n">31<span class="mini" style="--p:.91"><i></i></span></td><td class="n">33<span class="mini" style="--p:.97"><i></i></span></td></tr>
+          <tr><td>Ulvenskar Games</td><td class="n">18</td><td class="n">15<span class="mini" style="--p:.83"><i></i></span></td><td class="n">17<span class="mini" style="--p:.94"><i></i></span></td><td class="n">18<span class="mini" style="--p:1"><i></i></span></td></tr>
+          <tr><td>Quillfern Interactive</td><td class="n">18</td><td class="n">9<span class="mini" style="--p:.5"><i></i></span></td><td class="n"><span class="none">never</span></td><td class="n"><span class="none">never</span></td></tr>
+          <tr><td>Thrannock Play</td><td class="n">15</td><td class="n">7<span class="mini" style="--p:.47"><i></i></span></td><td class="n">13<span class="mini" style="--p:.87"><i></i></span></td><td class="n"><span class="none">never</span></td></tr>
+          <tr><td>Wexomar Gaming</td><td class="n">14</td><td class="n"><span class="none">never</span></td><td class="n">13<span class="mini" style="--p:.93"><i></i></span></td><td class="n"><span class="none">never</span></td></tr>
+          <tr><td>Drachtweil Spiele</td><td class="n">5</td><td class="n">5, in German<span class="mini" style="--p:1"><i></i></span></td><td class="n">5<span class="mini" style="--p:1"><i></i></span></td><td class="n"><span class="none">never</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-avail">
+    <div class="sec-head">
+      <h2 id="h-avail">Availability</h2>
+      <p class="lede">Availability lives in its own file and never touches the model. Only a game that is live on a brand may be recommended there. One brand is small on purpose, to test declining when there is too little to recommend.</p>
+    </div>
+    <div class="brands">
+      <div class="brand"><div class="head"><b>tavrenmoor · GB</b><span>80 live · 12 withdrawn · 2 disabled · 1 coming soon</span></div><div class="stack" style="--n:95"><i class="s-live" style="--k:80"></i><i class="s-wd" style="--k:12"></i><i class="s-dis" style="--k:2"></i><i class="s-soon" style="--k:1"></i></div></div>
+      <div class="brand"><div class="head"><b>copperjay · ON</b><span>52 live · 8 withdrawn · 2 disabled · 5 coming soon</span></div><div class="stack" style="--n:67"><i class="s-live" style="--k:52"></i><i class="s-wd" style="--k:8"></i><i class="s-dis" style="--k:2"></i><i class="s-soon" style="--k:5"></i></div></div>
+      <div class="brand"><div class="head"><b>quarrowby · NJ</b><span>8 live</span></div><div class="stack" style="--n:8"><i class="s-live" style="--k:8"></i></div></div>
+    </div>
+    <div class="legend">
+      <span><i class="sq s-live"></i>live</span><span><i class="sq s-wd"></i>withdrawn</span><span><i class="sq s-dis"></i>disabled</span><span><i class="sq s-soon"></i>coming soon</span>
+    </div>
+    <p class="note">35 games are on one brand only, 18 are withdrawn somewhere, and 8 are live nowhere.</p>
+  </section>
+
+  <section aria-labelledby="h-ledger">
+    <div class="sec-head">
+      <h2 id="h-ledger">What the model calls cost</h2>
+      <p class="lede">Every attempt is stored and counted, including the ones that were thrown away.</p>
+    </div>
+    <div class="ledger">
+      <div class="card">
+        <span class="label">109 attempts for the 100 stored games</span>
+        <div class="split"><i style="--k:93;background:var(--green)"></i><i style="--k:7;background:var(--mint)"></i><i style="--k:9;background:var(--red)"></i></div>
+        <div class="legend"><span><i class="sq" style="background:var(--green)"></i>93 accepted first time</span><span><i class="sq" style="background:var(--mint)"></i>7 accepted after a retry</span><span><i class="sq" style="background:var(--red)"></i>9 rejected</span></div>
+        <p class="note">The 9 rejections: 4 used a name that exists in the real world, 4 broke a title rule, 1 mentioned a mechanic the plan did not assign. About 4.9 seconds per game.</p>
+      </div>
+      <div class="card">
+        <span class="label">Estimated spend, in US dollars</span>
+        <div class="split"><i style="--k:70;background:var(--green)"></i><i style="--k:62;background:var(--amber)"></i><i style="--k:27;background:var(--blue)"></i></div>
+        <div class="legend"><span><i class="sq" style="background:var(--green)"></i>0.70 stored answers</span><span><i class="sq" style="background:var(--amber)"></i>0.62 prompt revisions</span><span><i class="sq" style="background:var(--blue)"></i>0.27 name replacements</span></div>
+        <p class="note">1.58 in total. More was spent on answers that were later replaced than on the ones kept. The prompt was revised after the first full run kept returning to the same subjects.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-limits">
+    <div class="sec-head">
+      <h2 id="h-limits">What this catalogue cannot tell you</h2>
+    </div>
+    <ul class="limits">
+      <li><b>It is easier than real supplier copy.</b> One model wrote every description, and each one states its planned mechanics plainly.</li>
+      <li><b>The truth is not independently labelled.</b> Code checks that each quote is word for word in the description. It cannot check that the quote is good evidence.</li>
+      <li><b>"Recoverable" is mechanical.</b> It means a quote, a tag or a title word survived. It is a diagnostic, not a human judgement.</li>
+      <li><b>Names are invented and were searched for, not legally cleared.</b></li>
+      <li><b>Slots only, one feed shape, one jurisdiction per brand.</b></li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Figures are read from the committed data. An independent reviewer recounted every kind of mess from the raw rows without using the generator's code, and all counts matched.</p>
+  </footer>
+</div>
