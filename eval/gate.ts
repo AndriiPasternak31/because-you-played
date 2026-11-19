@@ -5,13 +5,16 @@
  * every value comes from that file. The same function answers the console's what-if
  * sliders, which pass other marks in and write nothing.
  *
- * Readings chosen where eval/refs/evaluation-plan.md leaves a detail open, each the stricter one:
+ * Readings chosen where eval/refs/evaluation-plan.md leaves a detail open:
  *   - The enrichment marks apply to a version that asserts labels. `raw` asserts none, so only
- *     the matching marks apply to it.
+ *     the matching marks apply to it. (As the plan words it.)
  *   - A version's pairwise accuracy, for its mark and for the ship rule, is the lower of its
- *     pooled figure and its mean per game.
- *   - A rate over nothing (no label asserted, no pair to compare) fails its mark.
- *   - "The best" is the best among the versions that pass, so a passing version always ships.
+ *     pooled figure and its mean per game. (The stricter reading.)
+ *   - A rate over nothing (no label asserted, no pair to compare) fails its mark. (The stricter reading.)
+ *   - "The best" is the best among the versions that pass. This is the more lenient reading: with
+ *     it something always ships when any version passes, where measuring the margin from the best
+ *     of all four could leave nothing to ship. It is chosen because the plan says "among the
+ *     versions that pass" and that the service does not start only "if none passes".
  *   - "Simplest" is the ladder's order, not the ledger's cost.
  */
 import { z } from "zod";
@@ -105,6 +108,19 @@ export interface MarkResult {
   applies: boolean;
   pass: boolean;
 }
+
+export const MeasuredSchema = z.strictObject({
+  enrichment: z
+    .strictObject({
+      precision: z.number().nullable(),
+      recovery: z.number().nullable(),
+      recovery_without_tags: z.number().nullable(),
+      missed_abstentions: z.number(),
+      invalid_quotes: z.number(),
+    })
+    .nullable(),
+  matching: z.strictObject({ pairwise_accuracy: z.number().nullable(), wrongly_shown: z.number() }),
+});
 
 export interface Decision {
   versions: Record<Version, { passed: boolean; marks: MarkResult[]; failed_marks: MarkId[]; pairwise_accuracy: number | null }>;

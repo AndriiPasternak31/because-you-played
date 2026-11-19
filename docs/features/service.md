@@ -1,6 +1,6 @@
 # Service and evaluation
 
-**Status:** built. The evaluation passes `model_where_thin`, and the service serves it. The owner's six check answers are outstanding.
+**Status:** built. The evaluation passes `model_where_thin`, and the service serves it. The owner's six check answers are outstanding, and the reviewer's answers to those six are held back until they exist.
 
 **Purpose.** The service answers "related games" for one game on one brand from the index, removing everything the brand cannot offer before ranking, and declines when nothing good enough remains. The evaluation scores the committed outputs against the owner's plan and pass marks, and its verdict decides which version of the index the service serves, or that it serves none.
 
@@ -64,19 +64,24 @@ All are `GET`. Any other method is a 405. Nothing writes a file.
 - the index does not pass `loadIndex`, or was built from another catalogue;
 - the offerings file is empty, has a malformed line, or lists a game twice for one brand;
 - there is no verdict, or it cannot be read;
-- the verdict is for another index hash, was reached with other pass marks than `eval/thresholds.json` now holds, judged another floor, or does not match its report;
+- the verdict is for another index hash, was reached with other pass marks than `eval/thresholds.json` now holds, judged another floor, or names a report whose bytes have changed;
+- the verdict does not say what its report says: it ships another version than the report chose, or records a version as passing that the report records as failing;
+- the report's own decision is not what the gate gives when it is applied again, at the start, to the report's numbers under the committed pass marks;
 - the verdict does not pass.
+
+A verdict is written by `npm run eval` and never by hand. One edited to ship a version that failed is refused, and so is one whose report was edited to agree with it.
 
 Offerings are read at the start. The verdict is not bound to them, so a game withdrawn there is gone at the next start with no new evaluation.
 
 ## The evaluation
 
-`npm run eval` scores the committed index against the answer key in `data/generation/`, replays the reviewer's stored answers, applies `eval/thresholds.json`, and writes two files:
+`npm run eval` scores the committed index against the answer key in `data/generation/`, replays the reviewer's stored answers, applies `eval/thresholds.json`, and writes three files:
 
 | File | What it is |
 |---|---|
 | `eval/results/<prompt version>/report.json` | Every measure with its counts, the reviewer's answers, the check games, the gallery |
-| `eval/results/verdict.json` | Which version ships, for which index hash and which pass-mark file. The service reads only this |
+| `eval/results/verdict.json` | Which version ships, for which index hash and which pass-mark file. The service starts from this, and checks it against the report and the gate |
+| `eval/results/runs.json` | Every run whose result was looked at, oldest first: the index it ran on and what it found. A run replaces only its own entry |
 
 It exits 0 when a version may be served, and 1 when no version passes its marks or an input is missing or stale. One version failing while another ships is exit 0: the ladder is built for that.
 
@@ -91,12 +96,12 @@ The index is the one named in `eval/results/verdict.json`. The numbers below are
 | Version | Precision | Recovery | Recovery without tags | Missed abstentions | Invalid quotes | Marks |
 |---|---|---|---|---|---|---|
 | Synonym table | 380 of 380 | 380 of 442 (86.0%) | 0 of 50 | 0 of 11 | 0 of 380 | fails recovery without tags |
-| Model where thin | 440 of 440 | 440 of 442 (99.5%) | 48 of 50 (96.0%) | 0 of 11 | 0 of 441 | pass |
-| Model everywhere | 438 of 438 | 438 of 442 (99.1%) | 50 of 50 | 0 of 11 | 0 of 439 | pass |
+| Model where thin | 440 of 440, 1 held back | 440 of 442 (99.5%) | 48 of 50 (96.0%) | 0 of 11 | 0 of 441 | pass |
+| Model everywhere | 438 of 438, 1 held back | 438 of 442 (99.1%) | 50 of 50 | 0 of 11 | 0 of 439 | pass |
 
 - Raw text asserts no labels, so these marks do not apply to it.
 - The table can never pass recovery without tags: it reads tags only.
-- One label in 441 is outside the plan (`adventure` on `qfi-77843`). It is left out of precision because the reviewer's answer counts as unclear.
+- One label in 441 is outside the plan (`adventure` on `qfi-77843`). It is one of the owner's six questions, so the reviewer's answer to it is held back. Precision is shown over the labels that are decided, and the pass mark counts the held-back one as wrong: 440 of 441 and 438 of 439, which pass whatever the answer is.
 - On the five games where a tag contradicts the description, the table version asserts no mechanic (17 recoverable labels) and the two model versions carry the model's reading, with none of those labels missed.
 
 **2. What does each step add to matching, and what does it cost?**
@@ -119,28 +124,56 @@ Mean per game, by the condition of the record asked about:
 
 **What ships: `model_where_thin`.** It has the best pairwise accuracy of the versions that pass (0.805), so it is within the 0.02 margin of itself; raw text passes but is 0.045 below, outside the margin; the table fails an enrichment mark. The model earns its place on 31 calls, and asking it about all 100 records buys nothing more.
 
-**The reviewer** (`gpt-6-luna`, 26 questions, $0.0013):
+**The reviewer** (`gpt-6-luna`, 26 questions asked on 2026-11-19, $0.0013). Twenty answers are in the tree and in the numbers here; six are held back:
 
-- Control: it agreed with the plan on 18 of 20: 10 of 10 where the label applies, 8 of 10 where it does not. One of the two was a "yes" whose quote was the label's meaning, not the record's words, so it was recorded as unclear.
+- Control: on the 15 control labels that are not the owner's, it agreed with the plan on 13: 7 of 7 where the label applies, 6 of 8 where it does not. One of the two was a "yes" whose quote was the label's meaning, not the record's words, so it was recorded as unclear.
 - Recommendation questions: it said yes to all 5 results the rule calls unrelated. **Zero wrongly shown therefore rests on a reviewer that did not once say no to a recommendation.** Read that mark with this beside it.
 - Owner's check: outstanding. Only one disagreement exists, so five of his six questions come from the control sample.
 
+### What is held back, and why
+
+The plan has the owner answer six of the reviewer's questions without sight of the reviewer's answers. His check is worth something only if it is blind, so until `eval/refs/owner-check.json` exists:
+
+- the reviewer's answers to those six are **not in the tree**. `eval/reviewer/held-back.json` says which six, what they cost as one total, and the commit that stored them;
+- the evaluation **does not read them**, and with `--live` does not ask for them. A stored answer to one of them stops the run;
+- **no count includes them.** The control covers the other fifteen labels, the reviewer's totals the other twenty answers, and precision the decided labels;
+- the **verdict is reached without them:** the precision pass mark counts a held-back label as wrong.
+
+Change the six answers to anything and the report, the verdict and the console do not change by a byte (EV-6).
+
+**One of the six is not blind.** Before the answers were held back, the owner was told in conversation the reviewer's answer to the disagreement question, `label.qfi-77843.adventure`. His answer to it is still collected and still reported, apart from the others: five answers given blind, one given after he had been told. He was also told the control total over all twenty labels; that gives no single answer away without the plan's side for a label, which is in the answer key and nowhere in the evaluation's output.
+
+**What the owner should not open before he answers:** the answer key under `data/generation/`, the earlier commits of the pull request that added this (they hold the six stored answers and the first reports), and the conversation in which the earlier results were reported. The report, the console and this file are safe to read.
+
+### Every run
+
+No evaluated result is dropped. `eval/results/runs.json` holds each run in full; in brief:
+
+| Run | Index | Ships | Model where thin: recovery, without tags | Model everywhere: recovery, without tags | Pairwise pooled, in ladder order |
+|---|---|---|---|---|---|
+| 1. Before the tag-conflict change | `f71546c3b26c` | model where thin | 423 of 442, 43 of 50 | 421 of 442, 45 of 50 | 76.0%, 76.6%, 80.6%, 80.2% |
+| 2. The model's reading stands on a conflict | `ee88d4282ea6` | model where thin | 440 of 442, 48 of 50 | 438 of 442, 50 of 50 | 76.0%, 76.6%, 80.5%, 80.1% |
+| 3. One vector per text: the index on `main` | `250c3ac85784` | model where thin | 440 of 442, 48 of 50 | 438 of 442, 50 of 50 | 76.0%, 76.6%, 80.5%, 80.1% |
+
+The table failed recovery without tags in every run, and nothing else failed. Runs 1 and 2 are recorded by hand from their committed reports, because their indexes are no longer in the tree; their control counts are left out for the reason above.
+
 ### Readings chosen where the plan leaves a detail open
 
-Each is the stricter reading, was fixed in a commit before the first run, and is enforced by the test named.
+Each was fixed in a commit before the first run, except the two about held-back answers, and is enforced by the test named. Each is the stricter reading but one, which is marked.
 
 | Detail | Reading | Proof |
 |---|---|---|
 | Which marks apply to raw text | The enrichment marks apply to a version that asserts labels. Raw asserts none, so only the matching marks apply | EV-3 |
 | Pairwise accuracy is reported two ways | For the pass mark and the ship rule a version's figure is the lower of pooled and mean per game | EV-4 |
-| "The best", "the cheapest" | The best among the versions that pass. Cheapest is the ladder's order | EV-3 |
+| "The best", "the cheapest" | The best among the versions that pass. **This is the more lenient reading:** something always ships when any version passes, where taking the margin from the best of all four could leave nothing. The plan says "among the versions that pass". It changes nothing here: the best version overall also passes. Cheapest is the ladder's order | EV-3 |
 | A rate over nothing | Fails its mark | EV-3 |
 | Word for word | The same characters, beginning and ending on a word boundary. The evaluation has its own check and does not call the pipeline's. A label's quote is checked against the field it names; the reviewer's against the delivered text it was shown | EV-4, EV-5 |
 | A label the plan calls unknowable | A disagreement: the reviewer is asked and its answer listed. Left out of precision, as the plan's definition says. None occurred | EV-4 |
 | The control sample | Ten labels the plan calls recoverable and all three label versions assert; ten the plan never assigned and none asserts. Agreement is "yes" on the first and "no" on the second; "unclear" is not agreement | EV-5 |
 | The check games | Six drawn by seed from the games live on the largest brand whose record is not nearly empty. The same six for every version, each judged on what the service core returns for that version | EV-4 |
 | Record condition | The index's own `evidence` field: has a description, tags only, nearly empty. Filler counts as a description. Thin and not thin are reported beside it | EV-4 |
-| The owner's six | Every disagreement, then the control sample, each drawn by seed. Until he has answered, the reviewer's answers to them are withheld from the report | EV-6 |
+| The owner's six | Every disagreement, then the control sample, each drawn by seed. Until he has answered, the reviewer's answers to them are held back: out of the tree, unread, in no count | EV-6 |
+| A held-back label in precision | Shown precision is over decided labels. For the pass mark a held-back label counts as wrong, so the verdict cannot depend on it | EV-6 |
 | When the command fails | When no version passes, or an input is missing. Not when one rung of the ladder fails | EV-1 |
 | The blanks in the questions | `{name}` is the label with spaces for underscores; the text shown is the record as delivered | EV-5 |
 
@@ -164,6 +197,7 @@ One seed, `evaluation-v1`, drives every draw.
 | `eval/run.ts` | The command |
 | `eval/owner-check.ts` | The owner's six questions at a terminal |
 | `eval/reviewer/answers/` | Every stored reviewer attempt: outcome, tokens, the body as received |
+| `eval/reviewer/held-back.json` | The six answers kept out of the tree for the owner's check: which, why, their cost as one total, the commit that stored them, and what the owner was told beforehand |
 | `src/service/service.test.ts`, `eval/eval.test.ts` | The tests. Each name starts with the invariant it proves |
 
 ## Commands
@@ -177,7 +211,13 @@ OPENAI_API_KEY=... npm run eval -- --live    # ask the reviewer any question wit
 npm test -- "SV-1:"          # the tests of one invariant
 ```
 
-The owner's check: run `npm run owner-check`, answer y, n or u to each question, then `npm run eval` and commit `eval/refs/owner-check.json` with the updated `eval/results/`. The command never shows the reviewer's answers, refuses to run without a terminal, and is the only code that writes under `eval/refs/`.
+The owner's check, in order:
+
+1. `npm run owner-check`: answer y, n or u to each of the six questions. It has no reviewer answer to show, refuses to run without a terminal, and is the only code that writes under `eval/refs/`.
+2. Bring the reviewer's six answers back. The command prints the line: `git checkout <commit> -- <six files>`, from the commit named in `eval/reviewer/held-back.json`. If that commit is not in the clone, `npm run eval -- --live` asks the reviewer those six again, for under one cent.
+3. `npm run eval`, then commit `eval/refs/owner-check.json`, the six files and the updated `eval/results/`.
+
+The report then counts the reviewer's matches on the five blind answers, and reports the sixth apart.
 
 ## Invariants
 
@@ -187,16 +227,16 @@ The owner's check: run `npm run owner-check`, answer y, n or u to each question,
 | SV-2 | Serving a request makes no model call: it opens no connection, and the service runs from a tree with no hidden truth and no model response | `npm test -- "SV-2:"` | `ca56274` |
 | SV-3 | At most one result comes from the anchor game's own family, and a duplicate of the anchor is never returned | `npm test -- "SV-3:"` | `ca56274` |
 | SV-4 | When nothing eligible is good enough, the response is a decline with one of four reason codes and no results, not a weaker list. Every result clears the floor | `npm test -- "SV-4:"` | `ca56274` |
-| SV-5 | The service refuses to start on an invalid index, and without a passing verdict bound to that index's hash, to the committed pass marks and to the floor it judged. It serves the version the verdict chose, and a what-if changes none of that | `npm test -- "SV-5:"` | `ca56274` |
+| SV-5 | The service refuses to start on an invalid index, and without a passing verdict bound to that index's hash, to the committed pass marks and to the floor it judged. The verdict has to say what its report says, and the report what the gate gives for its own numbers: one edited by hand is refused. It serves the version the verdict chose, and a what-if changes none of that | `npm test -- "SV-5:"` | `ca56274` |
 | SV-6 | A game withdrawn in the offerings file is gone after a restart, and other results are still served. A malformed offerings file stops the start | `npm test -- "SV-6:"` | `ca56274` |
 | SV-7 | A trace carries the record, what each step added with its quote, what each filter removed, the scores, the floor, the outcome and per-stage timings | `npm test -- "SV-7:"` | `ca56274` |
-| SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered | `npm test -- "SV-8:"` | `ca56274` |
-| EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report and verdict byte for byte, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `ca56274` |
+| SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered: every other method, HEAD included, is a 405 | `npm test -- "SV-8:"` | `ca56274` |
+| EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report, verdict and record of runs byte for byte, adds its run to that record without dropping another, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `ca56274` |
 | EV-2 | Every pass mark is read from the owner's file. None is defined in code, and a file the gate does not fully understand is refused | `npm test -- "EV-2:"` | `ca56274` |
 | EV-3 | The ship rule picks the simplest passing version within the margin of the best passing one, and nothing when none passes | `npm test -- "EV-3:"` | `ca56274` |
 | EV-4 | Each measure is the plan's: precision, recovery, recovery without tags, missed abstentions, invalid quotes, the grade of a pair, pairwise accuracy. Counts stand beside rates | `npm test -- "EV-4:"` | `ca56274` |
 | EV-5 | The reviewer is asked the plan's own question text, never told who asserted a label, and its "yes" counts only with a word-for-word quote; otherwise it is recorded as unclear. The control is reported as a count | `npm test -- "EV-5:"` | `ca56274` |
-| EV-6 | With no owner's answers the evaluation still reaches its verdict, says the check is outstanding, and withholds the reviewer's answers to his six questions | `npm test -- "EV-6:"` | `ca56274` |
+| EV-6 | While the owner has not answered, nothing the evaluation writes depends on the reviewer's answers to his six questions: they are not in the tree, not read, not asked for and in no count, and the verdict is reached without them. Once he has, they are scored, and an answer he had been told beforehand is counted apart from the blind ones | `npm test -- "EV-6:"` | `ca56274` |
 | EV-7 | A live reviewer call is refused before it could pass the spend limit of $1.00, every attempt is stored, and the key reaches no file | `npm test -- "EV-7:"` | `ca56274` |
 | EV-8 | The gallery holds three to five real failures from the system's own output, apart from the mess that was planted | `npm test -- "EV-8:"` | `ca56274` |
 
@@ -206,20 +246,24 @@ What each proof does:
 - **SV-2** replaces `fetch`, the socket's `connect` and the name lookup with tripwires, removes the key from the environment, answers every game on every brand through the router, and then checks that the tripwires do fire. It also starts the service from a scratch tree that holds only the index, the catalogue, the offerings, the verdict and the pass marks.
 - **SV-3** checks every real request, then puts three top results into the anchor's family and expects one, and gives one result the anchor's studio and title and expects it gone. The real catalogue cannot trigger the cap: every family has two members.
 - **SV-4** finds one request for each of the four reasons by asking, checks every request for floor, order and counts, and recomputes the floor from all pairs.
-- **SV-5** breaks a scratch copy ten ways: no verdict, unreadable, malformed, failed, failed but still naming a version, contradicting itself, another index, other pass marks, another floor, another report. It breaks the index two ways and runs the command to see exit 1 and the reason.
+- **SV-5** breaks a scratch copy ten ways: no verdict, unreadable, malformed, failed, failed but still naming a version, contradicting itself, another index, other pass marks, another floor, another report. It then edits the verdict by hand four ways: to ship the version that failed and mark it passed, to ship a passing version the rule did not choose, to mark the failed version as passing, and the first of these with the report edited to agree and its hash brought up to date. It breaks the index two ways and runs the command to see exit 1 and the reason.
 - **SV-6** withdraws one game in a scratch offerings file, loads again, and asks every game on that brand.
 - **EV-1** runs the command twice with no key and compares the report and the verdict with the committed files. It removes the stored answers, the answer key and the pass marks in turn, and makes one stored answer stale. It then gives every text of a scratch index the vector of another text, so the index stays valid and its matching is noise, re-seals it, runs the command on it to exit 1, and starts the service on the verdict that run wrote, which refuses.
 - **EV-2** moves each of the seven marks, one at a time, just past what was measured, in a copy of the file, and expects exactly that mark to fail.
 - **EV-4** grades seven constructed pairs both ways round, scores a five-game toy index whose answer is known, then changes the real index in memory four ways: an invented quote, a quote cut from inside a word, a label on a field that should be silent, every label removed. It recounts recovery by hand.
 - **EV-5** gives the reviewer's reader a true quote, two stitched phrases, an empty quote, other capitals, a piece of a word and the label's own meaning.
+- **EV-6** runs the evaluation three times with the reviewer answering the six all yes, all no and all unclear, and compares the report and the verdict byte for byte. It runs it once more with an answer function that fails if one of the six is asked for. It puts a stored answer to one of them in a scratch tree and expects the command to stop, and runs a live evaluation through a stand-in for the network to see no call made. With the owner's answers given, it checks the blind and the not-blind counts, the message that says how to bring the six back, and that a live run then asks exactly those six.
 - **EV-7** plays a live call through a stand-in for the network at the limit, with two unreadable answers, and with a rejected key.
 
-Each proof was also checked the other way: one-line breaks of the service, the evaluation and the console were tried, one at a time. Of the first 26, 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own, and a second pass of 27 breaks turned every proof red.
+Each proof was also checked the other way: one-line breaks of the service, the evaluation and the console were tried, one at a time. Of the first 26, 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own, and a second pass of 27 breaks turned every proof red. A third pass of 15 breaks, of what the review's fixes added, found one more: not recording a run at all stayed green, because the test started from a record that already held it. The test now starts from the record without its latest run.
+
+Two proofs were also run against the code as it was before the fix they prove, and failed there: EV-6's "nothing the evaluation writes depends on the reviewer's answers", and SV-5's "a verdict edited by hand".
 
 ## Known limits
 
 - **Zero wrongly shown rests on a lenient reviewer.** It answered yes to all five recommendation questions, including a pair it said had "paylines, RTP range and Hot tag" in common. The owner's six answers do not test this: they are label questions.
-- **The owner's check is outstanding**, and five of its six questions come from the control sample because only one disagreement exists.
+- **The owner's check is outstanding**, and five of its six questions come from the control sample because only one disagreement exists. **One of the six is no longer blind:** the owner was told the reviewer's answer to it before he answered.
+- **Held back is not erased.** The six answers are out of the tree at this commit. They are still in the earlier commits of the pull request that added them, until it is squashed, and anyone can read the answer key. The safeguard is against seeing them by reading the report, the console or the documents, not against looking for them.
 - **The answer key, the catalogue text, the enrichment and the reviewer all come from one vendor's models.** Related models can share blind spots. The plan says so; so does the README.
 - **The family cap sees only the family the feed states.** The feed states four of the nine families. Each has two members, so on this catalogue the cap can never remove anything; it is proved on a constructed index only.
 - **A duplicate is "same studio and same title".** The index has one record per game code, so none exists here; this too is proved on a constructed index.

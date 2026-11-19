@@ -16,7 +16,8 @@
 - **A game whose tag contradicts its description** shows the contradicted tag, what the table did (nothing), and whether the model's reading stands, in the trace and in every column of the side-by-side.
 - **The version picker** defaults to the served version. Any other is marked "inspection": it is the same core over another version of the index, and never what a player is served.
 - **The what-if panel changes no file.** A move sends one `GET /api/what-if` with the marks in the URL; the service applies the real gate to the measured numbers and writes nothing. The panel says that the release gate reads only `eval/thresholds.json`.
-- **A request can be linked:** `/?game=<id>&brand=<brand>&version=<version>` opens its trace.
+- **A request can be linked:** `/?game=<id>&brand=<brand>&version=<version>` opens its trace. A link to a game the index does not hold shows the service's `unknown_game` decline.
+- **While the owner's check is outstanding** the evaluation panel says how many of the reviewer's answers are held back and why, and shows none of them: it renders the report, and the report holds none.
 
 ## Code
 
@@ -35,7 +36,7 @@ No build step and no framework.
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
 | UI-1 | Everything the console shows for a request comes from the service's response to that request. The console asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | `ca56274` |
-| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure | `npm test -- "UI-2:"` | `ca56274` |
+| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure. A link that names an unknown game reaches that decline | `npm test -- "UI-2:"` | `ca56274` |
 | UI-3 | The page is served, and for every brand and game in its pickers the trace renders without an error, in every version | `npm test -- "UI-3:"` | `ca56274` |
 | UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | `ca56274` |
 | UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | `ca56274` |

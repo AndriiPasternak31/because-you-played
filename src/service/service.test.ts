@@ -17,6 +17,7 @@ import { createService, route } from "./http.ts";
 import { parseOfferings, type Offerings } from "./offerings.ts";
 import { DECLINE_REASONS, buildState, recommend, similarityFloor, type Recommendation } from "./recommend.ts";
 import { DEFAULT_PATHS, NotServing, loadService, type ServicePaths } from "./state.ts";
+import { sha256OfFile } from "./verdict.ts";
 
 const service = loadService();
 const { index, offerings } = service;
@@ -408,6 +409,64 @@ test("SV-5: the service serves the version the verdict chose, and refuses a miss
   refused(malformed, /is not a verdict/);
 });
 
+test("SV-5: a verdict edited by hand to ship a version the evaluation did not choose is refused, with the cause named", () => {
+  const loser = VERSIONS.find((version) => service.verdict.versions[version]?.passed === false);
+  assert.ok(loser !== undefined, "every version passes, so there is no failed version to try to ship");
+  const refused = (paths: ServicePaths, pattern: RegExp): void => {
+    assert.throws(() => loadService(paths), (error: unknown) => error instanceof NotServing && pattern.test(error.message), `expected a refusal matching ${pattern}`);
+  };
+  const chosen = service.verdict.ships as Version;
+
+  // The reviewer's edit: ship the version that failed, and mark it as passed. The report is untouched, so its hash still matches.
+  const edited = scratch();
+  editVerdict(edited, (verdict) => {
+    verdict["ships"] = loser;
+    (verdict["versions"] as Record<string, unknown>)[loser] = { passed: true, failed_marks: [] };
+  });
+  refused(edited, new RegExp(`ships ${loser}, and its report .* chose ${chosen}.*never by hand`));
+
+  // A passing version that the ship rule did not choose is refused the same way.
+  const other = VERSIONS.find((version) => version !== chosen && service.verdict.versions[version]?.passed === true);
+  if (other !== undefined) {
+    const swapped = scratch();
+    editVerdict(swapped, (verdict) => Object.assign(verdict, { ships: other }));
+    refused(swapped, new RegExp(`ships ${other}, and its report .* chose ${chosen}`));
+  }
+
+  // A version marked as passing in the verdict alone, while the chosen version still ships.
+  const flattered = scratch();
+  editVerdict(flattered, (verdict) => {
+    (verdict["versions"] as Record<string, unknown>)[loser] = { passed: true, failed_marks: [] };
+  });
+  refused(flattered, new RegExp(`records ${loser} as passing, and its report .* records it as not passing`));
+
+  // The report edited to agree, and the verdict's hash of it brought up to date: the gate is applied again
+  // to the report's own numbers under the committed pass marks, and it does not choose that version.
+  const both = scratch();
+  const reportPath = join(both.dir, "results", service.verdict.report.path);
+  const report = JSON.parse(readFileSync(reportPath, "utf8")) as { decision: { ships: string; versions: Record<string, { passed: boolean; failed_marks: string[] }> } };
+  report.decision.ships = loser;
+  report.decision.versions[loser] = { ...report.decision.versions[loser], passed: true, failed_marks: [] };
+  writeFileSync(reportPath, JSON.stringify(report));
+  editVerdict(both, (verdict) => {
+    verdict["ships"] = loser;
+    (verdict["versions"] as Record<string, unknown>)[loser] = { passed: true, failed_marks: [] };
+    (verdict["report"] as { sha256: string }).sha256 = sha256OfFile(reportPath);
+  });
+  refused(both, new RegExp(`ships ${loser}, and the gate, applied to the numbers in .* chooses ${chosen}`));
+
+  // The command itself: exit 1, the cause on stderr, nothing served.
+  const run = spawnSync(process.execPath, ["src/service/serve.ts", "--port", "0", "--index", edited.indexDir, "--catalogue", edited.cataloguePath, "--offerings", edited.offeringsPath, "--verdict", edited.verdictPath, "--thresholds", edited.thresholdsPath], {
+    encoding: "utf8",
+    timeout: 20_000,
+  });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, new RegExp(`not serving: the verdict .* ships ${loser}, and its report`));
+  assert.equal(run.stdout, "");
+  // The untouched copy still starts.
+  assert.equal(loadService(scratch()).served.version, chosen);
+});
+
 test("SV-5: the service refuses to start on an invalid index, and the command exits non-zero with the reason", () => {
   const broken = scratch();
   const vectors = join(broken.indexDir, "vectors.model_where_thin.f32");
@@ -532,7 +591,9 @@ test("SV-8: bad input is a 400 that says what was wrong, a decline is a 200, and
   const decline = status(`/api/recommendations?game=no-such-game&brand=${BRAND_A}`);
   assert.equal(decline.status, 200);
   assert.equal((JSON.parse(decline.body) as Recommendation).decline?.reason, "unknown_game");
-  for (const method of ["POST", "PUT", "PATCH", "DELETE"]) assert.equal(status(`/api/recommendations?game=${ANCHOR}&brand=${BRAND_A}`, method).status, 405);
+  for (const method of ["POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]) {
+    for (const path of [`/api/recommendations?game=${ANCHOR}&brand=${BRAND_A}`, "/api/catalogue", "/"]) assert.equal(status(path, method).status, 405, `${method} ${path}`);
+  }
   assert.equal(status("/api/nothing").status, 404);
   assert.equal(status("/../package.json").status, 404);
 });
@@ -549,6 +610,9 @@ test("SV-8: over a real socket the wrapper returns what the core returns", async
     assert.deepEqual(((await response.json()) as Recommendation).results, recommend(service.served, { gameId: ANCHOR, brand: BRAND_A }).results);
     assert.equal((await fetch(`${base}/api/recommendations?brand=${BRAND_A}`)).status, 400);
     assert.equal((await fetch(`${base}/api/recommendations?game=${ANCHOR}&brand=${BRAND_A}`, { method: "POST" })).status, 405);
+    const head = await fetch(`${base}/api/catalogue`, { method: "HEAD" });
+    assert.equal(head.status, 405);
+    assert.equal(head.headers.get("allow"), "GET");
     const page = await fetch(`${base}/`);
     assert.equal(page.status, 200);
     assert.match(await page.text(), /<h1/);

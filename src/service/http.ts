@@ -108,7 +108,7 @@ function whatIf(service: Service, values: Map<string, string>): unknown {
 }
 
 export function route(service: Service, method: string, rawUrl: string): Reply {
-  if (method !== "GET" && method !== "HEAD") return json(405, { error: "method_not_allowed", message: "This service only answers GET. No request changes anything." });
+  if (method !== "GET") return json(405, { error: "method_not_allowed", message: "This service only answers GET. No request changes anything." });
   let url: URL;
   try {
     url = new URL(rawUrl, "http://service.invalid");
@@ -159,7 +159,10 @@ export function createService(service: Service): Server {
       console.error(`request ${request.method} ${request.url} failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
       reply = json(500, { error: "internal_error", message: "The service failed to answer this request. Nothing was returned." });
     }
-    response.writeHead(reply.status, { "content-type": reply.contentType, "cache-control": "no-store", "x-content-type-options": "nosniff" });
+    const headers: Record<string, string> = { "content-type": reply.contentType, "cache-control": "no-store", "x-content-type-options": "nosniff" };
+    if (reply.status === 405) headers["allow"] = "GET";
+    response.writeHead(reply.status, headers);
+    // A HEAD reply has no body by the protocol; it is a 405 like any other method that is not GET.
     response.end(request.method === "HEAD" ? undefined : reply.body);
   });
 }
