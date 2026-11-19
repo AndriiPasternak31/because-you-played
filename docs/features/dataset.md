@@ -42,12 +42,12 @@ npm test -- DS-4                  # the tests of one invariant
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| DS-1 | Re-running the seeded degradation over the committed model responses reproduces the catalogue byte for byte | `npm test -- DS-1` | - |
-| DS-2 | The model writes descriptive text only. Facts of record and availability rows are written by seeded code | `npm test -- DS-2` | - |
-| DS-3 | The catalogue contains every kind of mess it is meant to, and the count for each kind is printed | `npm run -s dataset -- --count 100 && npm test -- DS-3` | - |
-| DS-4 | Model output that is refused, cut short or malformed is rejected with its reason and counted. It is never repaired | `npm test -- DS-4` | - |
-| DS-5 | A rebuild stops, names the cause and writes nothing when a stored response no longer matches its request, no longer passes validation, or is missing while no key is set. A stored file that is damaged is named, with its line where it has lines | `npm test -- DS-5` | - |
-| DS-6 | No word on the blocked-name list is in any committed data file. A rejected answer that used one is stored with the name removed | `npm test -- DS-6` | - |
+| DS-1 | Re-running the seeded degradation over the committed model responses reproduces the catalogue byte for byte | `npm test -- DS-1` | `b046d1b` |
+| DS-2 | The model writes descriptive text only. Facts of record and availability rows are written by seeded code | `npm test -- DS-2` | `b046d1b` |
+| DS-3 | The catalogue contains every kind of mess it is meant to, and the count for each kind is printed | `npm run -s dataset -- --count 100 && npm test -- DS-3` | `b046d1b` |
+| DS-4 | Model output that is refused, cut short or malformed is rejected with its reason and counted. It is never repaired | `npm test -- DS-4` | `b046d1b` |
+| DS-5 | A rebuild stops, names the cause and writes nothing when a stored response no longer matches its request, no longer passes validation, or is missing while no key is set. A stored file that is damaged is named, with its line where it has lines | `npm test -- DS-5` | `b046d1b` |
+| DS-6 | No word on the blocked-name list is in any committed data file. A rejected answer that used one is stored with the name removed | `npm test -- DS-6` | `b046d1b` |
 
 What each proof does:
 
