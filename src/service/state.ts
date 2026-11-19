@@ -7,6 +7,8 @@
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { z } from "zod";
+import { MeasuredSchema, decide, parseThresholds, type Measured } from "../../eval/gate.ts";
 import { loadIndex, type Index } from "../pipeline/index-store.ts";
 import { VERSIONS, type Version } from "../pipeline/versions.ts";
 import { loadOfferings, type Offerings } from "./offerings.ts";
@@ -43,6 +45,19 @@ export interface Service {
   /** Offerings that name a game the index does not hold. They can never be recommended. */
   offeringsForUnknownGames: number;
 }
+
+/** The part of the evaluation report the service checks its verdict against. The rest it only passes to the console. */
+const VersionKeys = z.enum(VERSIONS);
+const ReportForServingSchema = z.object({
+  index_hash: z.string(),
+  thresholds_sha256: z.string(),
+  measured: z.record(VersionKeys, MeasuredSchema),
+  decision: z.object({
+    passed: z.boolean(),
+    ships: VersionKeys.nullable(),
+    versions: z.record(VersionKeys, z.object({ passed: z.boolean() })),
+  }),
+});
 
 /** The refusal to serve. Its message is the reason, in words. */
 export class NotServing extends Error {}
@@ -92,6 +107,35 @@ export function loadService(paths: ServicePaths = DEFAULT_PATHS): Service {
   }
   if (reportHash !== verdict.report.sha256) refuse(`does not match its report ${reportPath}. Run "npm run eval" again.`);
 
+  // The same bytes are not the same decision. The verdict has to say what the report says, and the report's
+  // decision has to be what the gate gives for the report's own numbers under the committed pass marks.
+  const report = JSON.parse(readFileSync(reportPath, "utf8")) as unknown;
+  const thresholds = JSON.parse(readFileSync(paths.thresholdsPath, "utf8")) as unknown;
+  const parsed = ReportForServingSchema.safeParse(report);
+  if (!parsed.success) return refuse(`names the report ${reportPath}, which does not hold a decision the service can check: ${z.prettifyError(parsed.error)}`);
+  const judged = parsed.data;
+  if (judged.index_hash !== verdict.index_hash || judged.thresholds_sha256 !== verdict.thresholds_sha256) {
+    refuse(`and its report ${reportPath} are for different indexes or pass marks. Run "npm run eval" again.`);
+  }
+  const regated = decide(judged.measured as Record<Version, Measured>, parseThresholds(thresholds, paths.thresholdsPath));
+  for (const [what, decision] of [
+    [`its report ${reportPath} chose`, judged.decision],
+    [`the gate, applied to the numbers in ${reportPath} with the pass marks in ${paths.thresholdsPath}, chooses`, regated],
+  ] as const) {
+    const chose = decision.ships === null ? "nothing" : decision.ships;
+    if (decision.ships !== verdict.ships || decision.passed !== verdict.passed) {
+      refuse(`ships ${String(verdict.ships)}, and ${what} ${chose}. A verdict is written by "npm run eval", never by hand: run it again.`);
+    }
+    for (const version of VERSIONS) {
+      if (decision.versions[version]?.passed !== verdict.versions[version]?.passed) {
+        refuse(
+          `records ${version} as ${verdict.versions[version]?.passed === true ? "passing" : "not passing"}, and ${what.replace(/ (chose|chooses)$/, "")} ` +
+            `records it as ${decision.versions[version]?.passed === true ? "passing" : "not passing"}. A verdict is written by "npm run eval", never by hand: run it again.`,
+        );
+      }
+    }
+  }
+
   const known = new Set(index.manifest.game_ids);
   let unknown = 0;
   for (const statuses of offerings.statusByBrand.values()) for (const gameId of statuses.keys()) if (!known.has(gameId)) unknown += 1;
@@ -102,8 +146,8 @@ export function loadService(paths: ServicePaths = DEFAULT_PATHS): Service {
     index,
     offerings,
     verdict,
-    report: JSON.parse(readFileSync(reportPath, "utf8")) as unknown,
-    thresholds: JSON.parse(readFileSync(paths.thresholdsPath, "utf8")) as unknown,
+    report,
+    thresholds,
     offeringsForUnknownGames: unknown,
   };
 }

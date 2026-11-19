@@ -60,6 +60,8 @@ export interface EvalInputs {
   templates: QuestionTemplates;
   /** Null until the owner has committed his answers. */
   ownerAnswers: OwnerAnswers | null;
+  /** Questions whose reviewer answer the owner was told before he answered: his answer to them is not blind. */
+  disclosedToOwner: readonly string[];
 }
 
 function shuffled<T>(items: readonly T[], ...stream: string[]): T[] {
@@ -113,7 +115,15 @@ export interface Analysis {
   /** Every question for the reviewer, in the seeded shuffled order in which it is asked. */
   questions: Question[];
   ownerQuestions: { question_id: string; source: "disagreement" | "control" }[];
+  /**
+   * The owner's six while he has not answered, empty once he has. The reviewer's answers to these are
+   * not read, not asked for and not stored in the tree, and nothing the evaluation writes depends on them.
+   */
+  heldBack: ReadonlySet<string>;
 }
+
+/** The questions whose answers this run needs: every question but the ones held back for the owner's check. */
+export const questionsToAnswer = (analysis: Analysis): Question[] => analysis.questions.filter((question) => !analysis.heldBack.has(question.id));
 
 const byId = (index: Index): Map<string, IndexRecord> => new Map(index.records.map((record) => [record.game_id, record]));
 
@@ -213,14 +223,16 @@ export function analyse(inputs: EvalInputs): Analysis {
     .slice(0, OWNER_QUESTIONS);
 
   const ordered = shuffled([...questions.values()].sort((a, b) => (a.id < b.id ? -1 : 1)), "question-order");
-  return { inputs, enrichment, disagreements, control: controlItems, pairwise, floors, checkBrand, checkGames, checks, questions: ordered, ownerQuestions };
+  const heldBack = new Set(inputs.ownerAnswers === null ? ownerQuestions.map((entry) => entry.question_id) : []);
+  return { inputs, enrichment, disagreements, control: controlItems, pairwise, floors, checkBrand, checkGames, checks, questions: ordered, ownerQuestions, heldBack };
 }
 
 // ---------------------------------------------------------------------------
 // The report
 // ---------------------------------------------------------------------------
 
-type Shown = { answer: string; said: string | null; words: string; note: string | null } | "withheld_until_the_owner_has_answered";
+export const HELD_BACK = "held_back_until_the_owner_has_answered";
+type Shown = { answer: string; said: string | null; words: string; note: string | null } | typeof HELD_BACK;
 
 interface GalleryEntry {
   kind: string;
@@ -245,7 +257,12 @@ export interface Report {
     LabelVersion,
     {
       labels_asserted: number;
-      precision: Rate & { left_out: { unclear: number; unknowable: number } };
+      /**
+       * Over the labels the plan or the reviewer has decided. `held_back` counts asserted labels whose reviewer
+       * answer is held back for the owner's check; `gate` is the figure the pass mark reads, which counts each
+       * of those as wrong, so that the verdict is the same whatever the held-back answers are.
+       */
+      precision: Rate & { left_out: { unclear: number; unknowable: number; held_back: number }; gate: Rate };
       recovery: Rate;
       recovery_without_tags: Rate;
       missed_abstentions: { count: number; of: number; list: EnrichmentCounts["missed_abstentions"] };
@@ -269,11 +286,16 @@ export interface Report {
   };
   disagreements: { count: number; list: (Disagreement & { title: string; question_id: string; reviewer: Shown })[] };
   control: {
+    /** Labels drawn. */
     size: number;
+    /** Of those, the ones that are among the owner's questions while he has not answered: not reported here. */
+    held_back: number;
+    /** The rest: `agreed`, the two sides and `list` cover these only. */
+    reported: number;
     agreed: number;
     applies: { agreed: number; of: number };
     does_not_apply: { agreed: number; of: number };
-    list: (ControlItem & { reviewer: Shown; agrees: boolean | null })[];
+    list: (ControlItem & { reviewer: Shown; agrees: boolean })[];
   };
   owner_check: {
     status: "outstanding" | "answered";
@@ -282,7 +304,12 @@ export interface Report {
     from_disagreements: number;
     from_control: number;
     matched: number | null;
-    questions: { question_id: string; source: "disagreement" | "control"; owner: string | null; reviewer: string | null; matched: boolean | null }[];
+    /** Answers the owner gave without having been told the reviewer's, and how many of those the reviewer matched. */
+    blind: { of: number; matched: number | null };
+    /** Questions whose reviewer answer the owner had been told before he answered. Reported apart: not a blind check. */
+    not_blind: { of: number; matched: number | null; question_ids: string[] };
+    /** Empty while the check is outstanding: nothing about the six is reported until he has answered. */
+    questions: { question_id: string; source: "disagreement" | "control"; blind: boolean; owner: string; reviewer: string; matched: boolean }[];
   };
   matching: Record<
     Version,
@@ -304,7 +331,11 @@ export interface Report {
   per_game: Record<Version, [game_id: string, wins: number, pairs: number][]>;
   reviewer: {
     model: string;
+    /** Every question drawn. */
     questions: number;
+    /** Of those, the owner's questions while he has not answered. The counts below leave them out. */
+    held_back: number;
+    answered: number;
     by_kind: { label: number; recommendation: number };
     answers: { yes: number; no: number; unclear: number };
     unclear: { question_id: string; said: string | null; note: string | null }[];
@@ -326,14 +357,17 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
   const { index, thresholds } = inputs;
   const records = byId(index);
   const record = (gameId: string): IndexRecord => records.get(gameId) as IndexRecord;
-  const answers = new Map(analysis.questions.map((question) => [question.id, answerOf(question)]));
+  // A held-back question is never put to `answerOf`, so nothing below can depend on its answer.
+  const { heldBack } = analysis;
+  const answers = new Map(questionsToAnswer(analysis).map((question) => [question.id, answerOf(question)]));
   const answer = (questionId: string): ReviewerAnswer => {
+    if (heldBack.has(questionId)) throw new Error(`the reviewer's answer to ${questionId} is held back for the owner's check and must not be read`);
     const found = answers.get(questionId);
     if (found === undefined) throw new Error(`missing input: the reviewer has no answer for ${questionId}`);
     return found;
   };
 
-  // The owner's check. Until he has answered, the reviewer's answers to his six questions are not printed.
+  // The owner's check. Until he has answered, nothing about the reviewer's answers to his six questions is computed.
   const questionById = new Map(analysis.questions.map((question) => [question.id, question]));
   const owner = inputs.ownerAnswers;
   if (owner !== null) {
@@ -348,8 +382,7 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
       }
     }
   }
-  const withheld = new Set(owner === null ? analysis.ownerQuestions.map((entry) => entry.question_id) : []);
-  const show = (questionId: string): Shown => (withheld.has(questionId) ? "withheld_until_the_owner_has_answered" : { ...answer(questionId) });
+  const show = (questionId: string): Shown => (heldBack.has(questionId) ? HELD_BACK : { ...answer(questionId) });
 
   // Enrichment.
   const enrichment = {} as Report["enrichment"];
@@ -359,8 +392,13 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
     let confirmed = 0;
     let rejected = 0;
     let unclear = 0;
+    let held = 0;
     for (const entry of analysis.disagreements) {
       if (entry.plan !== "not_assigned" || !entry.asserted_by.some((by) => by.version === version)) continue;
+      if (heldBack.has(`label.${entry.game_id}.${entry.label}`)) {
+        held += 1;
+        continue;
+      }
       const decided = answer(`label.${entry.game_id}.${entry.label}`).answer;
       if (decided === "yes") confirmed += 1;
       else if (decided === "no") rejected += 1;
@@ -369,7 +407,11 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
     const correct = counts.asserted_recoverable + confirmed;
     enrichment[version] = {
       labels_asserted: counts.asserted,
-      precision: { ...rate(correct, correct + rejected), left_out: { unclear, unknowable: counts.asserted_unknowable } },
+      precision: {
+        ...rate(correct, correct + rejected),
+        left_out: { unclear, unknowable: counts.asserted_unknowable, held_back: held },
+        gate: rate(correct, correct + rejected + held),
+      },
       recovery: rate(counts.recovered, counts.recoverable),
       recovery_without_tags: rate(counts.recovered_without_tags, counts.recoverable_without_tags),
       missed_abstentions: { count: counts.missed_abstentions.length, of: counts.expected_abstentions, list: counts.missed_abstentions },
@@ -418,7 +460,7 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
         labelled === null
           ? null
           : {
-              precision: labelled.precision.rate,
+              precision: labelled.precision.gate.rate,
               recovery: labelled.recovery.rate,
               recovery_without_tags: labelled.recovery_without_tags.rate,
               missed_abstentions: labelled.missed_abstentions.count,
@@ -429,35 +471,49 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
   }
   const decision = decide(measured, thresholds);
 
-  // Control.
-  const controlList = analysis.control.map((item) => {
-    const given = answer(item.question_id).answer;
-    const agrees = item.agreed === "applies" ? given === "yes" : given === "no";
-    return { ...item, reviewer: show(item.question_id), agrees: withheld.has(item.question_id) ? null : agrees, counted: agrees };
-  });
+  // Control: only the labels that are not among the owner's questions while he has not answered.
+  const controlList = analysis.control
+    .filter((item) => !heldBack.has(item.question_id))
+    .map((item) => {
+      const given = answer(item.question_id).answer;
+      return { ...item, reviewer: show(item.question_id), agrees: item.agreed === "applies" ? given === "yes" : given === "no" };
+    });
   const agreedOf = (side: ControlItem["agreed"]) => {
     const items = controlList.filter((item) => item.agreed === side);
-    return { agreed: items.filter((item) => item.counted).length, of: items.length };
+    return { agreed: items.filter((item) => item.agrees).length, of: items.length };
   };
 
-  // Owner's check.
-  const ownerList = analysis.ownerQuestions.map((entry) => {
-    const ownerAnswer = owner?.answers.find((given) => given.question_id === entry.question_id)?.answer ?? null;
-    const reviewerAnswer = ownerAnswer === null ? null : answer(entry.question_id).answer;
-    return { ...entry, owner: ownerAnswer, reviewer: reviewerAnswer, matched: ownerAnswer === null ? null : ownerAnswer === reviewerAnswer };
-  });
+  // Owner's check. One question may have been disclosed to him before he answered: it is reported apart.
+  const disclosed = new Set(inputs.disclosedToOwner);
+  const notBlindIds = analysis.ownerQuestions.map((entry) => entry.question_id).filter((id) => disclosed.has(id));
+  const ownerList =
+    owner === null
+      ? []
+      : analysis.ownerQuestions.map((entry) => {
+          const ownerAnswer = owner.answers.find((given) => given.question_id === entry.question_id)?.answer as string;
+          const reviewerAnswer = answer(entry.question_id).answer;
+          return { ...entry, blind: !disclosed.has(entry.question_id), owner: ownerAnswer, reviewer: reviewerAnswer, matched: ownerAnswer === reviewerAnswer };
+        });
   const fromDisagreements = analysis.ownerQuestions.filter((entry) => entry.source === "disagreement").length;
+  const blindOf = analysis.ownerQuestions.length - notBlindIds.length;
+  const matchedBlind = owner === null ? null : ownerList.filter((entry) => entry.blind && entry.matched).length;
+  const matchedNotBlind = owner === null ? null : ownerList.filter((entry) => !entry.blind && entry.matched).length;
   const ownerNote =
     (owner === null
-      ? `Outstanding: the owner has not answered his ${analysis.ownerQuestions.length} questions. Run "npm run owner-check". Until then the reviewer's answers to them are withheld here.`
-      : `Answered: the reviewer matched the owner on ${ownerList.filter((entry) => entry.matched).length} of ${ownerList.length}.`) +
+      ? `Outstanding: the owner has not answered his ${analysis.ownerQuestions.length} questions. Run "npm run owner-check". ` +
+        "Until he has, the reviewer's answers to them are held back: they are not in the tree, not read by this evaluation, and not in any count here. " +
+        "The control is reported over the other labels, and precision's pass mark counts a held-back label as wrong, so the verdict does not depend on them."
+      : `Answered: on the ${blindOf} questions he answered blind, the reviewer matched the owner on ${String(matchedBlind)}.`) +
+    (notBlindIds.length === 0
+      ? ""
+      : ` Not blind: before answering ${notBlindIds.join(", ")} the owner had been told the reviewer's answer to it, so that answer is not a blind check` +
+        (owner === null ? "." : ` (the reviewer ${matchedNotBlind === notBlindIds.length ? "matched" : "did not match"} it); it is counted apart.`)) +
     (fromDisagreements < OWNER_QUESTIONS
       ? ` Only ${analysis.disagreements.length} disagreement(s) exist, so ${analysis.ownerQuestions.length - fromDisagreements} of the questions are drawn from the control sample.`
       : "");
 
   // Reviewer totals.
-  const all = analysis.questions.map((question) => ({ question, given: answer(question.id) }));
-  const visible = all.filter(({ question }) => !withheld.has(question.id));
+  const all = questionsToAnswer(analysis).map((question) => ({ question, given: answer(question.id) }));
 
   const report: Report = {
     format_version: 1,
@@ -502,11 +558,13 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
       }),
     },
     control: {
-      size: controlList.length,
-      agreed: controlList.filter((item) => item.counted).length,
+      size: analysis.control.length,
+      held_back: analysis.control.length - controlList.length,
+      reported: controlList.length,
+      agreed: controlList.filter((item) => item.agrees).length,
       applies: agreedOf("applies"),
       does_not_apply: agreedOf("does_not_apply"),
-      list: controlList.map(({ counted: _counted, ...item }) => item),
+      list: controlList,
     },
     owner_check: {
       status: owner === null ? "outstanding" : "answered",
@@ -515,6 +573,8 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
       from_disagreements: fromDisagreements,
       from_control: analysis.ownerQuestions.length - fromDisagreements,
       matched: owner === null ? null : ownerList.filter((entry) => entry.matched).length,
+      blind: { of: blindOf, matched: matchedBlind },
+      not_blind: { of: notBlindIds.length, matched: matchedNotBlind, question_ids: notBlindIds },
       questions: ownerList,
     },
     matching,
@@ -522,14 +582,16 @@ export function finish(analysis: Analysis, answerOf: (question: Question) => Rev
     per_game: Object.fromEntries(VERSIONS.map((version) => [version, analysis.pairwise[version].map((game) => [game.game_id, game.wins, game.pairs])])) as Report["per_game"],
     reviewer: {
       model: REVIEWER_MODEL,
-      questions: all.length,
+      questions: analysis.questions.length,
+      held_back: heldBack.size,
+      answered: all.length,
       by_kind: { label: all.filter(({ question }) => question.kind === "label").length, recommendation: all.filter(({ question }) => question.kind === "recommendation").length },
       answers: {
         yes: all.filter(({ given }) => given.answer === "yes").length,
         no: all.filter(({ given }) => given.answer === "no").length,
         unclear: all.filter(({ given }) => given.answer === "unclear").length,
       },
-      unclear: visible.filter(({ given }) => given.answer === "unclear").map(({ question, given }) => ({ question_id: question.id, said: given.said, note: given.note })),
+      unclear: all.filter(({ given }) => given.answer === "unclear").map(({ question, given }) => ({ question_id: question.id, said: given.said, note: given.note })),
     },
     gallery: { real: [], injected: [] },
   };

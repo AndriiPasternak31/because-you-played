@@ -1,0 +1,380 @@
+{
+  "note": "Every run of the evaluation whose result was looked at, oldest first: the index it ran on and what it found. No run is dropped. A run on the same index, pass marks, prompt version and state of the owner's check replaces its own entry and no other. While the owner's check is outstanding no entry holds a count that would give away the reviewer's answer to one of his questions: precision counts decided labels only, and the control is left out.",
+  "runs": [
+    {
+      "key": "f71546c3b26c451d731a9c2ec8e3fda19678505d5e9f971285901fbb25787ffb|2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc|enrich-v1|outstanding",
+      "index_hash": "f71546c3b26c451d731a9c2ec8e3fda19678505d5e9f971285901fbb25787ffb",
+      "prompt_version": "enrich-v1",
+      "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
+      "owner_check": "outstanding",
+      "recorded": "by hand, from the report committed at ead8bb4. The index it ran on is from before the tag-conflict change: a tag that contradicts the description left the mechanics field empty in every version. It is no longer in the tree.",
+      "ships": "model_where_thin",
+      "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805866). Not passing: table (enrichment.min_recovery_without_tags).",
+      "disagreements": 1,
+      "versions": {
+        "raw": {
+          "marks_failed": [],
+          "labels_asserted": null,
+          "precision": null,
+          "recovery": null,
+          "recovery_without_tags": null,
+          "missed_abstentions": null,
+          "invalid_quotes": null,
+          "pairwise_pooled": {
+            "count": 64217,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.785914,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000155
+        },
+        "table": {
+          "marks_failed": [
+            "enrichment.min_recovery_without_tags"
+          ],
+          "labels_asserted": 380,
+          "precision": {
+            "count": 380,
+            "of": 380,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 380,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 0,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 64705,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.793574,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000148
+        },
+        "model_where_thin": {
+          "marks_failed": [],
+          "labels_asserted": 424,
+          "precision": {
+            "count": 423,
+            "of": 423,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 423,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 43,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 68086,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.828757,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 31,
+          "estimated_usd": 0.115972
+        },
+        "model_everywhere": {
+          "marks_failed": [],
+          "labels_asserted": 422,
+          "precision": {
+            "count": 421,
+            "of": 421,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 421,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 45,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 67733,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.822298,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 26
+          },
+          "model_calls": 100,
+          "estimated_usd": 0.39075
+        }
+      }
+    },
+    {
+      "key": "ee88d4282ea6bf37be6dbe5cab9ab83b6f81629c71e3df29cdd855d45b784d03|2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc|enrich-v1|outstanding",
+      "index_hash": "ee88d4282ea6bf37be6dbe5cab9ab83b6f81629c71e3df29cdd855d45b784d03",
+      "prompt_version": "enrich-v1",
+      "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
+      "owner_check": "outstanding",
+      "recorded": "by hand, from the report committed at e9d4eb0. The index it ran on is from after the tag-conflict change and before one vector was kept per text. It is no longer in the tree.",
+      "ships": "model_where_thin",
+      "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805002). Not passing: table (enrichment.min_recovery_without_tags).",
+      "disagreements": 1,
+      "versions": {
+        "raw": {
+          "marks_failed": [],
+          "labels_asserted": null,
+          "precision": null,
+          "recovery": null,
+          "recovery_without_tags": null,
+          "missed_abstentions": null,
+          "invalid_quotes": null,
+          "pairwise_pooled": {
+            "count": 64217,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.785914,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000155
+        },
+        "table": {
+          "marks_failed": [
+            "enrichment.min_recovery_without_tags"
+          ],
+          "labels_asserted": 380,
+          "precision": {
+            "count": 380,
+            "of": 380,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 380,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 0,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 64705,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.793574,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000148
+        },
+        "model_where_thin": {
+          "marks_failed": [],
+          "labels_asserted": 441,
+          "precision": {
+            "count": 440,
+            "of": 440,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 440,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 48,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 68013,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.827658,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 31,
+          "estimated_usd": 0.115985
+        },
+        "model_everywhere": {
+          "marks_failed": [],
+          "labels_asserted": 439,
+          "precision": {
+            "count": 438,
+            "of": 438,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 438,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 50,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 67663,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.821173,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 100,
+          "estimated_usd": 0.390763
+        }
+      }
+    },
+    {
+      "key": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a|2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc|enrich-v1|outstanding",
+      "index_hash": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a",
+      "prompt_version": "enrich-v1",
+      "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
+      "owner_check": "outstanding",
+      "recorded": "by npm run eval, from the index in this tree",
+      "ships": "model_where_thin",
+      "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805002). Not passing: table (enrichment.min_recovery_without_tags).",
+      "disagreements": 1,
+      "versions": {
+        "raw": {
+          "marks_failed": [],
+          "labels_asserted": null,
+          "precision": null,
+          "recovery": null,
+          "recovery_without_tags": null,
+          "missed_abstentions": null,
+          "invalid_quotes": null,
+          "pairwise_pooled": {
+            "count": 64217,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.785914,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000155
+        },
+        "table": {
+          "marks_failed": [
+            "enrichment.min_recovery_without_tags"
+          ],
+          "labels_asserted": 380,
+          "precision": {
+            "count": 380,
+            "of": 380,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 380,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 0,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 64705,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.793574,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000148
+        },
+        "model_where_thin": {
+          "marks_failed": [],
+          "labels_asserted": 441,
+          "precision": {
+            "count": 440,
+            "of": 440,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 440,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 48,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 68013,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.827645,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 31,
+          "estimated_usd": 0.115985
+        },
+        "model_everywhere": {
+          "marks_failed": [],
+          "labels_asserted": 439,
+          "precision": {
+            "count": 438,
+            "of": 438,
+            "held_back": 1
+          },
+          "recovery": {
+            "count": 438,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 50,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 67663,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.821174,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 100,
+          "estimated_usd": 0.390763
+        }
+      }
+    }
+  ]
+}

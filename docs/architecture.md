@@ -98,7 +98,7 @@ The three [product rules](../AGENTS.md#product-rules) are meant to hold by struc
 
 Three more boundaries shape the design.
 
-- **Serving is gated by the evaluation** ([SV-5](features/service.md)).
+- **Serving is gated by the evaluation** ([SV-5](features/service.md)). The service checks the verdict against the evaluation's report and applies the gate to that report's numbers again, so a verdict cannot be written by hand.
 - **The hidden truth stays hidden from the pipeline.** #2 asks for a check of that.
 - **Catalogue text is data** ([Safety](../AGENTS.md#safety)). On the page it is escaped ([UI-5](features/interface.md)).
 

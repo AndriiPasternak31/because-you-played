@@ -311,6 +311,22 @@ export function renderTrace(response) {
 
 const url = (path, params) => `${path}?${new URLSearchParams(params).toString()}`;
 
+/**
+ * The options of the game picker for one brand. A game that a link asks for and the index does not hold
+ * gets an option of its own, so that the request is sent as asked and the service's decline is what is shown.
+ */
+export function gameOptions(catalogue, brand, asked) {
+  const options = catalogue.games.map((entry) => {
+    const notes = [words(entry.status[brand] ?? "not_offered")];
+    if (entry.evidence === "none") notes.push("nearly empty");
+    else if (entry.conflict) notes.push("conflicting tag");
+    else if (entry.thin) notes.push("thin");
+    return { value: entry.game_id, text: `${entry.title} · ${entry.game_id} · ${notes.join(", ")}` };
+  });
+  if (asked && !catalogue.games.some((entry) => entry.game_id === asked)) options.unshift({ value: asked, text: `${asked} · not in the index` });
+  return options;
+}
+
 /** Fetches and renders the trace. `get` is the only way a view reaches data. */
 export async function traceView(get, request) {
   const params = { game: request.game, brand: request.brand };
@@ -497,8 +513,12 @@ export function renderEvaluation(evaluation) {
 
   const labelled = Object.keys(report.enrichment);
   const of = (value) => `${count(value.count)} <span class="small">of ${count(value.of)}</span>`;
+  const precision = (row) => {
+    const held = row.precision.left_out.held_back;
+    return held === 0 ? share(row.precision) : `${share(row.precision)}<span class="small">${esc(held)} held back; counted as wrong for the pass mark: ${esc(row.precision.gate.count)} of ${esc(row.precision.gate.of)}</span>`;
+  };
   const measures = [
-    ["Precision", "Of the labels asserted, the share that are correct", (row) => share(row.precision)],
+    ["Precision", "Of the labels asserted, the share that are correct", precision],
     ["Recovery", "Of the labels the record's own words support, the share asserted", (row) => share(row.recovery)],
     ["Recovery without tags", "The same, where the evidence is only in the description or the title", (row) => share(row.recovery_without_tags)],
     ["Missed abstentions", "Fields where nothing should be asserted and something was", (row) => of(row.missed_abstentions)],
@@ -530,8 +550,16 @@ export function renderEvaluation(evaluation) {
           )
           .join("")}</tbody></table></div>` +
         `<h4>Disagreements with the plan: ${esc(report.disagreements.count)}</h4><ul class="plain">${disagreements}</ul>` +
-        `<h4>The reviewer, ${mono(report.reviewer.model)}</h4><p>Control: it agreed with the plan on ${esc(control.agreed)} of ${esc(control.size)} labels where the plan and the pipeline agree (${esc(control.applies.agreed)} of ${esc(control.applies.of)} where the label applies, ${esc(control.does_not_apply.agreed)} of ${esc(control.does_not_apply.of)} where it does not). ` +
-        `It answered ${esc(report.reviewer.questions)} questions: ${esc(report.reviewer.answers.yes)} yes, ${esc(report.reviewer.answers.no)} no, ${esc(report.reviewer.answers.unclear)} unclear.</p>` +
+        `<h4>The reviewer, ${mono(report.reviewer.model)}</h4><p>Control: it agreed with the plan on ${esc(control.agreed)} of ${esc(control.reported)} labels where the plan and the pipeline agree (${esc(control.applies.agreed)} of ${esc(control.applies.of)} where the label applies, ${esc(control.does_not_apply.agreed)} of ${esc(control.does_not_apply.of)} where it does not). ` +
+        `Of ${esc(report.reviewer.answered)} answers: ${esc(report.reviewer.answers.yes)} yes, ${esc(report.reviewer.answers.no)} no, ${esc(report.reviewer.answers.unclear)} unclear.</p>` +
+        (report.reviewer.held_back === 0
+          ? ""
+          : `<p data-held-back>${label("amber", "held back")} ${esc(report.reviewer.held_back)} of the reviewer's ${esc(report.reviewer.questions)} answers are the owner's check questions (${esc(control.held_back)} of the ${esc(control.size)} control labels among them). They are not in the repository and not in any count on this page until the owner has answered, so that he answers without sight of them.</p>`) +
+        (report.owner_check.questions.length === 0
+          ? ""
+          : `<div class="scroll"><table><caption>The owner's check</caption><thead><tr><th>Question</th><th>From</th><th>Owner</th><th>Reviewer</th><th>Match</th><th>Answered blind</th></tr></thead><tbody>${report.owner_check.questions
+              .map((entry) => `<tr><td>${mono(entry.question_id)}</td><td>${esc(entry.source)}</td><td>${esc(entry.owner)}</td><td>${esc(entry.reviewer)}</td><td>${entry.matched ? label("green", "match") : label("amber", "differs")}</td><td>${entry.blind ? "yes" : label("amber", "no: told the reviewer's answer first")}</td></tr>`)
+              .join("")}</tbody></table></div>`) +
         (report.reviewer.unclear.length === 0 ? "" : `<p class="small">Recorded as unclear: ${report.reviewer.unclear.map((entry) => `${mono(entry.question_id)} (${esc(words(entry.note ?? "it said unclear"))})`).join(", ")}.</p>`),
     ),
   );
