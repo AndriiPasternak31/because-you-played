@@ -1,0 +1,235 @@
+{
+  "slot": 79,
+  "model": "gpt-6.2-sol",
+  "prompt_version": "truth-v4",
+  "request_sha256": "6fab760d491407109c1d58e97cb840172e7f1b1095f9a3aac993e832e939959a",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 4.658,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 1669,
+        "output_tokens": 322,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_12h_tokens": 0,
+            "ttl_30m_tokens": 0
+          }
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "body_redacted": false,
+      "body": {
+        "id": "resp_005f3e78cc986ff0016afe44ec494c87d29841fa2265a2d532",
+        "object": "response",
+        "created_at": 1795048684,
+        "status": "completed",
+        "access_programs": {
+          "cyber": "standard"
+        },
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795048688,
+        "error": null,
+        "frequency_penalty": 0,
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": "You write supplier game-sheet copy for invented online slot games. The output seeds a synthetic test catalogue and is never shown to players. Each request is a JSON brief for one game.\n\nRules:\n1. Everything is fictional. Never use or allude to a real game title or game series, studio, casino or betting brand, person, film, show, band or any other trademark, and never use a branded mechanic name.\n2. Title. If brief.title.mode is \"exact\", return brief.title.value unchanged. If it is \"invent\", write a title of two to four words that a real studio could ship but that no existing commercial game is likely to carry. Follow the pattern in brief.title.shape, filling it from the game's world as set by brief.setting; the invented word in the pattern is a name you make up that begins with the letter in brief.title.invented_word_initial. Do not simply put an invented word in front of a generic category label, and avoid well-worn openers such as \"Book of\", \"Gates of\", \"Legend of\", \"Rise of\", \"Age of\", \"Big\", \"Lucky\", \"Mega\", \"Super\" and \"Golden\". Use letters, spaces and apostrophes only: no digits and no symbols. With style \"thematic\" the title names the first briefed theme plainly enough that a reader could tell the theme from the title alone. With style \"opaque\" the title is an abstract name that hints at no theme and no mechanic.\n3. Description. One paragraph of 70 to 110 words of English copy written in the house style given in brief.voice. brief.setting is the angle this game takes on its first theme: build the world of the game on it, with its own characters and details. When brief.setting is null, keep the world of the related game. Plain text with plain ASCII punctuation: no markup, no line breaks, no lists. It makes every briefed theme and every briefed mechanic unmistakable to a careful reader, the way real game sheets do: by the name suppliers and players use for the feature or by a concrete account of what happens on the reels. The \"meaning\" texts in the brief explain the terms to you; never copy their wording, and phrase each feature differently from how a glossary would. It does not mention or imply any theme or mechanic from the vocabulary below that is not in the brief; in particular do not mention wild symbols, bonus rounds or jackpots unless a briefed mechanic is about them. It never states RTP, a percentage, a stake or bet amount, a currency or any promise about winning.\n4. Facts. If brief.facts_to_mention is null, do not mention volatility or the maximum win at all. Otherwise work both into the copy in your own words; write the maximum win in the form \"5,000x the bet\" and never use the word \"multiplier\" for it.\n5. Evidence. Exactly one entry for each briefed theme and each briefed mechanic, and no others. \"span\" is a short quote of 3 to 12 words copied character for character from your description which, read alone, shows that the term applies.\n6. German. If brief.german_copy is true, \"description_de\" is a faithful, natural German rendering of the description with the same content, and each evidence entry's \"span_de\" is a quote of 3 to 12 words copied character for character from description_de for the same term. If it is false, \"description_de\" and every \"span_de\" are null.\n7. \"title_theme_terms\" lists the briefed themes that the title alone states explicitly. It is empty for an opaque title.\n\nVocabulary of themes: ancient_egypt (pharaohs, pyramids, tombs and the gods of ancient Egypt); mythology (gods and heroes of Greek, Norse or other classical myth); fantasy (wizards, dragons, elves and invented magical worlds); animals (wildlife or animal characters as the main subject); adventure (explorers, expeditions and treasure hunts); classic_fruit (traditional fruit-machine symbols: cherries, bells, bars and sevens); east_asian (East Asian settings and symbols such as lanterns, dragon dances and temples); irish_luck (Irish folklore: leprechauns, clovers, rainbows and pots of gold); western (the American frontier: cowboys, saloons and outlaws); horror (ghosts, vampires, haunted places and other dark, frightening subjects); ocean_fishing (the sea, underwater life or fishing); sci_fi (space travel, robots, aliens and future technology).\nVocabulary of mechanics: paylines (wins are paid on a fixed number of lines across the reels); ways (wins are paid for matching symbols on adjacent reels in any position (ways to win)); cluster_pays (wins are paid for groups of touching matching symbols rather than lines); free_spins (a bonus round of spins that cost nothing); multipliers (wins are multiplied by a factor that is applied or grows during play); cascading_reels (winning symbols are removed and new symbols fall into the gaps); expanding_wilds (wild symbols grow to cover a whole reel); sticky_wilds (wild symbols stay locked in place for following spins); hold_and_respin (special symbols lock in place while the remaining positions spin again); pick_bonus (a bonus round in which the player picks hidden items to reveal prizes); progressive_jackpot (a jackpot prize that grows with play until it is won); mystery_symbols (symbols that land face-down and all reveal the same symbol).",
+        "max_output_tokens": 6000,
+        "max_tool_calls": null,
+        "model": "gpt-6.2-sol",
+        "moderation": null,
+        "output": [
+          {
+            "id": "msg_005f3e78cc986ff0016afe44ed24c487d290387a84e394c738",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\n  \"title\": \"Evrask the Starship Racer\",\n  \"description\": \"Evrask cuts the engines as a rival starship overshoots the next gate in a race through the asteroid belt. Back on the 5x3 grid, wins land on 10 fixed paylines. Winning symbols clear, and fresh symbols drop into their places to keep the spin going. Face-down mystery symbols flip together to reveal the same symbol. When the free spins round starts, Evrask takes the inside route through a narrow gap in the rock field, and the reels spin at no extra cost. The game has high volatility and a maximum win of 5,000x the bet.\",\n  \"description_de\": null,\n  \"evidence\": [\n    {\"term\": \"sci_fi\", \"span\": \"a rival starship overshoots the next gate\", \"span_de\": null},\n    {\"term\": \"paylines\", \"span\": \"wins land on 10 fixed paylines\", \"span_de\": null},\n    {\"term\": \"cascading_reels\", \"span\": \"Winning symbols clear, and fresh symbols drop into their places\", \"span_de\": null},\n    {\"term\": \"free_spins\", \"span\": \"the free spins round starts\", \"span_de\": null},\n    {\"term\": \"mystery_symbols\", \"span\": \"Face-down mystery symbols flip together to reveal the same symbol\", \"span_de\": null}\n  ],\n  \"title_theme_terms\": [\"sci_fi\"]\n}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "low",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "truth_text",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "description_de": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "term": {
+                        "type": "string",
+                        "enum": [
+                          "ancient_egypt",
+                          "mythology",
+                          "fantasy",
+                          "animals",
+                          "adventure",
+                          "classic_fruit",
+                          "east_asian",
+                          "irish_luck",
+                          "western",
+                          "horror",
+                          "ocean_fishing",
+                          "sci_fi",
+                          "paylines",
+                          "ways",
+                          "cluster_pays",
+                          "free_spins",
+                          "multipliers",
+                          "cascading_reels",
+                          "expanding_wilds",
+                          "sticky_wilds",
+                          "hold_and_respin",
+                          "pick_bonus",
+                          "progressive_jackpot",
+                          "mystery_symbols"
+                        ]
+                      },
+                      "span": {
+                        "type": "string"
+                      },
+                      "span_de": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "term",
+                      "span",
+                      "span_de"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "title_theme_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "ancient_egypt",
+                      "mythology",
+                      "fantasy",
+                      "animals",
+                      "adventure",
+                      "classic_fruit",
+                      "east_asian",
+                      "irish_luck",
+                      "western",
+                      "horror",
+                      "ocean_fishing",
+                      "sci_fi"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "title",
+                "description",
+                "description_de",
+                "evidence",
+                "title_theme_terms"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 1,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 1669,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 322,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 1991
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}

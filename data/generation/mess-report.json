@@ -1,69 +1,74 @@
 {
   "seed": "catalogue-v1",
-  "count": 14,
-  "games": 14,
-  "raw_rows": 15,
+  "count": 100,
+  "games": 100,
+  "raw_rows": 104,
   "rows_by_mess": {
-    "description_missing": 2,
-    "description_boilerplate": 1,
-    "description_terse": 1,
-    "description_non_english": 1,
-    "description_markup": 2,
+    "description_missing": 40,
+    "description_boilerplate": 16,
+    "description_terse": 7,
+    "description_non_english": 5,
+    "description_markup": 9,
     "prompt_injection": 1,
-    "tags_missing": 2,
-    "tag_spelling_drift": 3,
-    "tag_dropped_but_inferable": 1,
-    "tag_conflicts_description": 1,
-    "non_attribute_tags": 2,
-    "title_decoration": 2,
-    "near_empty": 1,
-    "studio_field_gap": 7,
-    "family_not_supplied": 2,
-    "same_name_different_studio": 2,
-    "supplier_id_duplicate": 2,
-    "rtp_multi_build": 4,
-    "fact_format_variant": 7,
-    "interacting_defects": 2
+    "tags_missing": 13,
+    "tag_spelling_drift": 43,
+    "tag_dropped_but_inferable": 4,
+    "tag_conflicts_description": 5,
+    "non_attribute_tags": 23,
+    "title_decoration": 16,
+    "near_empty": 4,
+    "studio_field_gap": 65,
+    "family_not_supplied": 10,
+    "same_name_different_studio": 7,
+    "supplier_id_duplicate": 8,
+    "rtp_multi_build": 11,
+    "fact_format_variant": 67,
+    "interacting_defects": 23
   },
-  "clean_control_rows": 2,
+  "clean_control_rows": 6,
+  "description_missing_forms": {
+    "absent_key": 17,
+    "null": 14,
+    "empty_string": 9
+  },
   "rows_by_studio": {
-    "Okkelund Studios": 7,
-    "Quillfern Interactive": 2,
-    "Wexomar Gaming": 1,
-    "Ulvenskar Games": 2,
-    "Thrannock Play": 2,
-    "Drachtweil Spiele": 1
+    "Okkelund Studios": 34,
+    "Quillfern Interactive": 18,
+    "Wexomar Gaming": 14,
+    "Ulvenskar Games": 18,
+    "Thrannock Play": 15,
+    "Drachtweil Spiele": 5
   },
   "families": {
-    "families": 2,
-    "members": 4
+    "families": 9,
+    "members": 18
   },
-  "same_name_pairs": 1,
-  "duplicate_pairs": 1,
+  "same_name_pairs": 3,
+  "duplicate_pairs": 4,
   "offerings": {
-    "rows": 31,
+    "rows": 170,
     "by_brand": {
       "tavrenmoor": {
-        "live": 12,
-        "coming_soon": 0,
-        "disabled": 0,
-        "withdrawn": 2
+        "live": 80,
+        "coming_soon": 1,
+        "disabled": 2,
+        "withdrawn": 12
       },
       "copperjay": {
-        "live": 9,
-        "coming_soon": 1,
-        "disabled": 1,
-        "withdrawn": 1
+        "live": 52,
+        "coming_soon": 5,
+        "disabled": 2,
+        "withdrawn": 8
       },
       "quarrowby": {
-        "live": 5,
+        "live": 8,
         "coming_soon": 0,
         "disabled": 0,
         "withdrawn": 0
       }
     },
-    "games_on_one_brand": 1,
-    "games_withdrawn_somewhere": 2,
-    "games_live_nowhere": 1
+    "games_on_one_brand": 35,
+    "games_withdrawn_somewhere": 18,
+    "games_live_nowhere": 8
   }
 }
