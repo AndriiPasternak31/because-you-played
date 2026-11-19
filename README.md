@@ -2,7 +2,7 @@
 
 "Because you played X, you might like…": a related-games recommender over a fictional catalogue of 100 slot games, built as a take-home engineering assessment. A model enriches thin catalogue records offline, an evaluation decides whether the result may be served, and the service answers from memory with no model call.
 
-**After `npm install` it runs with no API key and no network.** Every model response is stored in the repository, and the evaluation and the service replay them. Node 24, no build step.
+**After `npm install` it runs with no API key and no network.** The model responses it needs are stored in the repository, and the evaluation and the service replay them. Node 24, no build step.
 
 ```sh
 npm install
@@ -53,7 +53,7 @@ Or open <http://127.0.0.1:8787/> for the console. If port 8787 is taken: `npm ru
 
 | Try | Request | Answer |
 |---|---|---|
-| A normal result | `game=okk-50023&brand=tavrenmoor` | Five games, each live on that brand |
+| A normal result | `game=okk-50023&brand=tavrenmoor` | Five games, each live on that brand. The fifth is on the evaluation's list of real failures: the answer key calls it unrelated to this game |
 | The same, with every step shown | add `&trace=1` | The record, each label with its quote, what each filter removed, every score against the floor |
 | A game that is not live on the brand | `game=drw-12933&brand=copperjay` | Declined: `anchor_not_available` |
 | A record with almost nothing in it | `game=okk-43364&brand=tavrenmoor` | Declined: `insufficient_data` |
@@ -95,7 +95,7 @@ The key is read from the environment only. No file here holds a value, and [`.en
 Three rules shaped everything. They are in [`AGENTS.md`](AGENTS.md#product-rules), and [`docs/architecture.md`](docs/architecture.md) shows where each is enforced.
 
 1. **The model never writes facts or availability.** It may only add labels from a fixed list, each with a quote from the record, or say nothing.
-2. **No model call while serving a request.** All of it happens offline, and every response is stored.
+2. **No model call while serving a request.** All of it happens offline, and the responses are stored and replayed.
 3. **Availability is filtered before ranking.** A game that is not live on the brand has no score at all.
 
 On top of those sits one experiment. The pipeline builds four versions of every game's text, in order of cost:
@@ -141,7 +141,7 @@ The latest of three evaluation runs, from the report `npm run eval` writes, whic
 
 - **"Model where thin" ships.** It is the cheapest passing version within the margin of the best. Calling the model on all 100 records instead of 31 did not rank better.
 - **"Related ranked above unrelated"** takes a game, one game the answer key calls related and one it calls unrelated, and asks how often the related one scores higher. Guessing gives 50%.
-- **One label is held back.** It is the subject of one of the owner's six questions, so the reviewer's answer on it is not in the repository yet. The pass mark counts it as wrong, 440 of 441, which passes whatever the answer turns out to be.
+- **One label is held back.** It is the subject of one of the owner's six questions, so the reviewer's answer on it is out of the working tree and out of every count. The pass mark counts it as wrong, 440 of 441, which passes whatever the answer turns out to be.
 - **Every run is on record** in [`eval/results/runs.json`](eval/results/runs.json), three so far. The same version shipped in each, and the synonym table failed the same mark in each. The first run was on the index from before the tag-conflict rule was reversed: there the shipped version recovered 423 of 442 labels and ranked at 80.6%.
 - **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The console shows them.
 
@@ -152,7 +152,7 @@ Every count, the split by how thin a record is, and the readings chosen where th
 - **One vendor's models wrote the catalogue text, did the enrichment and act as the reviewer of disputed cases.** Related models can share blind spots, so their agreement is weaker evidence than it looks.
 - **The catalogue is easier than real supplier data.** Its descriptions state each mechanic plainly. The numbers show direction and the absence of glaring failure, not production accuracy.
 - **"No wrongly shown game" rests on a lenient reviewer.** The reviewer model was asked about five results the rule calls unrelated, and said yes to all five.
-- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself, and the reviewer's answers to those six are kept out of the repository until he has. Before that safeguard existed he was told the reviewer's answer to one of them in conversation. So the check reports five answers given blind, and the sixth apart.
+- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself. Until he has, the reviewer's answers to those six are out of the working tree, and the report, the console and these documents show none of them. **They are not out of reach:** the commit that [`eval/reviewer/held-back.json`](eval/reviewer/held-back.json) names still holds them, and anyone can open it through the pull requests that carried it or a branch cut from them. The check depends on him not opening that commit before he answers, not on the answers being unreachable. He was also told the reviewer's answer to one of the six in conversation, before the answers were held back, so the check reports five answers given blind and the sixth apart.
 - **Where a tag contradicts the description, the description is the correct side in all five planted cases.** So the comparison cannot show what trusting the text costs when the tag is right.
 - **A contradiction in German text is not detected.** The rule reads English phrases only.
 - **"Related" means shared themes and mechanics in the answer key.** It is not a measure of what players go on to play.
@@ -177,7 +177,7 @@ The part files list more under "Known limits".
 | A fixed list of 24 labels with quotes | Free-text enrichment | Coarse labels, but every one can be counted and traced |
 | The generator's plan as the answer key | Hand labels | No labelling time and full coverage, at the price of the circularity named above |
 | An exact scan in memory | A vector database | Nothing to operate now; a known trigger for when it stops being enough |
-| Committing every model response | A smaller repository | Anyone can rebuild and evaluate with no key |
+| Committing the model responses | A smaller repository | Anyone can rebuild and evaluate with no key |
 
 The decision record gives the reasons and the triggers.
 
@@ -217,7 +217,7 @@ None of this monitoring is built.
 | What | Time | Notes |
 |---|---|---|
 | Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
-| The build: the owner's attention | About 4 hours, in two sittings | The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
+| The build: the owner's attention | **To be added by the owner: hours** | Two sittings. The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
 | The build: agents' running time | Roughly 6 to 7 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |

@@ -67,7 +67,7 @@ AWS is assumed for the proposal, and nothing depends on it: the pieces are a bat
 | A vector database | The standard answer for similarity search | At this size an exact scan in memory is simpler and exact, and "filter before ranking" is a few lines in one plain function that a test can check for every game on every brand. A database adds a thing to run and a second place where the filter could be wrong |
 | Precomputed lists of neighbours per game and brand | The request becomes a lookup | Every availability change means recomputing lists, and a list cut to its top few before filtering can leave a small brand with nothing. It becomes the right answer when the scan stops being cheap |
 | Let the model write a free-text profile of each game, and embed that | Less code than a fixed list of labels with quotes | Code cannot check prose. A fixed list with a quote behind every label can be scored against an answer key, and a label with no quote can be refused |
-| Local, open-weight models | No paid calls; nothing leaves the machine | A reviewer needs no model at all, because every response is stored. A local model would add a download and machine-to-machine variation for weaker enrichment |
+| Local, open-weight models | No paid calls; nothing leaves the machine | A reviewer needs no model at all, because the responses are stored. A local model would add a download and machine-to-machine variation for weaker enrichment |
 | Recommend from what players play next | It measures the thing the rail is for | There is no play data for a fictional catalogue, and a new game has none on day one. It is the natural second signal, not the first |
 | No model: a synonym table only | No model cost or risk at all | It was built and evaluated as one of four versions, not argued away. See the next section |
 
@@ -86,7 +86,7 @@ So "is the model worth it" is answered by a run, and the answer can change. The 
 | A fixed list of 24 labels | Labels that can be counted, compared and traced to a quote | Coarse descriptions. A game's character beyond the list reaches the index only through its delivered text |
 | Facts such as RTP, volatility and stake limits are carried as delivered and never parsed | No wrong number in a regulated field, and no parser for formats that differ by studio | The rail cannot filter or rank on them. Where a description mentions them, they still reach the embedding text |
 | The answer key comes from the generator, not from people | An evaluation over the whole catalogue with none of the owner's time spent labelling | Circularity. One vendor's models wrote the catalogue, did the enrichment and act as the reviewer of disputed cases |
-| Every model response is committed | Anyone can rebuild and evaluate with no key, byte for byte | A larger repository, and a replay shows what the model said then, not what it would say today |
+| The model responses are committed | Anyone can rebuild and evaluate with no key, byte for byte | A larger repository, and a replay shows what the model said then, not what it would say today |
 
 ## Failure behaviour
 

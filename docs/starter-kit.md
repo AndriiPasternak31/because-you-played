@@ -27,7 +27,7 @@ Nine pieces a new repository copies before any product code exists, so that codi
 ## How it applies to the next prototype
 
 1. Copy the nine pieces into the empty repository.
-2. In `AGENTS.md`, replace three things: the product rules, the owner's paths, and the commands. Everything else carries over as it stands.
+2. Rewrite what in `AGENTS.md` is about this product: the opening paragraph, the Safety section's key name and its sentence about the catalogue, the product rules, the owner's files with the paragraph on what the settings file does and does not stop, the state map's row for the console, and the commands. Done, Git, Briefing another agent and the rest of the state map carry over as they stand.
 3. Point the two deny rules in `.claude/settings.json` at the new owner's paths.
 4. Write one file under `docs/features/` per planned part, with its status as "planned" and its invariants with `-` for last proved.
 5. Open the first issue. From there the loop is the one in [`docs/development-workflow.md`](development-workflow.md): brief, build, evidence, break-it review, owner's decision, squash merge.
