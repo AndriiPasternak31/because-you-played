@@ -9,40 +9,7 @@
 <link rel="stylesheet" href="/console/console.css">
 </head>
 <body>
-<main>
-  <header>
-    <div class="top"><p class="kicker">Inspection view · not the screen a player would see</p><p id="serving" class="serving" aria-live="polite">Loading</p></div>
-    <h1>Because you played</h1>
-    <p class="lede">A related-games recommender, opened up: what it recommends for a game on a brand, the evidence for it, and whether the language model earned its cost.</p>
-  </header>
-
-  <section id="request">
-    <form id="picker">
-      <div class="field wide"><label for="game">Game played <span class="hint">the page follows your choice at once</span></label><select id="game" name="game"></select></div>
-      <div class="field"><label for="brand">Brand</label><select id="brand" name="brand"></select></div>
-      <div class="field"><label for="version">Version of the index</label><select id="version" name="version"></select></div>
-    </form>
-    <div id="examples" aria-live="polite"><p class="small">Looking for examples in the catalogue</p></div>
-  </section>
-
-  <div id="trace" aria-live="polite"></div>
-
-  <details id="versions" class="drawer">
-    <summary>The same request in every version of the index</summary>
-    <div class="drawer-body">
-      <p class="lede">What each version would recommend for the chosen game on the chosen brand, and the labels it holds. Only the served version answers players.</p>
-      <div id="compare" aria-live="polite"><p class="small">Choose a brand and a game above.</p></div>
-    </div>
-  </details>
-
-  <section id="evaluation" class="block">
-    <p class="kicker">4 · Was the model worth it</p>
-    <h2>The evidence for the version that is served</h2>
-    <div id="evaluation-body" aria-live="polite"><p>Loading</p></div>
-  </section>
-
-  <footer>Every value on this page comes from this service's own responses. The service holds no key and calls no model.</footer>
-</main>
+<div id="root"><h1 class="boot">Because you played</h1><p class="boot">The inspection view of a recommender, not the screen a player would see. The page is loading; it needs JavaScript.</p></div>
 <script type="module" src="/console/app.js"></script>
 </body>
 </html>

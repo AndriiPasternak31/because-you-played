@@ -1,0 +1,2 @@
+# Built files of the page: byte-exact, and folded in diffs. `npm test -- "UI-14:"` fails when they differ from a fresh build.
+src/console/dist/** -text linguist-generated

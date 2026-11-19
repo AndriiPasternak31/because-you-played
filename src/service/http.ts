@@ -24,11 +24,11 @@ const json = (status: number, value: unknown): Reply => ({ status, contentType: 
 const badRequest = (message: string): Reply => json(400, { error: "bad_request", message });
 
 const CONSOLE_DIR = join(import.meta.dirname, "..", "console");
+// The page's script and stylesheet are built files, committed under dist/ (tools/build-console.ts). Nothing is built when a request arrives.
 const CONSOLE_FILES: Record<string, { file: string; contentType: string }> = {
   "/": { file: "index.html", contentType: "text/html; charset=utf-8" },
-  "/console/console.css": { file: "console.css", contentType: "text/css; charset=utf-8" },
-  "/console/app.js": { file: "app.js", contentType: "text/javascript; charset=utf-8" },
-  "/console/view.js": { file: "view.js", contentType: "text/javascript; charset=utf-8" },
+  "/console/console.css": { file: "dist/console.css", contentType: "text/css; charset=utf-8" },
+  "/console/app.js": { file: "dist/app.js", contentType: "text/javascript; charset=utf-8" },
 };
 
 /** Reads the query into a map, refusing a parameter the route does not know and one given twice. */
