@@ -46,7 +46,7 @@ flowchart TB
   REC -->|"results, or a decline with a reason"| PAGE
 ```
 
-The diagram shows the proposal. In this repository the artifact store is the repository itself, availability is one file, and the game page is the console or a `curl`.
+The diagram shows the proposal. In this repository the artifact store is the repository itself, availability is one file, and the caller is the repository's own page or a `curl`.
 
 | Part of the decision | Built in this repository | Proposed for production, not built |
 |---|---|---|

@@ -30,7 +30,7 @@ Asked to propose working rules for this repository, agents came back with 37 ite
 
 ## Where it fell short
 
-The kit let one failure through that mattered: the console. The agents followed it exactly, a break-it review passed the result, and the owner rejected the page on sight. The [README](../README.md#one-ai-output-that-was-rejected) tells the story once; this is what it means for the kit.
+The kit let one failure through that mattered: the page that shows what the service did. The agents followed it exactly, a break-it review passed the result, and the owner rejected the page on sight. The [README](../README.md#one-ai-output-that-was-rejected) tells the story once; this is what it means for the kit.
 
 - **The hole was in three pieces at once.** The working rules and the review protocol both hand the interface to the owner's judgement. The briefs written from them did the same. So a criterion that a machine could have checked, "readable on one screen", was checked by nobody.
 - **A rule that hands a whole area to a person also hands over the parts of it that can be checked.** The kit drew the line at "the interface". It belongs between look, which is the owner's, and what a reader sees first, which is behaviour.
@@ -39,7 +39,7 @@ The kit let one failure through that mattered: the console. The agents followed 
 ## How it applies to the next prototype
 
 1. Copy the nine pieces into the empty repository.
-2. Rewrite what in `AGENTS.md` is about this product: the opening paragraph, the Safety section's key name and its sentence about the catalogue, the product rules, the owner's files with the paragraph on what the settings file does and does not stop, the state map's row for the console, and the commands. Done, Git, Briefing another agent and the rest of the state map carry over as they stand.
+2. Rewrite what in `AGENTS.md` is about this product: the opening paragraph, the Safety section's key name and its sentence about the catalogue, the product rules, the owner's files with the paragraph on what the settings file does and does not stop, the state map's row for the interface guidelines, and the commands. Done, Git, Briefing another agent and the rest of the state map carry over as they stand.
 3. Point the two deny rules in `.claude/settings.json` at the new owner's paths.
 4. Write one file under `docs/features/` per planned part, with its status as "planned" and its invariants with `-` for last proved.
 5. Open the first issue. From there the loop is the one in [`docs/development-workflow.md`](development-workflow.md): brief, build, evidence, break-it review, owner's decision, squash merge.
@@ -55,7 +55,7 @@ The review record up to this note, taken from the Review tables of #8, #10, #11,
 | #8 documents | 8 | 1 | 7 | 2 | All 8 led to a change |
 | #10 catalogue | 4 | 3 | 1 | 4 | 2 fixed, 1 partly fixed and written down as a limit, 1 left as it was, the owner's call |
 | #11 pipeline | 6 | 5 | 1 | 3 | 3 fixed, 1 reversed by the owner's decision, 2 written down as limits |
-| #12 service, evaluation, console | 6 | 4 | 2 | 4 | 4 fixed, 2 of them minor. 1 wording corrected. 1 answered by keeping every evaluation run on record |
+| #12 service, evaluation, page | 6 | 4 | 2 | 4 | 4 fixed, 2 of them minor. 1 wording corrected. 1 answered by keeping every evaluation run on record |
 | #13 README, decision record, this note | 8 | 3 | 5 | 3 | 6 led to an edit, 1 to a line in the description, 1 is the owner's to do |
 | **All** | **32** | **16** | **16** | **16** | |
 

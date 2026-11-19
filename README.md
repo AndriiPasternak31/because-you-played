@@ -7,7 +7,7 @@
 ```sh
 npm install
 npm run eval     # scores four versions of the index against pass marks fixed in advance
-npm run serve    # http://127.0.0.1:8787, with a console at /
+npm run serve    # http://127.0.0.1:8787, with a page at / that shows each step
 ```
 
 ```mermaid
@@ -16,7 +16,7 @@ flowchart LR
   PIPE --> IDX[/"index<br/>four versions of every game"/]
   IDX --> EVAL["Evaluation<br/>picks one version, or none"]
   EVAL --> SVC["Service<br/>filter by availability, rank, or decline"]
-  SVC --> CON["Console"]
+  SVC --> CON["A page that shows each step"]
 ```
 
 | To read | Where |
@@ -25,7 +25,6 @@ flowchart LR
 | The reusable artifact: nine pieces that start the next repository | [`docs/starter-kit.md`](docs/starter-kit.md) |
 | The briefs given to the agents, and three explainer pages | [`docs/process/`](docs/process/README.md) |
 | A two-minute walkthrough | **To be added by the owner: link to the recording** |
-| Screenshots of the console | **To be added with the interface pull request** |
 
 ## Run, evaluate, regenerate
 
@@ -49,7 +48,7 @@ Then, in a second terminal:
 curl 'http://127.0.0.1:8787/api/recommendations?game=okk-50023&brand=tavrenmoor'
 ```
 
-Or open <http://127.0.0.1:8787/> for the console. If port 8787 is taken: `npm run serve -- --port 9000`.
+Or open <http://127.0.0.1:8787/> for the page: one request shown step by step, and the evaluation behind what is served. The code and the part files call it the console. If port 8787 is taken: `npm run serve -- --port 9000`.
 
 | Try | Request | Answer |
 |---|---|---|
@@ -59,7 +58,7 @@ Or open <http://127.0.0.1:8787/> for the console. If port 8787 is taken: `npm ru
 | A record with almost nothing in it | `game=okk-43364&brand=tavrenmoor` | Declined: `insufficient_data` |
 | Nothing similar enough | `game=drw-32945&brand=tavrenmoor` | Declined: `nothing_above_floor` |
 
-A decline is a normal answer, a 200 with a reason and no results. Routes, the ten steps of a request and every refusal to start are in [`docs/features/service.md`](docs/features/service.md); the console's views are in [`docs/features/interface.md`](docs/features/interface.md).
+A decline is a normal answer, a 200 with a reason and no results. Routes, the ten steps of a request and every refusal to start are in [`docs/features/service.md`](docs/features/service.md); the page's views are in [`docs/features/interface.md`](docs/features/interface.md).
 
 ### 2. Evaluate it (no key)
 
@@ -143,7 +142,7 @@ The latest of three evaluation runs, from the report `npm run eval` writes, whic
 - **"Related ranked above unrelated"** takes a game, one game the answer key calls related and one it calls unrelated, and asks how often the related one scores higher. Guessing gives 50%.
 - **One label is held back.** It is the subject of one of the owner's six questions, so the reviewer's answer on it is out of the working tree and out of every count. The pass mark counts it as wrong, 440 of 441, which passes whatever the answer turns out to be.
 - **Every run is on record** in [`eval/results/runs.json`](eval/results/runs.json), three so far. The same version shipped in each, and the synonym table failed the same mark in each. The first run was on the index from before the tag-conflict rule was reversed: there the shipped version recovered 423 of 442 labels and ranked at 80.6%.
-- **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The console shows them.
+- **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The page shows them.
 
 Every count, the split by how thin a record is, and the readings chosen where the plan left a detail open are in [`docs/features/service.md`](docs/features/service.md).
 
@@ -152,7 +151,7 @@ Every count, the split by how thin a record is, and the readings chosen where th
 - **One vendor's models wrote the catalogue text, did the enrichment and act as the reviewer of disputed cases.** Related models can share blind spots, so their agreement is weaker evidence than it looks.
 - **The catalogue is easier than real supplier data.** Its descriptions state each mechanic plainly. The numbers show direction and the absence of glaring failure, not production accuracy.
 - **"No wrongly shown game" rests on a lenient reviewer.** The reviewer model was asked about five results the rule calls unrelated, and said yes to all five.
-- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself. Until he has, the reviewer's answers to those six are out of the working tree, and the report, the console and these documents show none of them. **They are not out of reach:** the commit that [`eval/reviewer/held-back.json`](eval/reviewer/held-back.json) names still holds them, and anyone can open it through the pull requests that carried it or a branch cut from them. The check depends on him not opening that commit before he answers, not on the answers being unreachable. He was also told the reviewer's answer to one of the six in conversation, before the answers were held back, so the check reports five answers given blind and the sixth apart.
+- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself. Until he has, the reviewer's answers to those six are out of the working tree, and the report, the page and these documents show none of them. **They are not out of reach:** the commit that [`eval/reviewer/held-back.json`](eval/reviewer/held-back.json) names still holds them, and anyone can open it through the pull requests that carried it or a branch cut from them. The check depends on him not opening that commit before he answers, not on the answers being unreachable. He was also told the reviewer's answer to one of the six in conversation, before the answers were held back, so the check reports five answers given blind and the sixth apart.
 - **Where a tag contradicts the description, the description is the correct side in all five planted cases.** So the comparison cannot show what trusting the text costs when the tag is right.
 - **A contradiction in German text is not detected.** The rule reads English phrases only.
 - **"Related" means shared themes and mechanics in the answer key.** It is not a measure of what players go on to play.
@@ -216,16 +215,17 @@ None of this monitoring is built.
 
 | What | Time | Notes |
 |---|---|---|
-| Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
-| The build: the owner's attention | **To be added by the owner: hours** | Two sittings. The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
-| The build: agents' running time | Roughly 6 to 7 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
+| Preparation, before the build | Not timed | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
+| The build: the owner's attention | About 4 hours | His own figure, inside the two sittings below. They are longer on the clock, because agents ran while he was away from the keyboard or waiting on them |
+| The build: the two sittings, on the clock | About 1 hour 40 minutes, then more than 3 hours 45 minutes | From the repository's timestamps. The first ran from 23:41 GMT on 18 November 2026 to 01:21 on the 19th. The second began at 19:28 GMT on 19 November and was still open after 23:15, when this was written |
+| The build: agents' running time | Roughly 7 to 8 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
 |---|---|
 | First | The catalogue: a 14-game pilot, then all 100. The architecture, workflow and interface documents. The first two reviews |
-| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the console. This write-up |
+| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the page. This write-up |
 
-The owner's part was briefing agents, reading what came back, and the decisions only he makes: cutting the rules, the evaluation plan and pass marks, reversing a pipeline rule, merging, and judging the console. Agents wrote the code, the tests and the drafts of the documents, this one included.
+The owner's part was briefing agents, reading what came back, and the decisions only he makes: cutting the rules, the evaluation plan and pass marks, reversing a pipeline rule, merging, and judging the page. Agents wrote the code, the tests and the drafts of the documents, this one included.
 
 ## AI tools
 
@@ -241,13 +241,9 @@ The model calls on record cost about $2: $1.58 for the catalogue, more than half
 
 ### One AI output that was rejected
 
-**The console.** The agents built it to the rules. Its tests passed, and the break-it review of #12 reported that it works. The owner rejected it the first time he opened it: terrible, not intuitive, and so full that he did not know where to look. It opened on a dump of the raw record and put the recommendations last, about 3,400 pixels down the page, nearly four window-heights.
+**The page.** The agents built it to the rules. Its tests passed, and the break-it review of #12 reported that it works. The owner rejected it the first time he opened it: terrible, not intuitive, and so full that he did not know where to look. It opened on a dump of the raw record and put the recommendations last, about 3,400 pixels down the page, nearly four window-heights.
 
-| Before: the first screen as #12 merged it | After |
-|---|---|
-| ![The console's first screen before the fix: a heading, the pickers, then the raw record](docs/process/console-first-screen-before.png) | **To be added when the interface pull request, #14, is merged** |
-
-Uncropped, in a window 1280 by 900. The distance was measured in a browser on four requests that return results: 3,235 to 3,555 pixels.
+The distance was measured in a browser, in a window 1280 by 900, on four requests that return results: 3,235 to 3,555 pixels.
 
 **Why the process let it through.** No agent broke a rule. The rules had a hole, and the owner's own briefs were part of it.
 
@@ -290,7 +286,7 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 |---|---|
 | `data/` | The raw catalogue, availability, stored model responses, the index. [`data/README.md`](data/README.md) |
 | `src/dataset/`, `src/pipeline/` | The generator and the offline pipeline |
-| `src/service/`, `src/console/` | The service and its console |
+| `src/service/`, `src/console/` | The service and its page |
 | `eval/` | The evaluation, the owner's plan and pass marks, the reviewer's stored answers, the results |
 | `docs/` | Architecture, the decision record, one file per part with its invariants and proofs, the process material |
 
