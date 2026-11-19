@@ -1,0 +1,19 @@
+{
+  "decided_on": "2026-11-19",
+  "enrichment": {
+    "min_precision": 0.85,
+    "min_recovery": 0.85,
+    "min_recovery_without_tags": 0.6,
+    "max_missed_abstentions": 1,
+    "max_invalid_quotes": 0
+  },
+  "matching": {
+    "min_pairwise_accuracy": 0.75,
+    "max_wrongly_shown_on_check_anchors": 0
+  },
+  "ship_rule": {
+    "compare": "ladder",
+    "ship": "simplest_within_margin_of_best",
+    "margin": 0.02
+  }
+}
