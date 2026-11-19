@@ -44,6 +44,9 @@ Give it the goal and why, the context it cannot see, the bar for done and the ha
 
 | What | Home |
 |---|---|
+| How the parts fit together, what runs offline and per request, and where each product rule is enforced | `docs/architecture.md` |
+| The path of one change from issue to squash merge | `docs/development-workflow.md` |
+| What the console is for, its tokens, components and states | `docs/ui-guidelines.md` |
 | What each part does, where its code is, its invariants and how to prove each | `docs/features/<part>.md` |
 | The evidence for a change, and its review record | The pull request body (`.github/pull_request_template.md`) |
 | How a change is reviewed | `REVIEW.md` |
