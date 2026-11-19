@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"src/**/*.test.ts\"",
+    "test": "node tools/run-tests.ts",
     "dataset": "node src/dataset/generate.ts"
   },
   "dependencies": {
