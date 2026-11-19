@@ -241,12 +241,32 @@ The model calls on record cost about $2: $1.58 for the catalogue, more than half
 
 ### One AI output that was rejected
 
-Asked to propose working rules for this repository, agents came back with 37 items and began building tools to check them: about 1,200 lines, estimated at two to three and a half hours of work, for a build meant to take four. The owner cut it to nine pieces in 241 lines, with one rule for the rest: process is added only when the build shows the need. One thing was added later, the shorter pull-request format. The brief that made the cut is [`docs/process/briefs/02-cut-the-rules-to-nine-pieces.md`](docs/process/briefs/02-cut-the-rules-to-nine-pieces.md), and what remained is the [reusable artifact](docs/starter-kit.md).
+**The console.** The agents built it to the rules. Its tests passed, and the break-it review of #12 reported that it works. The owner rejected it the first time he opened it: terrible, not intuitive, and so full that he did not know where to look. It opened on a dump of the raw record and put the recommendations last, about 3,400 pixels down the page, nearly four window-heights.
+
+| Before: the first screen as #12 merged it | After |
+|---|---|
+| ![The console's first screen before the fix: a heading, the pickers, then the raw record](docs/process/console-first-screen-before.png) | **To be added when the interface pull request, #14, is merged** |
+
+Uncropped, in a window 1280 by 900. The distance was measured in a browser on four requests that return results: 3,235 to 3,555 pixels.
+
+**Why the process let it through.** No agent broke a rule. The rules had a hole, and the owner's own briefs were part of it.
+
+- **The interface guidelines asked for that order.** They said the page reads from what went in to what came out and imposes no order of its own, and that the raw record is shown verbatim.
+- **"Readable on one screen" was an acceptance criterion, and every layer treated it as taste.** The working rules say agents show that the interface works and do not judge it. The brief to the builder asked for "clear and working" and no more ([brief 06](docs/process/briefs/06-build-the-service-evaluation-and-console.md)). The brief to the reviewer said to say only whether it works ([brief 08](docs/process/briefs/08-review-the-service-by-breaking-it.md)).
+- **The tests could not see it.** They read the page's text, with no window size.
+- **A first restyling pass kept the same order.** Its screenshots scrolled to each section, so none showed what a visitor sees on arrival.
+
+**How the cause was found.** The owner did not ask for a better-looking page. He asked a separate agent to find the hole in the rules, with evidence and not opinion, and a model from another vendor to criticise the proposed new layout. That model's sharpest point: a quote proves that a label belongs to a game. It does not explain why another game ranks first, so the page must not suggest that it does.
+
+**The fix.** **To be added when #14 is merged.**
+
+What this says about the rules themselves is in [the starter-kit note](docs/starter-kit.md#where-it-fell-short).
 
 Others, each changed or rejected:
 
 | What the AI produced | What was wrong | What happened |
 |---|---|---|
+| 37 working rules, with tools being built to check them | About 1,200 lines, estimated at two to three and a half hours of work, for a build meant to take four | The owner cut it to nine pieces in 241 lines. [The starter-kit note](docs/starter-kit.md#how-it-got-to-nine-pieces) tells it |
 | A catalogue run that kept returning to the same subjects | Six badger games in the first 58 | Each game now gets a seeded setting and title pattern; the catalogue was regenerated |
 | A first pull request with its own evidence table | The evidence did not reproduce from a fresh clone | Found by a reviewer running it; fixed before the merge |
 | A recommended pass mark of 0.60 for label recovery | A lookup table would have met it without reading a word: 89% of the recoverable labels were still in a tag | Changed to 0.85, with a separate mark for labels found only by reading. Fixed before any result existed |
