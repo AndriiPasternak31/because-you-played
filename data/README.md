@@ -18,6 +18,8 @@ A fictional catalogue of online slot games, built to look like something a real 
 | `generation/retired-attempts.jsonl` | Accounting for attempts whose responses were later replaced: outcome, time and tokens, without bodies | Anyone |
 | `generation/ledger.json` | Tokens, estimated cost, seconds per record and retries, computed from the two files above | Anyone |
 | `generation/mess-report.json` | Row counts per kind of mess, identity cases and offering statuses | Anyone |
+| `pipeline/responses/` | Every stored model attempt and embedding response behind the index | The pipeline |
+| `index/` | The index the pipeline builds: canonical records, four versions of each game's text with labels and quotes, vectors, ledger | Everything |
 
 `generation/` is hidden from the enrichment pipeline and the service. It exists so that evaluation can tell a fact that was recoverable from the raw row from one that was genuinely unknowable, where the right answer is to abstain.
 
@@ -79,7 +81,7 @@ Rebuilding from committed responses is byte-identical on every run. A live run i
 
 ### Open questions, and the answer this catalogue assumes
 
-The generator had to pick an answer to each of these. None is settled; the enrichment work should confirm or change them on purpose.
+The generator had to pick an answer to each of these. The pipeline has since answered each one on purpose, confirming nine and changing two: see "Record model: the open questions, answered" in [`docs/features/pipeline.md`](../docs/features/pipeline.md). The table below is what the generator assumed.
 
 | Question | Assumed here | What depends on it |
 |---|---|---|

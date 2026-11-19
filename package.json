@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node tools/run-tests.ts",
-    "dataset": "node src/dataset/generate.ts"
+    "dataset": "node src/dataset/generate.ts",
+    "pipeline": "node src/pipeline/build.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"

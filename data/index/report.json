@@ -1,0 +1,86 @@
+{
+  "games": 100,
+  "raw_rows": 104,
+  "rows_superseded_by_a_later_row": 4,
+  "records_by_evidence": {
+    "description": 63,
+    "tags_only": 30,
+    "none": 7
+  },
+  "table": {
+    "tags_seen": 461,
+    "mapped_to_a_label": 397,
+    "dropped_non_attribute": 41,
+    "dropped_merchandising": 23,
+    "unknown": 0,
+    "unknown_tags": []
+  },
+  "conflicts": [
+    {
+      "game_id": "okk-17457",
+      "tag": "Cluster Pays",
+      "description_quote": "paylines"
+    },
+    {
+      "game_id": "okk-56037",
+      "tag": "Paylines",
+      "description_quote": "clusters"
+    },
+    {
+      "game_id": "thr-24389",
+      "tag": "paylines",
+      "description_quote": "243 ways"
+    },
+    {
+      "game_id": "ulv-18831",
+      "tag": "Cluster Pays",
+      "description_quote": "paylines"
+    },
+    {
+      "game_id": "ulv-72242",
+      "tag": "Cluster Pays",
+      "description_quote": "paylines"
+    }
+  ],
+  "thin_records": 31,
+  "enrichment": {
+    "prompt_version": "enrich-v1",
+    "records": 100,
+    "calls_by_outcome": {
+      "ok": 100,
+      "invalid_output": 0,
+      "refusal": 0,
+      "incomplete": 0,
+      "api_error": 0
+    },
+    "records_without_an_accepted_answer": [],
+    "labels_kept": 439,
+    "labels_stripped": {
+      "label_outside_list": 0,
+      "invented_quote": 0,
+      "duplicate_label": 0
+    },
+    "fields_abstained": {
+      "themes": 4,
+      "mechanics": 8
+    }
+  },
+  "versions": {
+    "raw": null,
+    "table": {
+      "labels": 380,
+      "fields_abstained": 38,
+      "fields_in_conflict": 5
+    },
+    "model_where_thin": {
+      "labels": 424,
+      "fields_abstained": 11,
+      "fields_in_conflict": 5
+    },
+    "model_everywhere": {
+      "labels": 422,
+      "fields_abstained": 12,
+      "fields_in_conflict": 5
+    }
+  }
+}
