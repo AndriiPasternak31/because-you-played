@@ -235,7 +235,7 @@ None of this monitoring is built.
 |---|---|---|
 | Preparation, before the build | Not timed | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
 | The build: the owner's attention | About 4 hours | His own figure, inside the two sittings below. They are longer on the clock, because agents ran while he was away from the keyboard or waiting on them |
-| The build: the two sittings, on the clock | About 1 hour 40 minutes, then about 5 hours 30 minutes | From the repository's timestamps. The first ran from 23:41 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th, with this write-up after it |
+| The build: the two sittings, on the clock | About 2 hours 35 minutes, then about 5 hours 30 minutes | From the repository's timestamps. The first ran from the repository's first commit at 22:45 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th, with this write-up after it |
 | The build: agents' running time | Roughly 10 to 12 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |

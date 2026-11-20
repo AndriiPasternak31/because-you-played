@@ -60,7 +60,7 @@ The review record up to this note, taken from the Review tables of #8, #10, #11,
 | #13 README, decision record, this note | 8 | 3 | 5 | 3 | 6 led to an edit, 1 to a line in the description, 1 is the owner's to do |
 | #14 the page, reordered (closed unmerged) | 11 | 8 | 3 | 8 | All 11 led to a change, carried into #17's page |
 | #16 the one-command run | 3 | 3 | 0 | 3 | 3 fixed |
-| #17 the page, as four sections | 4 | 3 | 1 | 2 | Reviewed under a ten-minute limit. 2 fixed in a commit before the merge; the table's Fix column was left empty |
+| #17 the page, as four sections | 4 | 3 | 1 | 2 | Reviewed under a ten-minute limit. 3 fixed before the merge; 1 left and written down: nothing runs the bundle's drift test on a push |
 | **All** | **50** | **30** | **20** | **29** | |
 
 | How it was found | Findings | A failure anyone can reproduce | No failure shown |
