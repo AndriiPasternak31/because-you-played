@@ -30,7 +30,7 @@ flowchart LR
 | Why it is built this way, the alternatives, how it fails and scales | [`docs/adr/0001-offline-enrichment-in-memory-serving.md`](docs/adr/0001-offline-enrichment-in-memory-serving.md) |
 | The reusable artifact: nine pieces that start the next repository | [`docs/starter-kit.md`](docs/starter-kit.md) |
 | The briefs given to the agents, and three explainer pages | [`docs/process/`](docs/process/README.md) |
-| A two-minute walkthrough | **To be added by the owner: link to the recording** |
+| A 55-second walkthrough | [The video](https://because-you-played-status.vercel.app/walkthrough): a screen recording of the page running locally, with captions. The voice is generated, from a script the owner approved |
 | The page: its four sections, the seven examples and their addresses | [`docs/features/interface.md`](docs/features/interface.md#starting-it-and-the-examples) |
 
 ## Run, evaluate, regenerate
@@ -209,7 +209,7 @@ The decision record gives the reasons and the triggers.
 | A second way of enriching, through OpenAI's Decisions API | Designed, and deliberately left as a follow-up: a yes-or-no call per label that returns a probability and no quote. It would enter the same ladder and face the same gate |
 | A load test, a metrics endpoint, dashboards | The claims made here are about correctness, and those are tested. No latency figure is claimed |
 | Continuous integration | Every check is one command and needs no key, so it is a small addition. Left for later |
-| Cloud deployment or infrastructure code | Out of scope for a local prototype. The decision record says how it would be deployed |
+| Cloud deployment or infrastructure code | Out of scope for a local prototype. The decision record says how it would be deployed. At submission a copy of this same code was put on a hosting platform behind a password, as a convenience for the hiring team; it is kept outside this repository and is not the production design |
 | Hand-labelled reference data | Replaced by the generator's plan with a reviewer model and the owner's six-question check |
 
 **One thing was not left out that could have been: the page.** The assignment asks for no polished interface and does not assess one. The page still took three rejected versions and, in the end, a framework. What that cost is under [How the time was spent](#how-the-time-was-spent).
@@ -235,7 +235,7 @@ None of this monitoring is built.
 |---|---|---|
 | Preparation, before the build | Not timed | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
 | The build: the owner's attention | About 4 hours | His own figure, inside the two sittings below. They are longer on the clock, because agents ran while he was away from the keyboard or waiting on them |
-| The build: the two sittings, on the clock | About 2 hours 35 minutes, then about 5 hours 30 minutes | From the repository's timestamps. The first ran from the repository's first commit at 22:45 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th, with this write-up after it |
+| The build: the two sittings, on the clock | About 2 hours 35 minutes, then about 7 hours | From the repository's timestamps. The first ran from the repository's first commit at 22:45 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th. The write-up, the owner's check, the walkthrough video and a hosted copy followed, to about 02:30 |
 | The build: agents' running time | Roughly 10 to 12 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
@@ -256,6 +256,7 @@ The owner's part was briefing agents, reading what came back, and the decisions 
 | OpenAI `gpt-6.2-sol` | Writing the fictional catalogue text, and the enrichment |
 | OpenAI `text-embedding-3-small` | Embeddings |
 | OpenAI `gpt-6-luna` | The evaluation's reviewer model |
+| ElevenLabs text to speech | The voice of the walkthrough video: six lines, 850 characters. The recording itself is the real page, driven by a script |
 
 The model calls on record cost about $2: $1.58 for the catalogue, more than half of it on answers later replaced, $0.39 for enrichment and embeddings, and under a cent for the reviewer. The ledgers are `data/generation/ledger.json` and `data/index/ledger.json`. A handful of trial calls made while planning are not in them.
 
