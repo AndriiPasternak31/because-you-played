@@ -6,7 +6,8 @@
  * The code is TypeScript that Node.js runs as it is, with no build step. A version that cannot do that
  * fails with `Unknown file extension ".ts"`, which names neither the cause nor the cure. So every npm
  * script runs this first (`start` in its own line, the others through their `pre...` lines in
- * package.json), and so do `npm install` and the container build.
+ * package.json). `npm install` and the container build run it too, but not first: npm runs
+ * `preinstall` after it has put the packages in node_modules, and then stops with the reason.
  *
  * The version needed is read from `engines` in package.json and is written nowhere else.
  * This file has to load on the versions it turns away, so it uses no syntax newer than ES5.
@@ -34,7 +35,7 @@ function problem(found, needed, executable) {
     "The code is TypeScript that Node.js runs as it is, with no build step. Versions before " + needed + " cannot do that, or were never tried.",
     "",
     "  Get Node.js " + needed + ":       nvm install " + needed + "   or   https://nodejs.org/en/download",
-    "  Or run without it:    docker compose up --build   (needs Docker only)",
+    "  Or run without it:    docker compose up --build   (needs Docker with its Compose plugin)",
   ].join("\n");
 }
 

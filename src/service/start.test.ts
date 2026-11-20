@@ -69,13 +69,24 @@ for (const script of ["src/service/serve.ts", "tools/start.ts"]) {
   });
 }
 
-test("SV-9: a taken port stops the start with exit 1, the port named as taken and the way to choose another, and no stack trace", async () => {
+/** Holds a free port on an address, or says why this machine cannot. */
+async function hold(address: string): Promise<{ port: number; release: () => Promise<void> } | string> {
   const holder = net.createServer();
-  await new Promise<void>((resolve) => holder.listen(0, "127.0.0.1", resolve));
+  const failure = await new Promise<string | undefined>((resolve) => {
+    holder.once("error", (error: NodeJS.ErrnoException) => resolve(error.code ?? error.message));
+    holder.listen(0, address, () => resolve(undefined));
+  });
+  if (failure !== undefined) return failure;
+  const bound = holder.address();
+  assert.ok(typeof bound === "object" && bound !== null);
+  return { port: bound.port, release: () => new Promise((resolve) => holder.close(() => resolve())) };
+}
+
+test("SV-9: a taken port stops the start with exit 1, the port named as taken and the way to choose another, and no stack trace", async () => {
+  const held = await hold("127.0.0.1");
+  assert.ok(typeof held !== "string");
+  const taken: number = held.port;
   try {
-    const address = holder.address();
-    assert.ok(typeof address === "object" && address !== null);
-    const taken: number = address.port;
     for (const script of ["src/service/serve.ts", "tools/start.ts"]) {
       const run = spawnSync(process.execPath, [script, "--port", String(taken)], { encoding: "utf8", timeout: 20_000 });
       assert.equal(run.status, 1, `${script}: ${run.stderr}`);
@@ -85,8 +96,61 @@ test("SV-9: a taken port stops the start with exit 1, the port named as taken an
       assert.equal(run.stdout, "");
     }
   } finally {
-    await new Promise((resolve) => holder.close(resolve));
+    await held.release();
   }
+});
+
+test("SV-9: a port another program holds on every interface, or on the other loopback address, stops the start as well", async (t) => {
+  let checked = 0;
+  for (const address of ["0.0.0.0", "::", "::1"]) {
+    const held = await hold(address);
+    if (typeof held === "string") {
+      // A machine without IPv6 cannot hold a port there. The first address exists everywhere, so something is always checked.
+      assert.notEqual(address, "0.0.0.0", `a port on 0.0.0.0 could not be held: ${held}`);
+      t.diagnostic(`not checked on ${address}: this machine cannot listen there (${held})`);
+      continue;
+    }
+    const port: number = held.port;
+    try {
+      for (const script of ["src/service/serve.ts", "tools/start.ts"]) {
+        const run = spawnSync(process.execPath, [script, "--port", String(port)], { encoding: "utf8", timeout: 20_000 });
+        assert.equal(run.status, 1, `${script} beside a program on ${address}:${port} printed: ${run.stdout}${run.stderr}`);
+        assert.match(run.stderr, new RegExp(`not serving: port ${port} on \\S+ is already in use by another program`));
+        assert.match(run.stderr, new RegExp(`--port ${port + 1}\\b`));
+        assert.equal(run.stdout, "");
+      }
+      checked += 1;
+    } finally {
+      await held.release();
+    }
+  }
+  assert.ok(checked >= 1);
+});
+
+test("SV-9: PORT in the environment chooses the port, and --port wins over it", async () => {
+  const held = await hold("127.0.0.1");
+  assert.ok(typeof held !== "string");
+  try {
+    const fromEnvironment = spawnSync(process.execPath, ["src/service/serve.ts"], { encoding: "utf8", timeout: 20_000, env: { ...process.env, PORT: String(held.port) } });
+    assert.equal(fromEnvironment.status, 1);
+    assert.match(fromEnvironment.stderr, new RegExp(`not serving: port ${held.port} on 127\\.0\\.0\\.1 is already in use`));
+    const optionWins = spawnSync(process.execPath, ["src/service/serve.ts", "--port", String(held.port)], { encoding: "utf8", timeout: 20_000, env: { ...process.env, PORT: "1" } });
+    assert.equal(optionWins.status, 1);
+    assert.match(optionWins.stderr, new RegExp(`not serving: port ${held.port} on 127\\.0\\.0\\.1 is already in use`));
+    const unreadable = spawnSync(process.execPath, ["src/service/serve.ts"], { encoding: "utf8", timeout: 20_000, env: { ...process.env, PORT: "nine thousand" } });
+    assert.equal(unreadable.status, 1);
+    assert.match(unreadable.stderr, /the port, from --port or PORT, must be a number from 0 to 65535, got "nine thousand"/);
+  } finally {
+    await held.release();
+  }
+});
+
+test("SV-9: an option given without the bare -- that npm needs is refused, with the form that works", () => {
+  // What `npm start --port 9000` hands the script: the number alone.
+  const run = spawnSync(process.execPath, ["tools/start.ts", "9000"], { encoding: "utf8", timeout: 20_000 });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /npm start -- --port 9000/);
+  assert.equal(run.stdout, "");
 });
 
 test("SV-11: the version check names the version found, the version needed and how to get it, and passes this version in silence", () => {
@@ -99,7 +163,7 @@ test("SV-11: the version check names the version found, the version needed and h
   assert.ok(reason !== null);
   assert.match(reason, new RegExp(`needs Node\\.js ${needed} or newer, and this is Node\\.js ${needed - 1}\\.20\\.2 \\(/somewhere/node\\)`));
   assert.match(reason, new RegExp(`nvm install ${needed}`));
-  assert.match(reason, /docker compose up --build/);
+  assert.match(reason, /docker compose up --build {3}\(needs Docker with its Compose plugin\)/);
   // The comparison is of numbers: as text, "9" would sort after "24".
   assert.ok(check.problem("9.11.2", needed, "node") !== null);
   assert.equal(check.problem(`${needed}.0.0`, needed, "node"), null);

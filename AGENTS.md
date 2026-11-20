@@ -9,12 +9,12 @@ From a clone, on Node.js 24 or newer, with no key and no network after the insta
 | To | Command |
 |---|---|
 | Run the service | `npm start`. It installs what is missing, serves on `http://127.0.0.1:8787`, and prints the address to open and a request to try. It runs until it is stopped |
-| Run it with Docker and no Node.js 24 | `docker compose up --build` |
-| Use another port | `npm start -- --port 9000`, or `PORT=9000 docker compose up --build` |
+| Run it with Docker and no Node.js 24 | `docker compose up --build`. It needs Docker's Compose plugin |
+| Use another port | `PORT=9000` in front of either command, or `npm start -- --port 9000` with the `--` |
 | Test | `npm run typecheck` and `npm test` |
 | Evaluate | `npm run eval`. Exit 0 means a version may be served |
 
-An older Node.js stops every one of these and names the version it found. A taken port stops the start and says so. Each step on its own, and what to request, is in the README under [Run, evaluate, regenerate](README.md#run-evaluate-regenerate).
+An older Node.js stops every one of these and names the version it found. A port another program holds, on any address of this machine, stops the start and says so. Each step on its own, and what to request, is in the README under [Run, evaluate, regenerate](README.md#run-evaluate-regenerate).
 
 ## Done
 

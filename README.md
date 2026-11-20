@@ -4,7 +4,7 @@
 npm start    # the one command, from a fresh clone: installs, starts the service, prints the address to open and a request to try
 ```
 
-It needs Node.js 24 or newer and no API key. With Docker and no Node.js 24, `docker compose up --build` does the same. An older Node.js or a taken port stops it with the reason: see [Run it](#1-run-it-no-key).
+It needs Node.js 24 or newer and no API key. With Docker, its Compose plugin and no Node.js 24, `docker compose up --build` does the same. An older Node.js or a taken port stops it with the reason: see [Run it](#1-run-it-no-key).
 
 "Because you played X, you might like…": a related-games recommender over a fictional catalogue of 100 slot games, built as a take-home engineering assessment. A model enriches thin catalogue records offline, an evaluation decides whether the result may be served, and the service answers from memory with no model call.
 
@@ -39,11 +39,12 @@ Three separate things. The first two need no key.
 
 ### 1. Run it (no key)
 
-The short way is `npm start`, or `docker compose up --build` where there is Docker and no Node.js 24. Each ends by printing the address to open and a request to try.
+The short way is `npm start`, or `docker compose up --build` where there is Docker with its Compose plugin and no Node.js 24. Each ends by printing the address to open and a request to try. Open the address it prints.
 
-- **An older Node.js** stops every command here, the install included, and says which version it found, which it needs and how to get it.
-- **A taken port** stops the start and says so. To choose another: `npm start -- --port 9000`, or `PORT=9000 docker compose up --build`.
-- **With Docker alone**, the checks run in the container too: `docker compose run --rm app npm test`, and `npm run typecheck` and `npm run eval` the same way.
+- **An older Node.js** stops every command here and says which version it found, which it needs and how to get it. `npm install` stops the same way, after npm has downloaded the packages.
+- **A port another program holds**, on any address of this machine, stops the start and says so. To choose another, put `PORT=9000` in front of either command, or pass `npm start -- --port 9000`: the `--` is needed.
+- **With Docker and no Node.js**, the checks run in the container too: `docker compose run --rm app npm test`, and `npm run typecheck` and `npm run eval` the same way.
+- **Docker without the Compose plugin:** `docker build -t because-you-played . && docker run --rm --init -p 127.0.0.1:8787:8787 because-you-played`.
 
 Each step on its own:
 

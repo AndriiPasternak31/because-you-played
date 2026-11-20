@@ -1,4 +1,5 @@
-# The service with Docker alone, for a machine without Node.js 24.
+# The service with Docker and its Compose plugin, for a machine without Node.js 24.
+# Without the plugin, the two plain Docker commands are at the top of the Dockerfile.
 #
 #   docker compose up --build                       http://127.0.0.1:8787
 #   PORT=9000 docker compose up --build             on another port

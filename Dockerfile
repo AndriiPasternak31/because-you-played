@@ -1,4 +1,5 @@
 # Runs the service where there is Docker and no Node.js 24:   docker compose up --build
+# Without the Compose plugin:   docker build -t because-you-played . && docker run --rm --init -p 127.0.0.1:8787:8787 because-you-played
 # For running locally. Nothing here deploys anything.
 FROM node:24-slim
 WORKDIR /app
@@ -6,7 +7,8 @@ WORKDIR /app
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 # The dependencies first, so that a change to the code does not install them again.
-# npm runs the Node.js version check before it installs, so that file is needed here too.
+# npm ci runs the Node.js version check as its `preinstall` step, so that file has to be here.
+# npm runs it after the packages are in place, not before.
 COPY package.json package-lock.json ./
 COPY tools/check-node.cjs tools/
 RUN npm ci
