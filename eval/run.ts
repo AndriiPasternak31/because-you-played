@@ -31,7 +31,7 @@ export interface EvalPaths {
   /** Null: do not read the owner's answers. */
   ownerAnswers: string | null;
   answersDir: string;
-  /** The record of the reviewer answers kept out of the tree for the owner's check. */
+  /** The record of the reviewer answers that were kept out of the tree for the owner's check, and of their return. */
   heldBack: string;
   outDir: string;
 }
@@ -62,13 +62,15 @@ const HeldBackSchema = z.strictObject({
   question_ids: z.array(z.string()),
   /** What those answers cost, as one total: a count per question would give the answer away by its length. */
   spend: z.strictObject({ calls: z.number(), input_tokens: z.number(), output_tokens: z.number(), usd: z.number(), seconds: z.number() }),
+  /** Null while the answers are out of the tree. Once the owner has answered and they are back: the day, and how they came back. */
+  brought_back: z.nullable(z.strictObject({ on: z.string(), how: z.string() })),
   disclosed_to_the_owner_before_he_answered: z.array(z.strictObject({ question_id: z.string(), what: z.string() })),
   also_said_before_they_were_held_back: z.string(),
 });
 export type HeldBack = z.infer<typeof HeldBackSchema>;
 
 export function readHeldBack(path: string): HeldBack {
-  const parsed = HeldBackSchema.safeParse(readJson(path, "the record of held-back reviewer answers"));
+  const parsed = HeldBackSchema.safeParse(readJson(path, "the record of the reviewer answers held back for the owner's check"));
   if (!parsed.success) throw new Error(`${path} is not a record of held-back answers: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
 }

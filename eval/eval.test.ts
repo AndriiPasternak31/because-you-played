@@ -14,7 +14,7 @@ import { Budget, SpendLimitReached, type Live } from "../src/pipeline/costs.ts";
 import { sealManifest, type Index, type IndexRecord, type Manifest } from "../src/pipeline/index-store.ts";
 import { sha256 } from "../src/pipeline/io.ts";
 import { VERSIONS, type Version } from "../src/pipeline/versions.ts";
-import { HELD_BACK, analyse, finish, questionsToAnswer, type Analysis, type EvalInputs } from "./evaluate.ts";
+import { HELD_BACK, analyse, finish, questionsToAnswer, type Analysis, type EvalInputs, type Report } from "./evaluate.ts";
 import { MARKS, decide, parseThresholds, type MarkResult, type Measured } from "./gate.ts";
 import { LABEL_VERSIONS, isWordForWord, pairwiseByGame, summarisePairwise } from "./measures.ts";
 import { ownerFile, ownerQuestions } from "./owner-check.ts";
@@ -25,7 +25,10 @@ import { grade, type Truth } from "./truth.ts";
 const scratch = (name: string): string => mkdtempSync(join(tmpdir(), `${name}-`));
 const quiet = (): void => {};
 
-/** The committed inputs, without the owner's answers, so that these proofs do not change when he commits them. */
+/**
+ * The committed inputs without the owner's answers: the evaluation as it stands while his check is outstanding.
+ * The proofs of that state are made on this, and on `outstandingTree`, whatever state the committed tree is in.
+ */
 const inputs = (): EvalInputs => loadInputs({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null });
 const base = analyse(inputs());
 
@@ -35,6 +38,23 @@ async function storedAnswers(analysis: Analysis): Promise<Map<string, ReviewerAn
   for (const question of questionsToAnswer(analysis)) answers.set(question.id, await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: quiet }));
   return answers;
 }
+
+/**
+ * A tree in which the owner's check is outstanding, built here: the committed reviewer answers without the six to
+ * his questions, no answers of his, and the record of the six saying they have not been brought back.
+ */
+function outstandingTree(name: string): EvalPaths & { ownerAnswers: null; noOwnerAnswers: string } {
+  const dir = scratch(name);
+  const answersDir = join(dir, "answers");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, answersDir, { recursive: true });
+  for (const id of base.heldBack) rmSync(answerPath(answersDir, id), { force: true });
+  assert.equal(readdirSync(answersDir).length, questionsToAnswer(base).length, "the scratch tree does not hold exactly the answers that are not held back");
+  const heldBack = join(dir, "held-back.json");
+  writeFileSync(heldBack, JSON.stringify({ ...readHeldBack(DEFAULT_EVAL_PATHS.heldBack), brought_back: null }));
+  return { ...DEFAULT_EVAL_PATHS, ownerAnswers: null, answersDir, heldBack, outDir: join(dir, "out"), noOwnerAnswers: join(dir, "no-owner-check.json") };
+}
+/** The command's options for a scratch tree. A path that holds no file stands for "the owner has not answered". */
+const treeArgs = (paths: EvalPaths, ownerAnswers: string): string[] => ["--answers-dir", paths.answersDir, "--held-back", paths.heldBack, "--out-dir", paths.outDir, "--owner-answers", ownerAnswers];
 
 const envelope = (answer: unknown): unknown => ({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(answer) }] }] });
 
@@ -61,10 +81,16 @@ test("EV-1: with no key the evaluation reproduces the committed report and verdi
   const reportFile = (JSON.parse(verdictText) as { report: { path: string } }).report.path;
   const committed = { report: readFileSync(join(DEFAULT_EVAL_PATHS.outDir, reportFile), "utf8"), verdict: verdictText };
   const committedRuns = readFileSync(join(DEFAULT_EVAL_PATHS.outDir, "runs.json"), "utf8");
-  const recorded = (JSON.parse(committedRuns) as { runs: { index_hash: string; ships: string | null; recorded: string }[] }).runs;
-  assert.ok(recorded.length >= 3, "the record of runs has lost a run");
-  assert.equal(recorded.at(-1)?.index_hash, (JSON.parse(verdictText) as { index_hash: string }).index_hash);
-  assert.ok(recorded.slice(0, -1).every((run) => run.recorded.startsWith("by hand")) && recorded.at(-1)?.recorded.startsWith("by npm run eval"));
+  const recorded = (JSON.parse(committedRuns) as { runs: { key: string; index_hash: string; owner_check: string; ships: string | null; recorded: string }[] }).runs;
+  assert.ok(recorded.length >= 4, "the record of runs has lost a run");
+  const indexHash = (JSON.parse(verdictText) as { index_hash: string }).index_hash;
+  // Two runs recorded by hand, on indexes that are gone. Then the two the command recorded on the index in this tree:
+  // one while the owner's check was outstanding, one after he answered. Both of those are run again below.
+  const byHand = recorded.filter((run) => run.recorded.startsWith("by hand"));
+  const byCommand = recorded.slice(byHand.length);
+  assert.ok(byHand.length >= 2 && byCommand.every((run) => run.recorded.startsWith("by npm run eval") && run.index_hash === indexHash));
+  assert.deepEqual(byCommand.map((run) => run.owner_check), ["outstanding", "answered"]);
+  assert.equal((JSON.parse(committed.report) as { owner_check: { status: string } }).owner_check.status, "answered");
   const outputs: string[] = [];
   for (const run of [1, 2]) {
     const outDir = scratch(`ev1-${run}`);
@@ -81,15 +107,39 @@ test("EV-1: with no key the evaluation reproduces the committed report and verdi
   }
   assert.equal(outputs[0], outputs[1]);
   assert.match(outputs[0] ?? "", /Verdict: \w+ ships/);
-  // In process as well, with the owner's answers left out: the verdict does not depend on them.
-  const outDir = scratch("ev1-in-process");
-  const again = await runEvaluation({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null, outDir }, null, quiet);
-  assert.equal(again.report.decision.ships, (JSON.parse(committed.verdict) as { ships: string }).ships);
+
+  // The run recorded while the owner's check was outstanding is reproduced too, on a tree built here in that state.
+  // Started from the record without that entry, the command adds it back as it was and keeps every other.
+  const open = outstandingTree("ev1-outstanding");
+  const kept = recorded.filter((run) => run !== byCommand[0]);
+  mkdirSync(open.outDir);
+  writeFileSync(join(open.outDir, "runs.json"), JSON.stringify({ note: "", runs: kept }));
+  const result = cli(treeArgs(open, open.noOwnerAnswers));
+  assert.equal(result.status, 0, result.stderr);
+  const after = (JSON.parse(readFileSync(join(open.outDir, "runs.json"), "utf8")) as { runs: unknown[] }).runs;
+  assert.deepEqual(after.slice(0, -1), kept, "a run was dropped or changed while another was recorded");
+  assert.deepEqual(after.at(-1), byCommand[0], "the run recorded while the owner's check was outstanding is not what the command records in that state");
+  // The verdict did not wait for his answers: but for the hash of its report, it is the committed one.
+  const verdictOf = (text: string): unknown => ({ ...(JSON.parse(text) as { report: { path: string } }), report: null });
+  assert.deepEqual(verdictOf(readFileSync(join(open.outDir, "verdict.json"), "utf8")), verdictOf(committed.verdict));
+  assert.notEqual(readFileSync(join(open.outDir, reportFile), "utf8"), committed.report);
 });
 
 test("EV-1: a missing or stale input stops the evaluation with exit 1 and names what is missing", () => {
   const outDir = scratch("ev1-missing");
-  const noAnswers = cli(["--out-dir", outDir, "--answers-dir", scratch("ev1-no-answers")]);
+  // One stored answer missing from the committed tree: the question is named.
+  const oneShort = scratch("ev1-one-short");
+  cpSync(DEFAULT_EVAL_PATHS.answersDir, oneShort, { recursive: true });
+  const lost = (questionsToAnswer(base)[0] as Question).id;
+  rmSync(answerPath(oneShort, lost));
+  const noAnswer = cli(["--out-dir", outDir, "--answers-dir", oneShort]);
+  assert.equal(noAnswer.status, 1);
+  assert.ok(noAnswer.stderr.includes(`missing input: no stored reviewer answer for ${lost} at ${answerPath(oneShort, lost)}`), noAnswer.stderr);
+  assert.ok(!existsSync(join(outDir, "verdict.json")), "a verdict was written although an input was missing");
+  // No stored answer at all, while the owner's check is outstanding: the first question asked is named.
+  // (Once he has answered, the first thing missed is the reviewer's answers to his six: EV-6 reads that message.)
+  const open = outstandingTree("ev1-outstanding-missing");
+  const noAnswers = cli(treeArgs({ ...open, answersDir: scratch("ev1-no-answers"), outDir }, open.noOwnerAnswers));
   assert.equal(noAnswers.status, 1);
   assert.match(noAnswers.stderr, /missing input: no stored reviewer answer for (label|recommendation)\.\S+ at /);
   assert.ok(!existsSync(join(outDir, "verdict.json")), "a verdict was written although an input was missing");
@@ -548,19 +598,27 @@ test("EV-6: while the owner has not answered, nothing the evaluation writes depe
   assert.ok((JSON.parse(written[0] as string) as { verdict: { passed: boolean; ships: string | null } }).verdict.ships !== null);
 });
 
-test("EV-6: the reviewer's answers to the owner's six are not in the tree, not read, not asked for and in no count, and the check is reported as outstanding", async () => {
+test("EV-6: while the owner has not answered, the reviewer's answers to his six are not read, not asked for and in no count, a tree that holds one is refused, and the check is reported as outstanding", async () => {
   const six = ownerQuestions(base);
   const ids = new Set(six.map((entry) => entry.question.id));
   assert.deepEqual([...base.heldBack].sort(), [...ids].sort());
-  // Not in the tree.
-  for (const id of ids) assert.ok(!existsSync(answerPath(DEFAULT_EVAL_PATHS.answersDir, id)), `the reviewer's answer to ${id} is stored in the tree`);
-  assert.equal(readdirSync(DEFAULT_EVAL_PATHS.answersDir).length, questionsToAnswer(base).length);
-  // Not read: an evaluation in which asking for one of them is an error still finishes.
+  // The state is built here: a tree without the six and without the owner's answers.
+  const tree = outstandingTree("ev6-outstanding");
+  for (const id of ids) assert.ok(!existsSync(answerPath(tree.answersDir, id)));
+  // Not read: the command finishes on that tree, where the six are not there to be read,
+  // and so does an evaluation in which asking for one of them is an error.
+  const ran = cli(treeArgs(tree, tree.noOwnerAnswers));
+  assert.equal(ran.status, 0, ran.stderr);
   const answers = await storedAnswers(base);
   const open = finish(base, (question) => {
     if (ids.has(question.id)) throw new Error(`the held-back answer to ${question.id} was asked for`);
     return answers.get(question.id) as ReviewerAnswer;
   }).report;
+  // What the command wrote is that report, and what it printed says the same.
+  assert.equal(readFileSync(join(tree.outDir, open.prompt_version, "report.json"), "utf8"), `${JSON.stringify(open, null, 2)}\n`);
+  assert.match(ran.stdout, /Owner's check: Outstanding: the owner has not answered his 6 questions/);
+  assert.match(ran.stdout, /reviewer's answer held back until the owner has answered; the pass mark counts it as wrong meanwhile/);
+  assert.ok(ran.stdout.includes(`over ${open.reviewer.answered} questions; 6 more are held back.`) && ran.stdout.includes(`${open.reviewer.answered} answers are stored in the tree`));
   // Reported plainly, with nothing about the six but how many there are and where they come from.
   assert.equal(open.owner_check.status, "outstanding");
   assert.match(open.owner_check.note, /^Outstanding: the owner has not answered his 6 questions.*held back/);
@@ -589,26 +647,23 @@ test("EV-6: the reviewer's answers to the owner's six are not in the tree, not r
     assert.equal(precision.left_out.held_back, asked);
     assert.equal(precision.gate.of, precision.of + asked, "a held-back label must count as wrong for the pass mark");
   }
-  // The committed files hold what this run holds.
-  const committed = JSON.parse(readFileSync(join(DEFAULT_EVAL_PATHS.outDir, open.prompt_version, "report.json"), "utf8")) as typeof open;
-  assert.equal(committed.owner_check.status, "outstanding");
-  assert.deepEqual(committed.owner_check.questions, []);
-  assert.ok(committed.control.list.every((item) => !ids.has(item.question_id)));
 
   // A stored answer to one of the six, appearing in the tree while the check is outstanding, stops the evaluation.
   const leaky = scratch("ev6-leak");
-  cpSync(DEFAULT_EVAL_PATHS.answersDir, leaky, { recursive: true });
+  cpSync(tree.answersDir, leaky, { recursive: true });
   writeAnswer(leaky, six[0]?.question as Question, { answer: "no", quote: "" });
-  const stopped = cli(["--out-dir", scratch("ev6-leak-out"), "--answers-dir", leaky, "--owner-answers", join(leaky, "no-owner.json")]);
+  const leakOut = scratch("ev6-leak-out");
+  const stopped = cli(treeArgs({ ...tree, answersDir: leaky, outDir: leakOut }, tree.noOwnerAnswers));
   assert.equal(stopped.status, 1);
   assert.match(stopped.stderr, /is stored in .* while the owner has not answered his check/);
+  assert.deepEqual(readdirSync(leakOut), [], "something was written although the run was refused");
 
   // Not asked for: a live run, while the check is outstanding, makes no call for the six. Here it has nothing to ask at all.
   const dir = scratch("ev6-live");
-  cpSync(DEFAULT_EVAL_PATHS.answersDir, dir, { recursive: true });
+  cpSync(tree.answersDir, dir, { recursive: true });
   let calls = 0;
   const live: Live = { apiKey: "test-key", budget: new Budget(REVIEWER_MAX_USD, 0), retryDelayMs: 0, transport: () => ((calls += 1), Promise.resolve({ status: 500, body: {} })) };
-  await runEvaluation({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null, answersDir: dir, outDir: scratch("ev6-live-out") }, live, quiet);
+  await runEvaluation({ ...tree, answersDir: dir, outDir: scratch("ev6-live-out") }, live, quiet);
   assert.equal(calls, 0);
   for (const id of ids) assert.ok(!existsSync(answerPath(dir, id)));
 
@@ -661,33 +716,84 @@ test("EV-6: once the owner has answered, the reviewer's six are brought back or 
   const changed = { ...file, answers: file.answers.map((entry, position) => (position === 0 ? { ...entry, question_sha256: "0".repeat(64) } : entry)) };
   assert.throws(() => finish(analyse({ ...inputs(), ownerAnswers: changed }), (question) => stored.get(question.id) ?? sayAll("no")), /text has since changed/);
 
-  // The command, given the owner's answers and no reviewer answers to his six, says where they are and how to bring them back.
+  // The command, on a tree built here that holds the owner's answers and no reviewer answers to his six,
+  // says where they are and how to bring them back, and writes nothing.
+  const tree = outstandingTree("ev6-answered");
   const ownerPath = join(scratch("ev6-owner"), "owner-check.json");
   writeFileSync(ownerPath, JSON.stringify(file));
-  const missing = cli(["--out-dir", scratch("ev6-answered-out"), "--owner-answers", ownerPath]);
+  const missing = cli(treeArgs(tree, ownerPath));
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /the owner has answered, and the reviewer's answers to 6 of his questions are not in/);
   assert.match(missing.stderr, /git checkout [0-9a-f]{40} -- .*label\./);
   assert.match(missing.stderr, /npm run eval -- --live/);
+  assert.ok(!existsSync(tree.outDir), "something was written although the reviewer's six answers were missing");
   // Asked live, exactly the six are asked, stored, and scored.
   const dir = scratch("ev6-reveal");
-  cpSync(DEFAULT_EVAL_PATHS.answersDir, dir, { recursive: true });
+  cpSync(tree.answersDir, dir, { recursive: true });
   const asked: string[] = [];
   const usage = { input_tokens: 200, output_tokens: 20, input_tokens_details: { cached_tokens: 0 } };
   const live: Live = {
     apiKey: "test-key",
-    budget: new Budget(REVIEWER_MAX_USD, totalSpend(dir, readHeldBack(DEFAULT_EVAL_PATHS.heldBack)).usd),
+    budget: new Budget(REVIEWER_MAX_USD, totalSpend(dir, readHeldBack(tree.heldBack)).usd),
     retryDelayMs: 0,
     transport: (_url, _key, request) => {
       asked.push((request as { input: string }).input);
       return Promise.resolve({ status: 200, body: { ...(envelope({ answer: "no", quote: "" }) as object), usage } });
     },
   };
-  const revealed = await runEvaluation({ ...DEFAULT_EVAL_PATHS, ownerAnswers: ownerPath, answersDir: dir, outDir: scratch("ev6-reveal-out") }, live, quiet);
+  const revealed = await runEvaluation({ ...tree, ownerAnswers: ownerPath, answersDir: dir }, live, quiet);
   assert.deepEqual([...asked].sort(), six.map((entry) => entry.question.text).sort());
   for (const { question } of six) assert.ok(existsSync(answerPath(dir, question.id)));
   assert.equal(revealed.report.owner_check.status, "answered");
   assert.equal(revealed.report.owner_check.matched, 0);
+  // With the six in the tree the command needs no key, holds nothing back, and says how the check came out.
+  const answeredRun = cli(treeArgs({ ...tree, answersDir: dir, outDir: scratch("ev6-answered-out") }, ownerPath));
+  assert.equal(answeredRun.status, 0, answeredRun.stderr);
+  assert.match(answeredRun.stdout, /Owner's check: Answered: on the 5 questions he answered blind, the reviewer matched the owner on 0\. Not blind: .* \(the reviewer did not match it\); it is counted apart\./);
+  assert.ok(!/held back/.test(answeredRun.stdout), "the command still reports something as held back after the owner has answered");
+  assert.ok(answeredRun.stdout.includes(`over ${base.questions.length} questions.`) && answeredRun.stdout.includes(`${base.questions.length} answers are stored in the tree`));
+});
+
+test("EV-6: in the committed tree the owner has answered: his six answers, the reviewer's six, the record of what was held back and the committed report agree", async () => {
+  const committedInputs = loadInputs(DEFAULT_EVAL_PATHS);
+  const owner = committedInputs.ownerAnswers;
+  assert.ok(owner !== null, `${String(DEFAULT_EVAL_PATHS.ownerAnswers)} holds no answers: the committed tree is not in the answered state`);
+  const analysis = analyse(committedInputs);
+  assert.equal(analysis.heldBack.size, 0);
+  const six = ownerQuestions(analysis);
+  // The record of what was held back names these six, says they are back, and they are: one stored answer per question, and no other file.
+  const record = readHeldBack(DEFAULT_EVAL_PATHS.heldBack);
+  assert.deepEqual([...record.question_ids].sort(), six.map((entry) => entry.question.id).sort());
+  assert.ok(record.brought_back !== null, "the record still says the reviewer's six answers are out of the tree");
+  assert.deepEqual(readdirSync(DEFAULT_EVAL_PATHS.answersDir).sort(), analysis.questions.map((question) => `${question.id}.json`).sort());
+  // A second count, made here from the owner's file and the stored answers.
+  const disclosed = new Set(record.disclosed_to_the_owner_before_he_answered.map((entry) => entry.question_id));
+  const counted = { blind: { of: 0, matched: 0 }, not_blind: { of: 0, matched: 0 } };
+  for (const { question } of six) {
+    const his = owner.answers.find((entry) => entry.question_id === question.id)?.answer;
+    assert.ok(his !== undefined, `the owner has no answer to ${question.id}`);
+    const its = (await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: quiet })).answer;
+    const side = disclosed.has(question.id) ? counted.not_blind : counted.blind;
+    side.of += 1;
+    if (his === its) side.matched += 1;
+  }
+  const verdict = JSON.parse(readFileSync(join(DEFAULT_EVAL_PATHS.outDir, "verdict.json"), "utf8")) as { report: { path: string } };
+  const text = readFileSync(join(DEFAULT_EVAL_PATHS.outDir, verdict.report.path), "utf8");
+  const committed = JSON.parse(text) as Report;
+  assert.equal(committed.owner_check.status, "answered");
+  assert.equal(committed.owner_check.questions.length, six.length);
+  assert.deepEqual(committed.owner_check.blind, counted.blind);
+  assert.deepEqual(committed.owner_check.not_blind, { ...counted.not_blind, question_ids: [...disclosed] });
+  assert.equal(committed.owner_check.matched, counted.blind.matched + counted.not_blind.matched);
+  assert.ok(committed.owner_check.note.startsWith(`Answered: on the ${counted.blind.of} questions he answered blind, the reviewer matched the owner on ${counted.blind.matched}.`));
+  // Nothing is held back any more, in any count or list.
+  assert.ok(!text.includes(HELD_BACK) && !/"held_back": [1-9]/.test(text), "the committed report still holds something back");
+  assert.deepEqual([committed.control.reported, committed.control.size], [20, 20]);
+  assert.deepEqual([committed.reviewer.answered, committed.reviewer.held_back], [analysis.questions.length, 0]);
+  for (const version of LABEL_VERSIONS) {
+    const precision = committed.enrichment[version].precision;
+    assert.deepEqual([precision.gate.count, precision.gate.of], [precision.count, precision.of], "with nothing held back the pass mark reads the precision that is shown");
+  }
 });
 
 test("EV-7: a live reviewer call is refused before it could pass the spend limit, stores what it got, and leaves the key in no file", async () => {
@@ -731,22 +837,29 @@ test("EV-7: a live reviewer call is refused before it could pass the spend limit
   for (const name of readdirSync(dir)) assert.ok(!readFileSync(join(dir, name), "utf8").includes(key), `${name} holds the key`);
   rmSync(dir, { recursive: true });
 
-  // The committed answers are within the limit, and every one of them is used by the evaluation.
-  const committed = storedSpend(DEFAULT_EVAL_PATHS.answersDir);
-  assert.equal(committed.files, questionsToAnswer(base).length);
-  // What the held-back answers cost is still counted against the limit, as one total.
-  const heldBack = readHeldBack(DEFAULT_EVAL_PATHS.heldBack);
-  const total = totalSpend(DEFAULT_EVAL_PATHS.answersDir, heldBack);
-  assert.equal(total.calls, committed.calls + heldBack.spend.calls);
-  assert.equal(total.usd, Math.round((committed.usd + heldBack.spend.usd) * 1e6) / 1e6);
-  assert.ok(committed.usd > 0 && heldBack.spend.usd > 0 && total.usd <= REVIEWER_MAX_USD);
+  // While the owner's six are out of the tree, on a tree built here in that state, what they cost is still
+  // counted against the limit, as the one total the record holds.
+  const tree = outstandingTree("ev7-outstanding");
+  const heldBack = readHeldBack(tree.heldBack);
+  const without = storedSpend(tree.answersDir);
+  assert.equal(without.files, questionsToAnswer(base).length);
+  const total = totalSpend(tree.answersDir, heldBack);
+  assert.equal(total.calls, without.calls + heldBack.spend.calls);
+  assert.equal(total.usd, Math.round((without.usd + heldBack.spend.usd) * 1e6) / 1e6);
+  assert.ok(without.usd > 0 && heldBack.spend.usd > 0 && total.usd <= REVIEWER_MAX_USD);
   // Restored in part, their cost could be counted wrongly: that is refused.
   const partly = scratch("ev7-partly");
-  cpSync(DEFAULT_EVAL_PATHS.answersDir, partly, { recursive: true });
+  cpSync(tree.answersDir, partly, { recursive: true });
   const one = ownerQuestions(base).find((entry) => heldBack.question_ids.includes(entry.question.id))?.question;
   assert.ok(one !== undefined);
   writeAnswer(partly, one, { answer: "no", quote: "" });
   assert.throws(() => totalSpend(partly, heldBack), /restore all of them or none/);
+  // Back in the tree, as they are in the committed one, the six are counted from their own files like any other answer.
+  // That comes to the same total the record gave while they were out, within the limit, with every stored answer one the evaluation uses.
+  const committed = storedSpend(DEFAULT_EVAL_PATHS.answersDir);
+  assert.equal(committed.files, base.questions.length);
+  assert.deepEqual(totalSpend(DEFAULT_EVAL_PATHS.answersDir, readHeldBack(DEFAULT_EVAL_PATHS.heldBack)), committed);
+  assert.deepEqual({ ...total, files: committed.files }, committed, "the cost recorded for the six while they were held back is not what their files hold");
 });
 
 test("EV-8: the gallery holds three to five real failures from the system's own output, apart from the mess that was planted", async () => {

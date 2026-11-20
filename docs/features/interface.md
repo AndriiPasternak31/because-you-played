@@ -33,7 +33,7 @@ flowchart LR
 - **The what-if sliders change no file.** A move sends one `GET /api/what-if`; the service applies the real gate to the measured numbers and writes nothing.
 - **A request can be linked:** `/?game=<id>&brand=<brand>&version=<version>&tab=<shown|added|removed|worth>&focus=<id>`. `focus` opens the step that removed that game and marks it. An address the page cannot read is reported for what it is: an unknown brand, version or section, a repeated or unknown parameter, a game without a brand or a brand without a game. Nothing is replaced in silence. A game the index does not hold shows the service's own decline.
 - **A late answer is never drawn for another request.** Only the answer to the newest request is shown.
-- **While the owner's check is outstanding** the evidence says how many of the reviewer's answers are held back and why, and shows none of them. It says they are out of the working tree and still in the repository's history, and does not point at them.
+- **The owner's check is drawn in the state the report is in.** It is answered now: the evidence lists the six questions with the owner's answer and the reviewer's, whether they match and whether his was blind, gives the blind and the not-blind counts apart, and says that a check of this size is thin evidence. A label that precision leaves out as unclear is said beside the precision. While the check was outstanding the evidence said how many of the reviewer's answers were held back and why, and showed none of them; the page still draws that state from a report in it.
 - **Nothing on the page is fixed in the code.** Every game, count, score, bar and sentence about a record is drawn from a response.
 
 ## Starting it, and the examples
@@ -101,7 +101,7 @@ Not used where they do not fit: tables, the list of results, the marked text and
 | UI-17 | A failure the evaluation found is shown where it happened, and nowhere else | `npm test -- "UI-17:"` | `a8620e7` |
 | UI-18 | A late answer is never shown for another request | `npm test -- "UI-18:"` | `a8620e7` |
 | UI-19 | A brand, a version, a section or a parameter the page does not know is reported for what it is, and nothing is replaced in silence | `npm test -- "UI-19:"` | `a8620e7` |
-| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the held-back answers are described as they are | `npm test -- "UI-20:"` | `a8620e7` |
+| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the owner's check is described as it is, outstanding and answered | `npm test -- "UI-20:"` | - |
 | UI-21 | UI-13 holds for every game on every brand: in the served version at 1366 by 657 and at 390 by 664, and in every other version at 390 by 664 | `node tools/console-check.ts --every-request` | `a8620e7` |
 | UI-22 | In a browser the page does what it says (the list under this table): by pointer and with the keyboard alone, with reduced motion, without WebGL2, and asking nothing outside this service | `node tools/console-check.ts` | `a8620e7` |
 
@@ -121,7 +121,7 @@ What each proof does:
 - **UI-16** recounts, for every game in every version, what the table read, which of the supplier's lists holds each entry it read, and what the version holds, and compares them with the sentence. A list the record delivered empty may not be named.
 - **UI-17** renders every game on every brand and asks, for each failure in the evaluation's list, on which requests it appears.
 - **UI-18** answers two requests out of order and looks at which is drawn; the browser check does the same on a slowed connection.
-- **UI-20** reads the evidence for the words that may not be there ("one vendor's models", "not in the repository") and the ones that must be.
+- **UI-20** reads the evidence for the words that may not be there ("one vendor's models", "not in the repository") and the ones that must be. It draws the owner's check from three reports: one it builds with the check outstanding, one it builds with answers of its own choosing, and the one the service serves.
 
 Each of these was broken on purpose, one fault at a time, and its proof failed each time: a title drawn as markup (UI-5), a fourth evidence button (UI-8), "in common" reworded as a cause (UI-9), a cost to four places and a bar that starts above zero (UI-10), one byte changed in the built stylesheet and a built file left out of the repository (UI-14), a result called related (UI-15), a fixed sentence about the lookup table (UI-16), a failure shown on another brand (UI-17), a late answer drawn (UI-18), a brand with no game dropped in silence (UI-19), and the held-back answers said to be out of the repository (UI-20).
 

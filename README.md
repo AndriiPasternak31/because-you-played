@@ -145,19 +145,19 @@ The full record, the questions the generator had to assume answers to and the pi
 
 ## Results
 
-The latest of three evaluation runs, from the report `npm run eval` writes, which a test compares byte for byte with a fresh run. The pass marks are in [`eval/thresholds.json`](eval/thresholds.json) and every definition is in [the plan](eval/refs/evaluation-plan.md).
+The latest evaluation run, from the report `npm run eval` writes, which a test compares byte for byte with a fresh run. The pass marks are in [`eval/thresholds.json`](eval/thresholds.json) and every definition is in [the plan](eval/refs/evaluation-plan.md).
 
 | Version | Related ranked above unrelated | Labels right | Labels recovered | Recovered with no tag to lean on | Model calls | Est. cost | Pass marks |
 |---|---|---|---|---|---|---|---|
 | Raw text | 76.0% | adds no labels | adds no labels | adds no labels | 0 | $0.0002 | pass |
 | Synonym table | 76.6% | 380 of 380 | 380 of 442 | 0 of 50 | 0 | $0.0001 | fails recovery with no tag: it reads tags only |
-| **Model where thin** | 80.5% | 440 of 440, 1 held back | 440 of 442 | 48 of 50 | 31 | $0.1160 | pass |
-| Model everywhere | 80.1% | 438 of 438, 1 held back | 438 of 442 | 50 of 50 | 100 | $0.3908 | pass |
+| **Model where thin** | 80.5% | 440 of 440, 1 left out as unclear | 440 of 442 | 48 of 50 | 31 | $0.1160 | pass |
+| Model everywhere | 80.1% | 438 of 438, 1 left out as unclear | 438 of 442 | 50 of 50 | 100 | $0.3908 | pass |
 
 - **"Model where thin" ships.** It is the cheapest passing version within the margin of the best. Calling the model on all 100 records instead of 31 did not rank better.
 - **"Related ranked above unrelated"** takes a game, one game the answer key calls related and one it calls unrelated, and asks how often the related one scores higher. Guessing gives 50%.
-- **One label is held back.** It is the subject of one of the owner's six questions, so the reviewer's answer on it is out of the working tree and out of every count. The pass mark counts it as wrong, 440 of 441, which passes whatever the answer turns out to be.
-- **Every run is on record** in [`eval/results/runs.json`](eval/results/runs.json), three so far. The same version shipped in each, and the synonym table failed the same mark in each. The first run was on the index from before the tag-conflict rule was reversed: there the shipped version recovered 423 of 442 labels and ranked at 80.6%.
+- **One label is left out as unclear.** The model called one game `adventure`, which the answer key never gave it, so the reviewer was asked. It said yes, but the words it copied are not word for word the record's (it began them with a capital letter). By the plan's rule a yes without an exact quote is recorded as unclear, and an unclear label is left out of precision: 440 of 440, with nothing held back. The owner, asked the same question, said yes.
+- **Every run is on record** in [`eval/results/runs.json`](eval/results/runs.json): three indexes, and the last of them twice, before and after the owner answered his check. The same version shipped in each, and the synonym table failed the same mark in each. The first run was on the index from before the tag-conflict rule was reversed: there the shipped version recovered 423 of 442 labels and ranked at 80.6%.
 - **Its own failures.** The report keeps five real failures apart from the mess planted on purpose: a label outside the answer key, a label missed, an unrelated game ranked above related ones, an unrelated result shown, and a game declined although a strong match was live. The page shows them.
 
 Every count, the split by how thin a record is, and the readings chosen where the plan left a detail open are in [`docs/features/service.md`](docs/features/service.md).
@@ -167,7 +167,7 @@ Every count, the split by how thin a record is, and the readings chosen where th
 - **One vendor's models wrote the catalogue text, did the enrichment and act as the reviewer of disputed cases.** Related models can share blind spots, so their agreement is weaker evidence than it looks.
 - **The catalogue is easier than real supplier data.** Its descriptions state each mechanic plainly. The numbers show direction and the absence of glaring failure, not production accuracy.
 - **"No wrongly shown game" rests on a lenient reviewer.** The reviewer model was asked about five results the rule calls unrelated, and said yes to all five.
-- **The outside check is outstanding, and one of its six answers will not be blind.** The owner answers six of the reviewer's questions himself. Until he has, the reviewer's answers to those six are out of the working tree, and the report, the page and these documents show none of them. **They are not out of reach:** the commit that [`eval/reviewer/held-back.json`](eval/reviewer/held-back.json) names still holds them, and anyone can open it through the pull requests that carried it or a branch cut from them. The check depends on him not opening that commit before he answers, not on the answers being unreachable. He was also told the reviewer's answer to one of the six in conversation, before the answers were held back, so the check reports five answers given blind and the sixth apart.
+- **The outside check is six questions, and it is thin evidence.** The owner answered six of the reviewer's questions himself. On the five he answered blind, the reviewer matched him on all five. The sixth is not a blind check: he had been told the reviewer's answer to it beforehand, so it is counted apart, and on it the reviewer did not match him (he said yes; the reviewer's answer is the one recorded as unclear above). Five of the six come from the control sample, because only one disagreement exists, and a control label is one where the answer key and the pipeline already agreed. So the check shows one person and the reviewer reading five plain labels alike. It does not show that the reviewer is right where a label is disputed, and it does not touch the recommendation questions. Until he answered, the reviewer's six answers were kept out of the working tree but stayed in the repository's history, so that those five were blind rests on his not having looked.
 - **Where a tag contradicts the description, the description is the correct side in all five planted cases.** So the comparison cannot show what trusting the text costs when the tag is right.
 - **A contradiction in German text is not detected.** The rule reads English phrases only.
 - **"Related" means shared themes and mechanics in the answer key.** It is not a measure of what players go on to play.
