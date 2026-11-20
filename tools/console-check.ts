@@ -262,7 +262,7 @@ const SHOWS: Record<Example["kind"], string> = {
     const section = document.querySelector("[data-section=added]");
     if (!section) return ["the section Added is not the one open"];
     if (!section.querySelector(".tag.contradicted")) problems.push("no supplier tag is marked as contradicted");
-    if (!/so the lookup table asserts no mechanic/.test(section.querySelector("[data-story]")?.textContent ?? "")) problems.push("the page does not say what the table did");
+    if (!/so Synonym table asserts no mechanic/.test(section.querySelector("[data-story]")?.textContent ?? "")) problems.push("the page does not say what the table did");
     return problems;
   })()`,
   filter: `(() => {
@@ -483,7 +483,9 @@ try {
         if (chosen === undefined) return ["the catalogue holds no game"];
         const closed = await page.evaluate<string>(`document.querySelector("#pick-game .select-value").textContent`);
         if (closed !== chosen.title) problems.push(`the closed game picker reads "${closed}", not the title "${chosen.title}"`);
-        await page.evaluate(`document.querySelector("#pick-game").click()`);
+        // Opened as a visitor opens it: a real press of the mouse in the middle of the control (on a phone, a touch is emulated the same way).
+        const at = await page.evaluate<{ x: number; y: number }>(`(() => { const box = document.querySelector("#pick-game").getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 }; })()`);
+        for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await page.send("Input.dispatchMouseEvent", { type, x: at.x, y: at.y, button: type === "mouseMoved" ? "none" : "left", clickCount: type === "mouseMoved" ? 0 : 1 });
         await page.waitFor(`document.querySelector("[data-slot=select-input]") !== null`, "the game picker to open");
         await sleep(500);
         const all = await page.evaluate<string[]>(listed);
@@ -491,8 +493,11 @@ try {
         const box = await page.evaluate<{ scrolls: boolean; inside: boolean }>(`(() => { const list = document.querySelector(".options"); const at = list.getBoundingClientRect(); return { scrolls: list.scrollHeight > list.clientHeight, inside: at.top >= 0 && at.bottom <= innerHeight + 1 && at.height > 100 }; })()`);
         if (!box.scrolls || !box.inside) problems.push(`the list of games ${box.inside ? "does not scroll" : "is not inside the window"}`);
         const typed = chosen.title.slice(0, 5);
-        await page.evaluate(`(() => { const input = document.querySelector("[data-slot=select-input]"); input.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(typed)}); input.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+        // Typed as a visitor types: real key presses, with no help in putting focus anywhere.
+        for (const letter of typed) await page.key(letter, letter.toUpperCase().charCodeAt(0), letter);
         await sleep(500);
+        const entered = await page.evaluate<string>(`document.querySelector("[data-slot=select-input]").value`);
+        if (entered !== typed) problems.push(`"${typed}" was typed and the search field holds "${entered}"`);
         const narrowed = await page.evaluate<string[]>(listed);
         const expected = catalogue.games.filter((game) => game.title.toLowerCase().includes(typed.toLowerCase())).length;
         if (narrowed.length === 0 || narrowed.length >= all.length || narrowed.length < expected || !narrowed.some((line) => line.startsWith(chosen.title))) problems.push(`after typing "${typed}" the picker lists ${narrowed.length} games; ${expected} titles hold it`);

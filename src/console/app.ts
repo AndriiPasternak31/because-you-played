@@ -170,7 +170,13 @@ export function App({ get }: { get: Get }): ReactNode {
       { className: `field ${id}` },
       h(
         Select,
-        { value, onValueChange: (next: unknown) => typeof next === "string" && choose(next) },
+        {
+          value,
+          onValueChange: (next: unknown) => typeof next === "string" && choose(next),
+          // Opened with a pointer, the library puts focus on the chosen item, where typing only moves the highlight.
+          // The search field takes it instead, so typing narrows the list however the picker was opened.
+          ...(search === undefined ? {} : { onOpenChange: (open: boolean) => void (open && setTimeout(() => document.querySelector<HTMLInputElement>(`[data-slot="select-input"]`)?.focus({ preventScroll: true }), 60)) }),
+        },
         h(SelectLabel, { className: "sr" }, name),
         h(SelectTrigger, { className: "select", id: `pick-${id}` }, h("span", { className: "select-key", "aria-hidden": "true" }, name), h("span", { className: "select-value" }, items.find((item) => item.value === value)?.label ?? `Choose a ${id}`)),
         h(

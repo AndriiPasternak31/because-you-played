@@ -237,7 +237,7 @@ test("UI-6: for a game whose tag contradicts its description, the page shows the
     for (const data of [table, model]) {
       const added = section("added", data);
       assert.ok(added.includes(`<span class="tag contradicted">${esc(record.conflict?.tag ?? "")}</span>`), `${record.game_id}: the contradicted tag is not marked`);
-      assert.ok(text(added).includes(`a supplier tag says ${record.conflict?.tag_asserts.replaceAll("_", " ")} but the description says`) && text(added).includes("so the lookup table asserts no mechanic"));
+      assert.ok(text(added).includes(`says ${record.conflict?.tag_asserts.replaceAll("_", " ")} but the description says`) && text(added).includes("so Synonym table asserts no mechanic"));
       const steps = text(evidence("steps", data));
       assert.ok(steps.includes(`The tag ${record.conflict?.tag} asserts`), `${record.game_id}: the contradicted tag is not named`);
       assert.ok(steps.includes("the table version asserts no mechanic"));
@@ -524,13 +524,14 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   // The numbers its line gives are the service's: what the table read, what the model added, and no other thin game on that brand gained more.
   const fromModel = (response: Recommendation): number => held(response).filter((label) => label.method === "model").length;
   const tableFound = (thin.response.trace?.anchor?.steps.table.themes.length ?? 0) + (thin.response.trace?.anchor?.steps.table.mechanics.length ?? 0);
-  assert.ok(thin.note.includes(tableFound === 0 ? "read no label from the supplier's tags" : `read ${tableFound} label`), thin.note);
+  assert.ok(thin.note.includes(tableFound === 0 ? "found no label in the supplier's features, themes or tags" : `read ${tableFound} label`), thin.note);
   assert.ok(thin.note.includes(`the model added ${fromModel(thin.response)} from the text`), thin.note);
   const gains = catalogue.games.filter((game) => game.thin).map((game) => ask(`/api/recommendations?game=${game.game_id}&brand=${thin.brand}&trace=1`)).filter((response) => response.outcome === "results").map(fromModel);
   assert.equal(fromModel(thin.response), Math.max(...gains), "another thin game gained more labels than the example");
   const plain = await of("plain");
   assert.ok(plain.response.trace?.anchor?.thin === false && held(plain.response).length > 0 && held(plain.response).every((label) => label.method !== "model"));
-  assert.ok(plain.note.includes(`already gave ${held(plain.response).length} label`), plain.note);
+  const plainTable = plain.response.trace?.anchor?.steps.table;
+  assert.ok(plain.note.includes(`The lookup table read ${(plainTable?.themes.length ?? 0) + (plainTable?.mechanics.length ?? 0)} label`) && plain.note.endsWith("the model adds nothing."), plain.note);
   const conflict = await of("conflict");
   assert.ok(conflict.response.trace?.anchor?.steps.conflict !== null);
   const filter = await of("filter");
@@ -609,6 +610,8 @@ test("UI-15: a returned game is described as above the similarity floor and live
 test("UI-16: what the page says the lookup table and the model found is read from the record, in every version", async () => {
   let withLabels = 0;
   let without = 0;
+  let conflicts = 0;
+  const sources = new Set<string>();
   for (const game of games) {
     for (const version of VERSIONS) {
       const data = await load(game, home, version);
@@ -620,15 +623,32 @@ test("UI-16: what the page says the lookup table and the model found is read fro
       const fromModel = mine.filter((label) => label.method === "model").length;
       const where = `${game} in ${version}: "${said}"`;
       const lower = said.toLowerCase();
+      // Where the labels were read from is recounted here from the record: which of the supplier's lists holds each quoted entry.
+      const delivered = anchor.delivered as unknown as Record<string, unknown>;
+      const holds = (list: string, quote: string): boolean => Array.isArray(delivered[list]) && (delivered[list] as unknown[]).some((sent) => String(sent).trim().toLowerCase() === quote.trim().toLowerCase());
+      const tableLabels = [...anchor.steps.table.themes, ...anchor.steps.table.mechanics];
+      const lists = ["features", "themes", "tags"].filter((list) => tableLabels.some((entry) => entry.source_field === list));
+      for (const entry of tableLabels) assert.ok(holds(entry.source_field, entry.quote), `${game}: the table says it read "${entry.quote}" from ${entry.source_field}, and the record's ${entry.source_field} does not hold it`);
       if (anchor.steps.conflict === null) {
         if (found === 0) {
           without += 1;
-          assert.ok(lower.includes("the lookup table found no label in the supplier's tags;"), where);
+          assert.ok(lower.includes("the lookup table found no label in the supplier's features, themes or tags;"), where);
         } else {
           withLabels += 1;
-          assert.ok(lower.includes(`the lookup table read ${found} label${found === 1 ? "" : "s"} from the supplier's tags;`) && !lower.includes("found no label"), where);
+          const from = lists.length === 1 ? lists[0] : `${lists.slice(0, -1).join(", ")} and ${lists.at(-1)}`;
+          assert.ok(lower.includes(`the lookup table read ${found} label${found === 1 ? "" : "s"} from the supplier's ${from};`) && !lower.includes("found no label"), where);
+          // A list the record delivered empty is never named as the source.
+          for (const list of lists) assert.ok(Array.isArray(delivered[list]) && (delivered[list] as unknown[]).length > 0, `${game}: the sentence names the supplier's ${list}, which the record delivered empty`);
+          sources.add(from as string);
         }
-      } else assert.ok(lower.includes("so the lookup table asserts no mechanic;"), where);
+      } else {
+        const conflict = anchor.steps.conflict;
+        const list = ["features", "themes", "tags"].find((name) => holds(name, conflict.tag));
+        assert.ok(list !== undefined && said.includes(`“${conflict.tag}” in the supplier's ${list} says`) && said.includes("so Synonym table asserts no mechanic;"), where);
+        // And it is true: the version built from the lookup table alone holds no mechanic for this record.
+        assert.equal(ask(`/api/inspect?game=${game}&brand=${home}&version=table`).trace?.anchor?.fields?.mechanics.labels.length, 0, `${game}: Synonym table holds a mechanic`);
+        conflicts += 1;
+      }
       assert.equal(said.trim().startsWith("A thin record:"), anchor.thin, where);
       if (anchor.fields === null) assert.ok(said.includes("holds no labels"), where);
       else if (!anchor.steps.model.used) assert.ok(said.includes(`does not use the model for this record and holds ${mine.length - fromModel} label`), where);
@@ -638,7 +658,7 @@ test("UI-16: what the page says the lookup table and the model found is read fro
       assert.equal(said.trim().split(". ").length, 1, where);
     }
   }
-  assert.ok(withLabels > 100 && without > 0, `the table found labels on ${withLabels} pages and none on ${without}`);
+  assert.ok(withLabels > 100 && without > 0 && conflicts > 0 && sources.size > 1, `the table found labels on ${withLabels} pages (from ${[...sources].join("; ")}), none on ${without}, and ${conflicts} pages show a contradiction`);
 });
 
 test("UI-17: a failure the evaluation found is shown where it happened, and nowhere else", async () => {

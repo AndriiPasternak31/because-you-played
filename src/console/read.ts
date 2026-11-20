@@ -133,18 +133,34 @@ export function markText(text: string, labels: readonly { quote: string; n: numb
 
 export const sameTag = (a: unknown, b: unknown): boolean => a === b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
+/** The supplier's three lists the lookup table reads, in the order the record gives them. */
+const SUPPLIER_LISTS = ["features", "themes", "tags"] as const;
+const listed = (items: readonly string[], last: "and" | "or"): string => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} ${last} ${items.at(-1)}`);
+
+/** What the lookup table read and from which of the supplier's lists, counted from the table's own output for this record. */
+export function tableRead(anchor: TraceAnchor): string {
+  const labels = [...anchor.steps.table.themes, ...anchor.steps.table.mechanics];
+  if (labels.length === 0) return `found no label in the supplier's ${listed(SUPPLIER_LISTS, "or")}`;
+  const from = SUPPLIER_LISTS.filter((list) => labels.some((entry) => entry.source_field === list));
+  return `read ${plural(labels.length, "label", "labels")} from the supplier's ${listed(from, "and")}`;
+}
+
+/** Which entry of which of the supplier's lists the description contradicts, from the record. */
+export function contradiction(anchor: TraceAnchor, conflict: NonNullable<TraceAnchor["steps"]["conflict"]>): string {
+  const from = anchor.steps.table.mechanics.find((entry) => entry.label === conflict.tag_asserts && sameTag(entry.quote, conflict.tag))?.source_field;
+  return `“${conflict.tag}” in the supplier's ${from ?? "lists"} says ${words(conflict.tag_asserts)} but the description says ${conflict.description_states.map(words).join(", ")}`;
+}
+
 /**
  * What happened to this record on its way into this version of the index, in one sentence.
  * Every clause is read from the record: what the lookup table found is the table's own output, whatever
  * version is on screen, and what the version holds is counted from the labels it holds.
  */
 export function story(anchor: TraceAnchor, version: string): string {
-  const { table, conflict, model } = anchor.steps;
-  const found = table.themes.length + table.mechanics.length;
+  const { conflict, model } = anchor.steps;
   let first: string;
-  if (conflict !== null) first = `a supplier tag says ${words(conflict.tag_asserts)} but the description says ${conflict.description_states.map(words).join(", ")}, so the lookup table asserts no mechanic`;
-  else if (found === 0) first = "the lookup table found no label in the supplier's tags";
-  else first = `the lookup table read ${plural(found, "label", "labels")} from the supplier's tags`;
+  if (conflict !== null) first = `${contradiction(anchor, conflict)}, so ${versionName("table")} asserts no mechanic`;
+  else first = `the lookup table ${tableRead(anchor)}`;
   first = anchor.thin ? `A thin record: ${first}` : `${first[0]?.toUpperCase()}${first.slice(1)}`;
   if (anchor.fields === null) return `${first}; ${versionName(version)} holds no labels and indexes the supplier's text as it is.`;
   const held = heldLabels(anchor);
@@ -432,17 +448,17 @@ export async function findExamples(get: Get, catalogue: Catalogue, evaluation: E
       }
       const anchor = best?.response.trace?.anchor;
       if (!best || !anchor) return null;
-      const found = anchor.steps.table.themes.length + anchor.steps.table.mechanics.length;
-      return { game: anchor.game_id, brand: home, tab: "added", note: `The lookup table read ${found === 0 ? "no label" : plural(found, "label", "labels")} from the supplier's tags, and the model added ${best.fromModel} from the text.` };
+      return { game: anchor.game_id, brand: home, tab: "added", note: `The lookup table ${tableRead(anchor)}, and the model added ${best.fromModel} from the text.` };
     },
     /** A record the supplier described well: the table's labels were enough, and this version holds none from the model. */
     async plain(home) {
       const candidates = catalogue.games.filter((entry) => !entry.thin && !entry.conflict && entry.evidence === "description" && liveOn(entry, home)).slice(0, SEARCH_LIMIT);
       for (const entry of candidates) {
         const response = await recommend(entry.game_id, home);
-        const held = heldLabels(response.trace?.anchor);
-        if (response.outcome === "results" && held.length > 0 && held.every((label) => label.method !== "model")) {
-          return { game: entry.game_id, brand: home, tab: "added", note: `The supplier's tags already gave ${plural(held.length, "label", "labels")}; the model adds nothing.` };
+        const anchor = response.trace?.anchor;
+        const held = heldLabels(anchor);
+        if (anchor && response.outcome === "results" && held.length > 0 && held.every((label) => label.method !== "model")) {
+          return { game: entry.game_id, brand: home, tab: "added", note: `The lookup table ${tableRead(anchor)}; the model adds nothing.` };
         }
       }
       return null;
@@ -451,7 +467,7 @@ export async function findExamples(get: Get, catalogue: Catalogue, evaluation: E
       const listed = report.conflict_games.games.filter((entry) => liveOn(byId.get(entry.game_id), home));
       const pick = listed.find((entry) => (entry.mechanics as Record<string, { status: string }>)[served]?.status === "asserted") ?? listed[0];
       if (pick === undefined) return null;
-      return { game: pick.game_id, brand: home, tab: "added", note: `The tag says ${words(pick.tag_asserts)}, the description says ${pick.description_states.map(words).join(", ")}.` };
+      return { game: pick.game_id, brand: home, tab: "added", note: `“${pick.tag}” in the supplier's record says ${words(pick.tag_asserts)}; the description says ${pick.description_states.map(words).join(", ")}.` };
     },
     /** A game whose best match on another brand is not live on this one, and is removed here before anything is scored. */
     async filter(home) {

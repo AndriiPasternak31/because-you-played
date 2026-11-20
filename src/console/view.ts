@@ -49,7 +49,7 @@ export const label = (tone: Tone, text: string): ReactNode => h("span", { classN
 export const mono = (text: unknown): ReactNode => h("code", null, String(text));
 /** A theme or a mechanic. Blue when the model asserted it, plain when the synonym table did; a hover says which. */
 export const tag = (method: string, term: string, key?: string | number): ReactNode =>
-  h("span", { className: `tag ${method === "model" ? "model" : "table"}`, title: method === "model" ? "added by the model" : "from the supplier's tags, through the lookup table", key }, words(term));
+  h("span", { className: `tag ${method === "model" ? "model" : "table"}`, title: method === "model" ? "added by the model" : "read by the lookup table from the supplier's own lists", key }, words(term));
 export const ref = (numbers: readonly number[]): ReactNode => (numbers.length === 0 ? null : h("sup", { className: "ref" }, numbers.join(", ")));
 export const small = (...children: ReactNode[]): ReactNode => h("span", { className: "small" }, ...children);
 
@@ -236,7 +236,7 @@ export function recordCards(anchor: TraceAnchor, version: string): ReactNode {
 
   const fieldLine = (name: "Themes" | "Mechanics", field: NonNullable<TraceAnchor["fields"]>["themes"]): ReactNode => {
     if (field.status !== "asserted") {
-      const why = field.status === "conflict" ? "The supplier's tag and the description disagree, so nothing is asserted." : "Nothing in the record supports a label, so none is asserted.";
+      const why = field.status === "conflict" ? "An entry the supplier sent and the description disagree, so nothing is asserted." : "Nothing in the record supports a label, so none is asserted.";
       return h("li", { key: name }, h("strong", null, name), h("span", null, label("amber", field.status === "conflict" ? "conflicting" : "abstained"), " ", small(why)));
     }
     const chips = held
