@@ -30,7 +30,7 @@ flowchart TD
   OFFER[/"offerings: status per game and brand"/]
   subgraph REQUEST["Per request: no key, no model call"]
     SVC["Service"]
-    CON["Console"]
+    CON["The page"]
   end
   GEN --> RAW
   GEN --> TRUTH
@@ -110,7 +110,7 @@ Three more boundaries shape the design.
 | Pipeline | Turns raw rows into the index | [`pipeline.md`](features/pipeline.md) | #2 |
 | Service | Answers one game on one brand | [`service.md`](features/service.md) | #3 |
 | Evaluation | Decides whether an index may be served | [`service.md`](features/service.md) | #3, #6 |
-| Console | Shows what the service did for one request, and the evaluation behind what is served | [`interface.md`](features/interface.md). How it should read: [`ui-guidelines.md`](ui-guidelines.md) | #3, #4 |
+| The page | Shows what the service did for one request, and the evaluation behind what is served | [`interface.md`](features/interface.md). How it should read: [`ui-guidelines.md`](ui-guidelines.md) | #3, #4 |
 
 #3 asks for the recommender core to be a plain function with a thin HTTP wrapper. That lets the rules above be tested without a server.
 
