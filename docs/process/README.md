@@ -57,7 +57,7 @@ Three pages written for the owner during the build, to make a decision or to sho
 |---|---|---|
 | [`pages/catalogue.html`](pages/catalogue.html) | How one game is planned, written and damaged, and every kind of mess counted | <https://because-you-played-status.vercel.app/catalogue> |
 | [`pages/evaluation.html`](pages/evaluation.html) | The four evaluation decisions as they were put to the owner, with sliders for the pass marks, before any result existed | <https://because-you-played-status.vercel.app/evaluation> |
-| [`pages/build-status.html`](pages/build-status.html) | The build's stages and what checking had caught, as of the time printed at its top | <https://because-you-played-status.vercel.app/>, locked while the repository was private |
+| [`pages/build-status.html`](pages/build-status.html) | The build's stages and what checking had caught, as of the time printed at its top | <https://because-you-played-status.vercel.app/>, behind a password that was sent to the hiring team. It was brought up to date at submission, so it no longer matches this source |
 
 - **They are snapshots.** Each says what was true when it was written and was not updated afterwards. The evaluation page's label counts include the four duplicate rows, as it says at its foot, so they are not the evaluation's totals. Current figures are in [`docs/features/`](../features/) and in the files `npm run eval` writes.
 - **The hosted copies are a convenience.** The product itself runs locally: see the [README](../../README.md).
