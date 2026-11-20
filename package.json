@@ -7,6 +7,15 @@
     "node": ">=24"
   },
   "scripts": {
+    "start": "node tools/check-node.cjs && node tools/start.ts",
+    "preinstall": "node tools/check-node.cjs",
+    "pretypecheck": "node tools/check-node.cjs",
+    "pretest": "node tools/check-node.cjs",
+    "predataset": "node tools/check-node.cjs",
+    "prepipeline": "node tools/check-node.cjs",
+    "preeval": "node tools/check-node.cjs",
+    "preowner-check": "node tools/check-node.cjs",
+    "preserve": "node tools/check-node.cjs",
     "typecheck": "tsc --noEmit",
     "test": "node tools/run-tests.ts",
     "dataset": "node src/dataset/generate.ts",
