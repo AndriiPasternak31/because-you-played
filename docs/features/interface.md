@@ -123,6 +123,8 @@ What each proof does:
 - **UI-18** answers two requests out of order and looks at which is drawn; the browser check does the same on a slowed connection.
 - **UI-20** reads the evidence for the words that may not be there ("one vendor's models", "not in the repository") and the ones that must be.
 
+Each of these was broken on purpose, one fault at a time, and its proof failed each time: a title drawn as markup (UI-5), a fourth evidence button (UI-8), "in common" reworded as a cause (UI-9), a cost to four places and a bar that starts above zero (UI-10), one byte changed in the built stylesheet and a built file left out of the repository (UI-14), a result called related (UI-15), a fixed sentence about the lookup table (UI-16), a failure shown on another brand (UI-17), a late answer drawn (UI-18), a brand with no game dropped in silence (UI-19), and the held-back answers said to be out of the repository (UI-20).
+
 **What the tests do not reach, and what does.** They render the sections, not a browser. `node tools/console-check.ts` drives the page in headless Chrome with its own profile. Besides UI-13 it fails when:
 
 - an example, once opened, does not show what it says, or is not the one marked in the list;
@@ -141,6 +143,6 @@ What each proof does:
 - in a browser without WebGL2 the page is not whole;
 - the page asks for anything that is not this service.
 
-It is run by hand, because a machine without a browser cannot run it, and its result for a change is in that change's pull request. `--also "<address>"` adds the first screen of any other request, and `--base <url>` runs it against a service that is already running.
+It is run by hand, because a machine without a browser cannot run it, and its result for a change is in that change's pull request. While the page was thinned it failed on its own account twice, on a section that scrolled at 1366 by 768 and one at 1288 by 650, and both were fixed in the layout. `--also "<address>"` adds the first screen of any other request, and `--base <url>` runs it against a service that is already running.
 
 How the page looks and feels is not an invariant and has no proof command. The owner judges it by looking.
