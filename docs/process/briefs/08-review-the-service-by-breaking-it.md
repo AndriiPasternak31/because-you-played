@@ -1,6 +1,6 @@
 # Break-it review of service PR
 
-- Kind: brief to a new agent ([cut: name of a private agent profile])
+- Kind: brief to a new agent (opus-high)
 - Sent: 2026-11-19T21:34:55.311Z
 
 ---

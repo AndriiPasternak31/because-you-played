@@ -212,6 +212,8 @@ The decision record gives the reasons and the triggers.
 | Cloud deployment or infrastructure code | Out of scope for a local prototype. The decision record says how it would be deployed |
 | Hand-labelled reference data | Replaced by the generator's plan with a reviewer model and the owner's six-question check |
 
+**One thing was not left out that could have been: the page.** The assignment asks for no polished interface and does not assess one. The page still took three rejected versions and, in the end, a framework. What that cost is under [How the time was spent](#how-the-time-was-spent).
+
 ## Metrics to watch in production
 
 | Metric | Why | Alert |
@@ -231,23 +233,26 @@ None of this monitoring is built.
 
 | What | Time | Notes |
 |---|---|---|
-| Preparation, before the build | **To be added by the owner: hours** | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
-| The build: the owner's attention | **To be added by the owner: hours** | Two sittings. The first began on 18 November 2026 at 23:41 GMT, the second on the evening of 19 November |
-| The build: agents' running time | Roughly 6 to 7 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
+| Preparation, before the build | Not timed | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
+| The build: the owner's attention | About 4 hours | His own figure, inside the two sittings below. They are longer on the clock, because agents ran while he was away from the keyboard or waiting on them |
+| The build: the two sittings, on the clock | About 2 hours 35 minutes, then about 5 hours 30 minutes | From the repository's timestamps. The first ran from the repository's first commit at 22:45 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th, with this write-up after it |
+| The build: agents' running time | Roughly 10 to 12 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
 |---|---|
 | First | The catalogue: a 14-game pilot, then all 100. The architecture, workflow and interface documents. The first two reviews |
-| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the page. This write-up |
+| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the page. The page again, twice (#14, #17). The one-command run (#16). This write-up |
 
 The owner's part was briefing agents, reading what came back, and the decisions only he makes: cutting the rules, the evaluation plan and pass marks, reversing a pipeline rule, merging, and judging the page. Agents wrote the code, the tests and the drafts of the documents, this one included.
+
+**The page cost the most for what the assignment asks of it.** From the first restyle to the merge of the third version was about three hours on the clock, beside other work, and it ended with React, two interface libraries and a committed bundle. It was done because the page is where a reader sees what the system did, and the walkthrough is to be recorded from it.
 
 ## AI tools
 
 | Tool | Used for |
 |---|---|
-| Claude Code, running Claude models | Builder agents and reviewer agents. Each was briefed with a goal, the context it could not see, a bar for done and hard rules, never steps |
-| ChatGPT, a model from a different vendor | Independent second opinions on the plan and the evaluation design, before the build |
+| Claude Code, running Claude models | Builder agents and reviewer agents. Each was briefed with a goal, the context it could not see, a bar for done and hard rules, never steps. Every session loaded [the owner's personal instructions](docs/process/agent-setup/personal-instructions.md) before the project's rules. Review and research agents ran from [a profile](docs/process/agent-setup/opus-high.md) pinned to a different Claude model at high effort |
+| ChatGPT, a model from a different vendor, through OpenAI's command-line tool | Independent second opinions on the plan and the evaluation design before the build, and [a critique of the page's layout](docs/process/second-opinion-page-layout.md) during it |
 | OpenAI `gpt-6.2-sol` | Writing the fictional catalogue text, and the enrichment |
 | OpenAI `text-embedding-3-small` | Embeddings |
 | OpenAI `gpt-6-luna` | The evaluation's reviewer model |
@@ -256,12 +261,30 @@ The model calls on record cost about $2: $1.58 for the catalogue, more than half
 
 ### One AI output that was rejected
 
-Asked to propose working rules for this repository, agents came back with 37 items and began building tools to check them: about 1,200 lines, estimated at two to three and a half hours of work, for a build meant to take four. The owner cut it to nine pieces in 241 lines, with one rule for the rest: process is added only when the build shows the need. One thing was added later, the shorter pull-request format. The brief that made the cut is [`docs/process/briefs/02-cut-the-rules-to-nine-pieces.md`](docs/process/briefs/02-cut-the-rules-to-nine-pieces.md), and what remained is the [reusable artifact](docs/starter-kit.md).
+**The page.** The agents built it to the rules. Its tests passed, and the break-it review of #12 reported that it works. The owner rejected it the first time he opened it: terrible, not intuitive, and so full that he did not know where to look. It opened on a dump of the raw record and put the recommendations last, about 3,400 pixels down the page, nearly four window-heights.
+
+The distance was measured in a browser, in a window 1280 by 900, on four requests that return results: 3,235 to 3,555 pixels.
+
+**Why the process let it through.** No agent broke a rule. The rules had a hole, and the owner's own briefs were part of it.
+
+- **The interface guidelines asked for that order.** They said the page reads from what went in to what came out and imposes no order of its own, and that the raw record is shown verbatim.
+- **"Readable on one screen" was an acceptance criterion, and every layer treated it as taste.** The working rules say agents show that the interface works and do not judge it. The brief to the builder asked for "clear and working" and no more ([brief 06](docs/process/briefs/06-build-the-service-evaluation-and-console.md)). The brief to the reviewer said to say only whether it works ([brief 08](docs/process/briefs/08-review-the-service-by-breaking-it.md)).
+- **The tests could not see it.** They read the page's text, with no window size.
+- **A first restyling pass kept the same order.** Its screenshots scrolled to each section, so none showed what a visitor sees on arrival.
+
+**How the cause was found.** The owner did not ask for a better-looking page. He asked a separate agent to find the hole in the rules, with evidence and not opinion, and a model from another vendor to criticise the proposed new layout ([the prompt and its answer](docs/process/second-opinion-page-layout.md)). That model's sharpest point: a quote proves that a label belongs to a game. It does not explain why another game ranks first, so the page must not suggest that it does.
+
+**It was rejected twice more.** A reordered page put the result first, and he found it still overloaded; that pull request, #14, was closed unmerged. Rebuilt as one page of four sections in #17, it was "still overloaded and messy", and then half the window stood empty, before the version he merged. The hole was the same each time: how much is on the screen was treated as taste.
+
+**The fix.** One sentence added to the review protocol: "A criterion about what a reader sees (on one screen, first, without help) is behaviour, not look: check it in a browser at a fixed window size." Behind it, a browser check that fails unless the top panel, one question and the sentence that answers it are on screen on arrival, without scrolling, at four window sizes (`node tools/console-check.ts --first-screens`). And the guideline now asks for one question per section, with the evidence behind a named button.
+
+What this says about the rules themselves is in [the starter-kit note](docs/starter-kit.md#where-it-fell-short).
 
 Others, each changed or rejected:
 
 | What the AI produced | What was wrong | What happened |
 |---|---|---|
+| 37 working rules, with tools being built to check them | About 1,200 lines, estimated at two to three and a half hours of work, for a build meant to take four | The owner cut it to nine pieces in 241 lines. [The starter-kit note](docs/starter-kit.md#how-it-got-to-nine-pieces) tells it |
 | A catalogue run that kept returning to the same subjects | Six badger games in the first 58 | Each game now gets a seeded setting and title pattern; the catalogue was regenerated |
 | A first pull request with its own evidence table | The evidence did not reproduce from a fresh clone | Found by a reviewer running it; fixed before the merge |
 | A recommended pass mark of 0.60 for label recovery | A lookup table would have met it without reading a word: 89% of the recoverable labels were still in a tag | Changed to 0.85, with a separate mark for labels found only by reading. Fixed before any result existed |
@@ -274,7 +297,10 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 
 ## Process material
 
+- **Agent set-up.** The owner's personal instructions for coding agents, cleaned with every cut marked, and the agent profile the reviewers ran from: [`docs/process/agent-setup/`](docs/process/agent-setup/).
 - **Briefs.** Eight of the briefs given to builder and reviewer agents, cleaned of private details with every cut marked: [`docs/process/`](docs/process/README.md).
+- **A second opinion.** The prompt sent to another vendor's model about the page's layout, and its answer: [`docs/process/second-opinion-page-layout.md`](docs/process/second-opinion-page-layout.md).
+- **What was used and is not here** is listed in [the process index](docs/process/README.md#what-else-was-used-and-is-not-here): skills and plugins on the owner's machine, the agent's memory notes, the short follow-up messages and the planning briefs.
 - **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation), and the [build status page](https://because-you-played-status.vercel.app/), which was locked while the repository was private. The product itself runs locally.
 - **The rules the agents worked under:** [`AGENTS.md`](AGENTS.md), [`REVIEW.md`](REVIEW.md), [`.claude/settings.json`](.claude/settings.json), [the pull-request template](.github/pull_request_template.md), [`LEARNINGS.md`](LEARNINGS.md), and the enrichment prompt in [`prompts/`](prompts/).
 - **The record of each change** is its pull request: what was checked, what was not verified, and what review found.
@@ -285,7 +311,7 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 |---|---|
 | `data/` | The raw catalogue, availability, stored model responses, the index. [`data/README.md`](data/README.md) |
 | `src/dataset/`, `src/pipeline/` | The generator and the offline pipeline |
-| `src/service/`, `src/console/` | The service and its page. `src/console/dist/` is the page as built and served, with the notices of the packages inside it |
+| `src/service/`, `src/console/` | The service and its page, which the code calls the console. `src/console/dist/` is the page as built and served, with the notices of the packages inside it |
 | `eval/` | The evaluation, the owner's plan and pass marks, the reviewer's stored answers, the results |
 | `docs/` | Architecture, the decision record, one file per part with its invariants and proofs, the process material |
 

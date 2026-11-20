@@ -1,6 +1,6 @@
 # Break-it review of dataset PR
 
-- Kind: brief to a new agent ([cut: name of a private agent profile])
+- Kind: brief to a new agent (opus-high)
 - Sent: 2026-11-19T01:04:37.469Z
 
 ---

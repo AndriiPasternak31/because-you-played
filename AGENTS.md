@@ -73,4 +73,4 @@ A pull request that changes a part updates that part's file. **Last proved** is 
 
 ## Commands
 
-`npm run typecheck` and `npm test`, on Node 24 with no build step. Both arrive with the first product pull request.
+`npm run typecheck` and `npm test`, on Node 24. Running needs no build: the page's bundle is built by `npm run build` and committed in `src/console/dist/`. Both arrive with the first product pull request.

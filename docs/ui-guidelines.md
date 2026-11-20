@@ -203,6 +203,6 @@ An error is never shown as an empty result, and an empty result is never shown a
 
 ## What only the owner judges
 
-The look and feel of the page is judged by the owner, who looks at it ([What is the owner's](../AGENTS.md#what-is-the-owners), [`REVIEW.md`](../REVIEW.md)). #4 is done only when the owner has signed off.
+The look and feel of the page is judged by the owner, who looks at it ([What is the owner's](../AGENTS.md#what-is-the-owners), [`REVIEW.md`](../REVIEW.md)). A change to how the page looks is done only when the owner has signed it off.
 
 What a reader sees first, on one screen and without help, is not look. It is behaviour, and an agent checks it in a browser at a fixed window size. An agent shows what can be shown by running something, and reports the rest as not verified. An agent does not write that the page looks good, clear or finished.

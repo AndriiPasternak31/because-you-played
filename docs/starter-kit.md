@@ -18,16 +18,29 @@ Nine pieces a new repository copies before any product code exists, so that codi
 
 ## Why it has this shape
 
-- **It is what the build needed in order to start, and no more.** Rules an agent cannot misread, a place for evidence, a way to review by breaking, and predictable homes for state. The first proposal was 37 items with checking tools of their own; the [README](../README.md#one-ai-output-that-was-rejected) tells that story.
-- **Process is added only when the build shows the need.** One thing was added later: the shorter pull-request format (#9), after the first descriptions proved too long to scan.
+- **It is what the build needed in order to start, and no more.** Rules an agent cannot misread, a place for evidence, a way to review by breaking, and predictable homes for state. The first proposal was far larger: see [How it got to nine pieces](#how-it-got-to-nine-pieces).
+- **Process is added only when the build shows the need.** Three things were added later: the shorter pull-request format (#9), after the first descriptions proved too long to scan; a "Run, test, evaluate" section at the top of the working rules (#16); and one sentence in the review protocol (#17), after the page.
 - **Plain files, no framework.** Markdown, one JSON file and one shell script. Nothing to install, and any coding agent that reads a rules file can use it.
 - **A promise is tied to a command.** Each part file pairs every invariant with the command that proves it and the commit it last passed on, so "is this still true?" has one answer and it is a run, not a reading.
 - **It says what it does not enforce.** The permission file stops the file-editing tools, not a program that writes the file itself. There is no continuous integration, and nothing checks that the template was filled in. [`AGENTS.md`](../AGENTS.md#what-is-the-owners) and [`docs/development-workflow.md`](development-workflow.md#what-is-not-in-place) list these gaps.
 
+### How it got to nine pieces
+
+Asked to propose working rules for this repository, agents came back with 37 items and began building tools to check them: about 1,200 lines, estimated at two to three and a half hours of work, for a build meant to take four. The owner cut it to nine pieces in 241 lines, with one rule for the rest: process is added only when the build shows the need. The brief that made the cut is [`process/briefs/02-cut-the-rules-to-nine-pieces.md`](process/briefs/02-cut-the-rules-to-nine-pieces.md).
+
+## Where it fell short
+
+The kit let one failure through that mattered: the page that shows what the service did. The agents followed it exactly, a break-it review passed the result, and the owner rejected the page on sight, and then twice more. The [README](../README.md#one-ai-output-that-was-rejected) tells the story once; this is what it means for the kit.
+
+- **The hole was in three pieces at once.** The working rules and the review protocol both hand the interface to the owner's judgement. The briefs written from them did the same. So a criterion that a machine could have checked, "readable on one screen", was checked by nobody.
+- **A rule that hands a whole area to a person also hands over the parts of it that can be checked.** The kit drew the line at "the interface". It belongs between look, which is the owner's, and what a reader sees first, which is behaviour.
+- **The cause was looked for in the rules, not in the agent.** The agents did what they were told.
+- **The fix is one sentence in the review protocol, with a browser check behind it.** It makes "what a reader sees first" something a machine checks. It does not decide how much belongs on a screen: that still took the owner three looks.
+
 ## How it applies to the next prototype
 
 1. Copy the nine pieces into the empty repository.
-2. Rewrite what in `AGENTS.md` is about this product: the opening paragraph, the Safety section's key name and its sentence about the catalogue, the product rules, the owner's files with the paragraph on what the settings file does and does not stop, the state map's row for the console, and the commands. Done, Git, Briefing another agent and the rest of the state map carry over as they stand.
+2. Rewrite what in `AGENTS.md` is about this product: the opening paragraph, the "Run, test, evaluate" section, the Safety section's key name and its sentence about the catalogue, the product rules, the owner's files with the paragraph on what the settings file does and does not stop, the state map's row for the interface guidelines, and the commands. Done, Git, Briefing another agent and the rest of the state map carry over as they stand.
 3. Point the two deny rules in `.claude/settings.json` at the new owner's paths.
 4. Write one file under `docs/features/` per planned part, with its status as "planned" and its invariants with `-` for last proved.
 5. Open the first issue. From there the loop is the one in [`docs/development-workflow.md`](development-workflow.md): brief, build, evidence, break-it review, owner's decision, squash merge.
@@ -36,24 +49,28 @@ Step 2 is where the time goes. The product rules are the part worth it: they are
 
 ## What it produced here
 
-The review record up to this note, taken from the Review tables of #8, #10, #11 and #12. #9 was merged without a review.
+The review record up to this note, taken from the Review tables of #8, #10, #11, #12, #13, #14, #16 and #17. #9 was merged without a review.
 
 | Pull request | Findings | Found by running | Found by reading | Reproduced as a failure | What happened |
 |---|---|---|---|---|---|
 | #8 documents | 8 | 1 | 7 | 2 | All 8 led to a change |
 | #10 catalogue | 4 | 3 | 1 | 4 | 2 fixed, 1 partly fixed and written down as a limit, 1 left as it was, the owner's call |
 | #11 pipeline | 6 | 5 | 1 | 3 | 3 fixed, 1 reversed by the owner's decision, 2 written down as limits |
-| #12 service, evaluation, console | 6 | 4 | 2 | 4 | 4 fixed, 2 of them minor. 1 wording corrected. 1 answered by keeping every evaluation run on record |
-| **All** | **24** | **13** | **11** | **13** | |
+| #12 service, evaluation, page | 6 | 4 | 2 | 4 | 4 fixed, 2 of them minor. 1 wording corrected. 1 answered by keeping every evaluation run on record |
+| #13 README, decision record, this note | 8 | 3 | 5 | 3 | 6 led to an edit, 1 to a line in the description, 1 is the owner's to do |
+| #14 the page, reordered (closed unmerged) | 11 | 8 | 3 | 8 | All 11 led to a change, carried into #17's page |
+| #16 the one-command run | 3 | 3 | 0 | 3 | 3 fixed |
+| #17 the page, as four sections | 4 | 3 | 1 | 2 | Reviewed under a ten-minute limit. 3 fixed before the merge; 1 left and written down: nothing runs the bundle's drift test on a push |
+| **All** | **50** | **30** | **20** | **29** | |
 
 | How it was found | Findings | A failure anyone can reproduce | No failure shown |
 |---|---|---|---|
-| Ran it | 13 | 11 | 2 |
-| Read it | 11 | 2 | 9 |
+| Ran it | 30 | 26 | 4 |
+| Read it | 20 | 3 | 17 |
 
-- **Of 13 findings made by running the change, 11 were failures anyone could reproduce.** The other 2 showed the code doing what its documents said; the owner reversed one of those rules anyway.
-- **Of 11 made by reading, 2 were.** Both were then confirmed by a search or a count. The other 9 could not be shown by a command, or were about wording; most still led to an edit.
-- **Among the reproduced ones:** evidence that did not run from a fresh clone; a proof that stayed green with its invariant broken; an error that did not name the broken file; a quote check that took a piece of a word for a quote; a stored response edited by hand and accepted silently; the same text given slightly different vectors in different versions, which would have added noise to the one comparison the project exists to show; a report that gave away reviewer answers it marked as withheld; a service that served a version its own report said had failed, once the verdict file was edited by hand.
-- **In #10, #11 and #12 the fixes came with new proofs**, named in those Review tables, and the classes of mistake are in [`LEARNINGS.md`](../LEARNINGS.md).
+- **Of 30 findings made by running the change, 26 were failures anyone could reproduce.** Of the other 4, three showed the code or the document doing what it said, and one was seen once and not confirmed; the owner reversed one of those rules anyway.
+- **Of 20 made by reading, 3 were.** Each was then confirmed by a search, a count or another pull request's table. The other 17 could not be shown by a command, or were about wording; most still led to an edit.
+- **Among the reproduced ones:** evidence that did not run from a fresh clone; a proof that stayed green with its invariant broken; an error that did not name the broken file; a quote check that took a piece of a word for a quote; a stored response edited by hand and accepted silently; the same text given slightly different vectors in different versions, which would have added noise to the one comparison the project exists to show; a report that gave away reviewer answers it marked as withheld; a service that served a version its own report said had failed, once the verdict file was edited by hand; a README that said six answers were out of the repository when one command found them in it; a page that called every returned game "related" when the evaluation's own rule did not; a start that served beside another program already holding the port.
+- **In #10, #11, #12, #14 and #16 the fixes came with new proofs**, named in those Review tables, and the classes of mistake are in [`LEARNINGS.md`](../LEARNINGS.md).
 
-**How far this goes.** It is a log of what review produced on four pull requests. No reading-only review was run beside it, the builders and the reviewers were models of one family, and 24 findings are few. It shows that the protocol found real faults here. It does not compare review methods.
+**How far this goes.** It is a log of what review produced on eight pull requests. No reading-only review was run beside it, the builders and the reviewers were models of one family, and 50 findings are few. It shows that the protocol found real faults here, and [where it fell short](#where-it-fell-short) shows one it did not find. It does not compare review methods.
