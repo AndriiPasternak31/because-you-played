@@ -1,0 +1,155 @@
+{
+  "question_id": "label.qfi-77843.adventure",
+  "kind": "label",
+  "model": "gpt-6-luna",
+  "request_sha256": "814eda51ab3effa446221db66fd475d43d88f7b4d690cc8a4f9ccbe2043ee528",
+  "attempts": [
+    {
+      "outcome": "ok",
+      "seconds": 3.184,
+      "http_status": 200,
+      "reason": null,
+      "usage": {
+        "input_tokens": 247,
+        "output_tokens": 98,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "body": {
+        "id": "resp_0373d1a8aff31f4f016aff65c9406887d2977f966f97f9058a",
+        "object": "response",
+        "created_at": 1795122633,
+        "status": "completed",
+        "access_programs": null,
+        "background": false,
+        "billing": {
+          "payer": "developer"
+        },
+        "completed_at": 1795122635,
+        "error": null,
+        "frequency_penalty": 0,
+        "image": {
+          "context_compression": "disabled"
+        },
+        "incomplete_details": null,
+        "input_transformations": [],
+        "instructions": null,
+        "max_output_tokens": 2000,
+        "max_tool_calls": null,
+        "model": "gpt-6-luna",
+        "moderation": null,
+        "output": [
+          {
+            "id": "rs_0373d1a8aff31f4f016aff65ca468887d2a01bd8401749b76d",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq_2XLTaMKOvKM31GeinbyOYNzIh3JGa7wDKMEzmOGpvGwLJEPkcHbcpFPdd4kGuQpZtVtQizfkyCTcmLzcW8ohWzLLyI2IzGl-z9QIwhsMW3x53_I8NIm1Y2XwfHQHL6snPwkWSSflT_AlKqoNwgUfj9xwR6GCRS73-PcsfxzrdrKlX8zA2S26ZlvggCBe2olqj0uIRDtGHw47MubvQ0VXeGDYxj6dJrN9T2xFCInefjM0dJshGoVFBHygbfAndvcilClp0eYWkrXyKxWSxTpjMOf3VQe6HZkpyHD0r9mmWqB2kG-sppQj1lumA7V2346MpTMStH3u21KFC-UBR2VVE7626gpvA66ifsGMxKTtHQioQD-bd-m34eKZxQfbG2J5T6W_fFx2BaDV3b6LMy6cCQMpFm_TUjmY0FCZ64brW-TI563FsbIkKRYcZwD_DCPN_rRZc1h3_OCOpY6Ft9znpGIHU-m_0hBzwVzLEPhTLhpk-zLHtADFyK0as8WfPku05NkkZzojnT1LuBbJjXCYARLV1_5R7x9WeVtsEAfwQcStjXtObDLIqI5vNv84x_IaFz0mRQI2KSH2yAfXMRFnJIrRRUiyo7YSgfqQ_nSLucs8ferDKOBmV626EFtlw5rMcZouKB31y85Ya5MgZE7Y9X5I_OVUnUzG9h98Ri6-WctDVYghRcLMkmLziuCvULKvGfEcMsoQJ8UDIfE9zjwjIwB_V4OQjR2GVJQ4dkrt6a4-YQrEKBHLc3MGCWdD0mDxH3PFDMHTlFNfF6R1GHvOrlex-lKm7R7Bk6q0q-CV8oOQlAm9WwmgaFfjX4tbFvGwQJmCetuChhr4J02knqYOJRjnygJ5XN5OHPLc9gFJjnVy2ccv9CYdx1BuoOVJVQiWb-uuWEF2Cq1-JCi-nc1YKMztgHOM6jaCI3jRLAsbMOzEs8QKBq4SxkRTa4SgoLm26S0AYp1BDsj0g9MPhLoLvTwVXrz6AjFCLrjUZjNW0llsyJLAvwzdmVKsXiRXXosfiUzi4tq-y2ok3L-W1DEignbjjhNleMiZ7SLtOYHYePDyhPp10yMVjFKdAFACS-eg9-1CJnzSX5HdgWYy_fzgnQyqQ3OLh_jRNIaqaEAGKCyUJi-tFr3PlBvmZisfRJ87QCTynCH_Wz-sqNsDW_0uTjIPaX_Va5-emT3gez6Dc_Een6BFPPKFYlQX0paEQjJhUzSfM-LCZmskuoLN3Nj4M3cbrRzPIYH6efxH3fheu5kunylJIHtVgmgmlDtQZ7l7k31GjhjVtyR9QehG_04L8n2CxCKpAGEbCu3zuLQtvOVFeDre_iMmdyp43OgPnDdVbuhZdI7NRvVUw33p5ypgt1jTuFwdlgkPWE6ZQyPSvsrB7m1uQtJJfZxw28Q6E_iEwZJTV_pZrvGxyx43ob2yJxPFTVJ9aBaro3-amJ_LWJB0oJ4DIYBzBGsb_zvYvmnp5tKGz89F9FFNUtc3E0CuQKtV_PLbaiIo0uxXl6uOGbUeVmWVGs3plMKRZ-kRUdHhWme74osWkd9OfaV1sJkyxcv_csMQy6txbpUZfMrxR1OCQ2y3Ufg2g-6zoOEzHJQSRVTE1sgn9E-6UXS4775_tZs07dsVeTOB6PDMkWeINepM_ILwU8admP57PxQjy6FVXF9LlzHbkc7n1Y6zxWPJRy_jcNn7YQwJHix5VYOgkwXLeQOhMi3tCiT6BDnmwbyc-4vDC9kPcxPeYJpmqds31zoy0J_gCp1eIX9-EVZS0SdvsofzZizwKtV_VyB3mIrLZVdu93QGjOpbR6Ql0rCD2LlZmNzEMi1EQgPmg6HXnWcoMHytACpi5jb4VKWYJ-deTZX_SYiJsesj4D12hw5da7pKitQtyGAb2fvqz7no0ae35oSfrm2g3vxryDTLE-niSqT2oiHe-TpyFjPrc_p7fTczfVoZnGZKCE33OZtwHHVpcRnNzsCBDeqT6YDNmntDcq7b1Qh0FAAw2vy0AFp2gPCEAERVNyr1fxufFRLXOwQE4nZhg-rUy64Yokk84t5dY6sKLVkxyuNPgu3ixfDwMw7cw7yN8Y9GagpAxEschg5GWq_7SUfWRuHFRPa2KwA__BKZL1_k6xi5SnWi8CUEbamLimS8Z0awHYzEvg0geKRrcmDDHE7FqoFNP6zXhgqXH5YS2myiFiwQyK9nVzpw_lk48tcYMHcFAG0jYTvYJvUCCA=",
+            "summary": []
+          },
+          {
+            "id": "msg_0373d1a8aff31f4f016aff65cad70c87d28e134b7f6f67e056",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"answer\":\"yes\",\"quote\":\"The demigod Thessa sails for Farynthis, past a many-headed serpent and a cliffside giant who hurls chunks of his own island at her ship.\"}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ],
+        "parallel_tool_calls": true,
+        "presence_penalty": 0,
+        "previous_response_id": null,
+        "prompt_cache_key": null,
+        "prompt_cache_retention": "24h",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "medium",
+          "mode": "standard",
+          "summary": null
+        },
+        "safety_identifier": null,
+        "service_tier": "default",
+        "store": false,
+        "temperature": 1,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "description": null,
+            "name": "label_answer",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unclear"
+                  ]
+                },
+                "quote": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer",
+                "quote"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          },
+          "verbosity": "medium"
+        },
+        "tool_choice": "auto",
+        "tool_usage": {
+          "image_gen": {
+            "input_tokens": 0,
+            "input_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "output_tokens": 0,
+            "output_tokens_details": {
+              "image_tokens": 0,
+              "text_tokens": 0
+            },
+            "total_tokens": 0
+          },
+          "web_search": {
+            "num_requests": 0
+          }
+        },
+        "tools": [],
+        "top_logprobs": 0,
+        "top_p": 0.98,
+        "truncation": "disabled",
+        "usage": {
+          "input_tokens": 247,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 98,
+          "output_tokens_details": {
+            "reasoning_tokens": 46
+          },
+          "total_tokens": 345
+        },
+        "user": null,
+        "metadata": {}
+      }
+    }
+  ]
+}

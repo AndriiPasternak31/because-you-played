@@ -1,0 +1,35 @@
+{
+  "answered_on": "2026-11-20",
+  "answers": [
+    {
+      "question_id": "label.qfi-77843.adventure",
+      "question_sha256": "cdee08b6096813349e7d1b27366fd736371ea66e7199f7e9b72deff09ac890c9",
+      "answer": "yes"
+    },
+    {
+      "question_id": "label.okk-71914.hold_and_respin",
+      "question_sha256": "e6e33e4f8e5111af9357e37510499d9070d3442c2db402ca932c79418e29d81c",
+      "answer": "yes"
+    },
+    {
+      "question_id": "label.okk-34630.expanding_wilds",
+      "question_sha256": "8eff88f4f03ad1bf6a0bf923023c0053f0483c2db68b5c18217e9aa29e12890f",
+      "answer": "yes"
+    },
+    {
+      "question_id": "label.drw-43988.animals",
+      "question_sha256": "a76c7587b96c3df31ff5437e8195bc92eec0149eb3ee78b27218319fc27c6f92",
+      "answer": "yes"
+    },
+    {
+      "question_id": "label.ulv-59335.east_asian",
+      "question_sha256": "efaf85ab59723f34c1dd5b97c87b7cb86f43b09d763fcf90b9d8ebf20a754bb0",
+      "answer": "no"
+    },
+    {
+      "question_id": "label.okk-61708.ocean_fishing",
+      "question_sha256": "a073287cd87754ce59653d8cb6114b01f38bfcc77a889bfa2c1e03ccf447c321",
+      "answer": "no"
+    }
+  ]
+}

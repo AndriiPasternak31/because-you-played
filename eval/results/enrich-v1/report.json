@@ -162,7 +162,7 @@
             "label": "Precision",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 0.997732,
+            "measured": 1,
             "applies": true,
             "pass": true
           },
@@ -232,7 +232,7 @@
             "label": "Precision",
             "direction": "min",
             "threshold": 0.85,
-            "measured": 0.997722,
+            "measured": 1,
             "applies": true,
             "pass": true
           },
@@ -327,7 +327,7 @@
     },
     "model_where_thin": {
       "enrichment": {
-        "precision": 0.997732,
+        "precision": 1,
         "recovery": 0.995475,
         "recovery_without_tags": 0.96,
         "missed_abstentions": 0,
@@ -340,7 +340,7 @@
     },
     "model_everywhere": {
       "enrichment": {
-        "precision": 0.997722,
+        "precision": 1,
         "recovery": 0.99095,
         "recovery_without_tags": 1,
         "missed_abstentions": 0,
@@ -980,14 +980,14 @@
         "of": 440,
         "rate": 1,
         "left_out": {
-          "unclear": 0,
+          "unclear": 1,
           "unknowable": 0,
-          "held_back": 1
+          "held_back": 0
         },
         "gate": {
           "count": 440,
-          "of": 441,
-          "rate": 0.997732
+          "of": 440,
+          "rate": 1
         }
       },
       "recovery": {
@@ -1042,14 +1042,14 @@
         "of": 438,
         "rate": 1,
         "left_out": {
-          "unclear": 0,
+          "unclear": 1,
           "unknowable": 0,
-          "held_back": 1
+          "held_back": 0
         },
         "gate": {
           "count": 438,
-          "of": 439,
-          "rate": 0.997722
+          "of": 438,
+          "rate": 1
         }
       },
       "recovery": {
@@ -1315,22 +1315,27 @@
         ],
         "title": "Demigods of Farynthis",
         "question_id": "label.qfi-77843.adventure",
-        "reviewer": "held_back_until_the_owner_has_answered"
+        "reviewer": {
+          "answer": "unclear",
+          "said": "yes",
+          "words": "The demigod Thessa sails for Farynthis, past a many-headed serpent and a cliffside giant who hurls chunks of his own island at her ship.",
+          "note": "yes_without_word_for_word_quote"
+        }
       }
     ]
   },
   "control": {
     "size": 20,
-    "held_back": 5,
-    "reported": 15,
-    "agreed": 13,
+    "held_back": 0,
+    "reported": 20,
+    "agreed": 18,
     "applies": {
-      "agreed": 7,
-      "of": 7
+      "agreed": 10,
+      "of": 10
     },
     "does_not_apply": {
-      "agreed": 6,
-      "of": 8
+      "agreed": 8,
+      "of": 10
     },
     "list": [
       {
@@ -1404,6 +1409,20 @@
         "agrees": true
       },
       {
+        "game_id": "okk-71914",
+        "field": "mechanics",
+        "label": "hold_and_respin",
+        "agreed": "applies",
+        "question_id": "label.okk-71914.hold_and_respin",
+        "reviewer": {
+          "answer": "yes",
+          "said": "yes",
+          "words": "lounge tokens stay locked as the open spots spin again",
+          "note": null
+        },
+        "agrees": true
+      },
+      {
         "game_id": "okk-34630",
         "field": "mechanics",
         "label": "paylines",
@@ -1418,6 +1437,20 @@
         "agrees": true
       },
       {
+        "game_id": "okk-34630",
+        "field": "mechanics",
+        "label": "expanding_wilds",
+        "agreed": "applies",
+        "question_id": "label.okk-34630.expanding_wilds",
+        "reviewer": {
+          "answer": "yes",
+          "said": "yes",
+          "words": "An expanding wild spreads its wings across an entire reel.",
+          "note": null
+        },
+        "agrees": true
+      },
+      {
         "game_id": "okk-34270",
         "field": "mechanics",
         "label": "sticky_wilds",
@@ -1427,6 +1460,48 @@
           "answer": "yes",
           "said": "yes",
           "words": "When sticky wilds land, they stay put on subsequent spins while the other positions spin around them.",
+          "note": null
+        },
+        "agrees": true
+      },
+      {
+        "game_id": "drw-43988",
+        "field": "themes",
+        "label": "animals",
+        "agreed": "applies",
+        "question_id": "label.drw-43988.animals",
+        "reviewer": {
+          "answer": "yes",
+          "said": "yes",
+          "words": "Ein Wolfsrudel folgt dem zugefrorenen Bach durch einen nordischen Fichtenwald. Die alte graue Wölfin geht voraus, während zwei Jungwölfe stehen bleiben und unter den Zweigen an den Spuren schnuppern.",
+          "note": null
+        },
+        "agrees": true
+      },
+      {
+        "game_id": "okk-61708",
+        "field": "themes",
+        "label": "ocean_fishing",
+        "agreed": "does_not_apply",
+        "question_id": "label.okk-61708.ocean_fishing",
+        "reviewer": {
+          "answer": "no",
+          "said": "no",
+          "words": "",
+          "note": null
+        },
+        "agrees": true
+      },
+      {
+        "game_id": "ulv-59335",
+        "field": "themes",
+        "label": "east_asian",
+        "agreed": "does_not_apply",
+        "question_id": "label.ulv-59335.east_asian",
+        "reviewer": {
+          "answer": "no",
+          "said": "no",
+          "words": "",
           "note": null
         },
         "agrees": true
@@ -1546,24 +1621,73 @@
     ]
   },
   "owner_check": {
-    "status": "outstanding",
-    "note": "Outstanding: the owner has not answered his 6 questions. Run \"npm run owner-check\". Until he has, the reviewer's answers to them are held back: they are not in the tree, not read by this evaluation, and not in any count here. The control is reported over the other labels, and precision's pass mark counts a held-back label as wrong, so the verdict does not depend on them. Not blind: before answering label.qfi-77843.adventure the owner had been told the reviewer's answer to it, so that answer is not a blind check. Only 1 disagreement(s) exist, so 5 of the questions are drawn from the control sample.",
+    "status": "answered",
+    "note": "Answered: on the 5 questions he answered blind, the reviewer matched the owner on 5. Not blind: before answering label.qfi-77843.adventure the owner had been told the reviewer's answer to it, so that answer is not a blind check (the reviewer did not match it); it is counted apart. Only 1 disagreement(s) exist, so 5 of the questions are drawn from the control sample.",
     "of": 6,
     "from_disagreements": 1,
     "from_control": 5,
-    "matched": null,
+    "matched": 5,
     "blind": {
       "of": 5,
-      "matched": null
+      "matched": 5
     },
     "not_blind": {
       "of": 1,
-      "matched": null,
+      "matched": 0,
       "question_ids": [
         "label.qfi-77843.adventure"
       ]
     },
-    "questions": []
+    "questions": [
+      {
+        "question_id": "label.qfi-77843.adventure",
+        "source": "disagreement",
+        "blind": false,
+        "owner": "yes",
+        "reviewer": "unclear",
+        "matched": false
+      },
+      {
+        "question_id": "label.okk-71914.hold_and_respin",
+        "source": "control",
+        "blind": true,
+        "owner": "yes",
+        "reviewer": "yes",
+        "matched": true
+      },
+      {
+        "question_id": "label.okk-34630.expanding_wilds",
+        "source": "control",
+        "blind": true,
+        "owner": "yes",
+        "reviewer": "yes",
+        "matched": true
+      },
+      {
+        "question_id": "label.drw-43988.animals",
+        "source": "control",
+        "blind": true,
+        "owner": "yes",
+        "reviewer": "yes",
+        "matched": true
+      },
+      {
+        "question_id": "label.ulv-59335.east_asian",
+        "source": "control",
+        "blind": true,
+        "owner": "no",
+        "reviewer": "no",
+        "matched": true
+      },
+      {
+        "question_id": "label.okk-61708.ocean_fishing",
+        "source": "control",
+        "blind": true,
+        "owner": "no",
+        "reviewer": "no",
+        "matched": true
+      }
+    ]
   },
   "matching": {
     "raw": {
@@ -5335,18 +5459,23 @@
   "reviewer": {
     "model": "gpt-6-luna",
     "questions": 26,
-    "held_back": 6,
-    "answered": 20,
+    "held_back": 0,
+    "answered": 26,
     "by_kind": {
-      "label": 15,
+      "label": 21,
       "recommendation": 5
     },
     "answers": {
-      "yes": 13,
-      "no": 6,
-      "unclear": 1
+      "yes": 16,
+      "no": 8,
+      "unclear": 2
     },
     "unclear": [
+      {
+        "question_id": "label.qfi-77843.adventure",
+        "said": "yes",
+        "note": "yes_without_word_for_word_quote"
+      },
       {
         "question_id": "label.okk-43364.mystery_symbols",
         "said": "yes",
@@ -5378,7 +5507,12 @@
               "method": "model"
             }
           ],
-          "reviewer": "held_back_until_the_owner_has_answered"
+          "reviewer": {
+            "answer": "unclear",
+            "said": "yes",
+            "words": "The demigod Thessa sails for Farynthis, past a many-headed serpent and a cliffside giant who hurls chunks of his own island at her ship.",
+            "note": "yes_without_word_for_word_quote"
+          }
         }
       },
       {

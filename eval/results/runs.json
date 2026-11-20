@@ -375,6 +375,131 @@
           "estimated_usd": 0.390763
         }
       }
+    },
+    {
+      "key": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a|2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc|enrich-v1|answered",
+      "index_hash": "250c3ac857843e89e3f3f39208003170b2304642d74046e0cae8d1784a6a140a",
+      "prompt_version": "enrich-v1",
+      "thresholds_sha256": "2854a71d185d4fd2a57b420ed5c824bd3fdc0c91fdab021dfe6ec7930a0b38dc",
+      "owner_check": "answered",
+      "recorded": "by npm run eval, from the index in this tree",
+      "ships": "model_where_thin",
+      "reason": "model_where_thin ships: it is the simplest version that passes its marks and is within 0.02 of the best passing pairwise accuracy (model_where_thin, 0.805002). Not passing: table (enrichment.min_recovery_without_tags).",
+      "disagreements": 1,
+      "versions": {
+        "raw": {
+          "marks_failed": [],
+          "labels_asserted": null,
+          "precision": null,
+          "recovery": null,
+          "recovery_without_tags": null,
+          "missed_abstentions": null,
+          "invalid_quotes": null,
+          "pairwise_pooled": {
+            "count": 64217,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.785914,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000155
+        },
+        "table": {
+          "marks_failed": [
+            "enrichment.min_recovery_without_tags"
+          ],
+          "labels_asserted": 380,
+          "precision": {
+            "count": 380,
+            "of": 380,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 380,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 0,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 64705,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.793574,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 0,
+          "estimated_usd": 0.000148
+        },
+        "model_where_thin": {
+          "marks_failed": [],
+          "labels_asserted": 441,
+          "precision": {
+            "count": 440,
+            "of": 440,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 440,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 48,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 68013,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.827645,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 24
+          },
+          "model_calls": 31,
+          "estimated_usd": 0.115985
+        },
+        "model_everywhere": {
+          "marks_failed": [],
+          "labels_asserted": 439,
+          "precision": {
+            "count": 438,
+            "of": 438,
+            "held_back": 0
+          },
+          "recovery": {
+            "count": 438,
+            "of": 442
+          },
+          "recovery_without_tags": {
+            "count": 50,
+            "of": 50
+          },
+          "missed_abstentions": 0,
+          "invalid_quotes": 0,
+          "pairwise_pooled": {
+            "count": 67663,
+            "of": 84488
+          },
+          "pairwise_mean_per_game": 0.821174,
+          "wrongly_shown": {
+            "count": 0,
+            "of_shown": 25
+          },
+          "model_calls": 100,
+          "estimated_usd": 0.390763
+        }
+      }
     }
   ]
 }

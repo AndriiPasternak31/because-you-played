@@ -5,7 +5,7 @@
   "prompt_version": "enrich-v1",
   "report": {
     "path": "enrich-v1/report.json",
-    "sha256": "4738154b060bddb90c156d382b5ed1d9e8a48038a4f71270aa681f9d63de8279"
+    "sha256": "c82eb3053bfafc72372a4668f1510b48f0e4bb10506763273e7013bf04356353"
   },
   "serving": {
     "floor_rule": "floor-p90-v1",
