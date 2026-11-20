@@ -73,6 +73,16 @@ A verdict is written by `npm run eval` and never by hand. One edited to ship a v
 
 Offerings are read at the start. The verdict is not bound to them, so a game withdrawn there is gone at the next start with no new evaluation.
 
+Three more things stop a start, and none of them is the release gate:
+
+- **A Node.js older than `engines` in `package.json` allows.** Every npm script runs `tools/check-node.cjs` first, and so does `npm install`: `start` in its own line, the others through their `pre...` lines. It names the version found, the version needed and how to get it. Without it the failure is `Unknown file extension ".ts"`.
+- **A taken port.** The command says which port, and how to choose another.
+- **An install that failed**, for `npm start` only: it runs `npm ci` when a declared package is missing from `node_modules` or is not the version the lockfile names, and starts nothing if that fails.
+
+Once it listens, the command prints the address to open and one request that returns results. The request is found by asking the loaded index, so it cannot go stale. `npm start` is `npm run serve` with the install in front: the same code and the same gate.
+
+The container (`Dockerfile`, `compose.yaml`) is a second way to run the same command where there is no Node.js 24. It is for running locally and publishes the port on the loopback address only.
+
 ## The evaluation
 
 `npm run eval` scores the committed index against the answer key in `data/generation/`, replays the reviewer's stored answers, applies `eval/thresholds.json`, and writes three files:
@@ -188,7 +198,11 @@ One seed, `evaluation-v1`, drives every draw.
 | `src/service/verdict.ts` | The verdict's shape and its reader |
 | `src/service/state.ts` | Loading everything, and every refusal to start |
 | `src/service/http.ts` | `route`: a method and a URL to a reply. The socket is ten lines around it |
-| `src/service/serve.ts` | The command |
+| `src/service/serve.ts` | The command: the port, what it prints once it listens |
+| `tools/start.ts` | `npm start`: install when needed, then become the service |
+| `tools/check-node.cjs` | The Node.js version check every npm script runs first. Plain ES5, so the versions it turns away can load it |
+| `tools/old-node-check.sh` | Runs every npm script on an older Node.js, in a container |
+| `Dockerfile`, `compose.yaml`, `.dockerignore` | The service in a container, for a machine without Node.js 24 |
 | `eval/truth.ts` | The answer key, and the grade of a pair of games |
 | `eval/measures.ts` | The enrichment and matching measures, and the word-for-word check |
 | `eval/gate.ts` | The pass marks applied to the measures; the ship rule |
@@ -198,14 +212,19 @@ One seed, `evaluation-v1`, drives every draw.
 | `eval/owner-check.ts` | The owner's six questions at a terminal |
 | `eval/reviewer/answers/` | Every stored reviewer attempt: outcome, tokens, the body as received |
 | `eval/reviewer/held-back.json` | The six answers kept out of the tree for the owner's check: which, why, their cost as one total, the commit that stored them, and what the owner was told beforehand |
-| `src/service/service.test.ts`, `eval/eval.test.ts` | The tests. Each name starts with the invariant it proves |
+| `src/service/service.test.ts`, `src/service/start.test.ts`, `eval/eval.test.ts` | The tests. Each name starts with the invariant it proves |
 
 ## Commands
 
 ```sh
+npm start                    # install if needed, then serve: http://127.0.0.1:8787, console at /
+npm start -- --port 9000
+docker compose up --build    # the same with Docker and no Node.js 24; PORT=9000 in front for another port
+docker compose run --rm app npm test    # the tests in the container; npm run typecheck and npm run eval likewise
 npm run eval                 # score, write the report and the verdict: no key, no network
-npm run serve                # http://127.0.0.1:8787, console at /
+npm run serve                # the service alone, with no install step
 npm run serve -- --port 9000
+tools/old-node-check.sh      # every npm script on Node.js 20, in a container: each has to stop with the reason
 npm run owner-check          # the owner, at a terminal: six questions, written to eval/refs/owner-check.json
 OPENAI_API_KEY=... npm run eval -- --live    # ask the reviewer any question with no stored answer; stops before $1.00 in total
 npm test -- "SV-1:"          # the tests of one invariant
@@ -231,6 +250,11 @@ The report then counts the reviewer's matches on the five blind answers, and rep
 | SV-6 | A game withdrawn in the offerings file is gone after a restart, and other results are still served. A malformed offerings file stops the start | `npm test -- "SV-6:"` | `aeffa05` |
 | SV-7 | A trace carries the record, what each step added with its quote, what each filter removed, the scores, the floor, the outcome and per-stage timings | `npm test -- "SV-7:"` | `aeffa05` |
 | SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered: every other method, HEAD included, is a 405 | `npm test -- "SV-8:"` | `aeffa05` |
+| SV-9 | A taken port stops the start: exit 1, the port named as taken, the way to choose another, and no stack trace | `npm test -- "SV-9:"` | - |
+| SV-10 | Once it listens, the command prints the address to open and one request to try. The address is the one bound, the page answers there, and the request returns results | `npm test -- "SV-10:"` | - |
+| SV-11 | The version check names the version found, the version needed and how to get it, compares versions as numbers, and is silent on a version that will do | `npm test -- "SV-11:"` | - |
+| SV-12 | `npm start` runs `npm ci` when a declared package is missing or is not the locked version. When the install fails, or leaves the package missing, it says so and starts nothing | `npm test -- "SV-12:"` | - |
+| SV-13 | On a Node.js older than `engines` allows, every npm script and `npm install` exit non-zero and name the version found | `tools/old-node-check.sh` | - |
 | EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report, verdict and record of runs byte for byte, adds its run to that record without dropping another, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `aeffa05` |
 | EV-2 | Every pass mark is read from the owner's file. None is defined in code, and a file the gate does not fully understand is refused | `npm test -- "EV-2:"` | `aeffa05` |
 | EV-3 | The ship rule picks the simplest passing version within the margin of the best passing one, and nothing when none passes | `npm test -- "EV-3:"` | `aeffa05` |
@@ -248,6 +272,10 @@ What each proof does:
 - **SV-4** finds one request for each of the four reasons by asking, checks every request for floor, order and counts, and recomputes the floor from all pairs.
 - **SV-5** breaks a scratch copy ten ways: no verdict, unreadable, malformed, failed, failed but still naming a version, contradicting itself, another index, other pass marks, another floor, another report. It then edits the verdict by hand four ways: to ship the version that failed and mark it passed, to ship a passing version the rule did not choose, to mark the failed version as passing, and the first of these with the report edited to agree and its hash brought up to date. It breaks the index two ways and runs the command to see exit 1 and the reason.
 - **SV-6** withdraws one game in a scratch offerings file, loads again, and asks every game on that brand.
+- **SV-9** holds a port and runs `src/service/serve.ts` and `tools/start.ts` on it.
+- **SV-10** starts each of the two on a free port, reads the two addresses from what it printed, and requests both.
+- **SV-12** runs a copy of `tools/start.ts` with nothing installed and a stand-in for npm: one that fails, and one that succeeds and installs nothing. The real install is not in the tests, because it needs the network. It was run from a fresh clone.
+- **SV-13** needs Docker and the network. It reads the script names from `package.json`, so a script added later without its `pre...` line fails it. It exits 2, not 0, when Docker is absent or the image's Node.js is one the project accepts.
 - **EV-1** runs the command twice with no key and compares the report and the verdict with the committed files. It removes the stored answers, the answer key and the pass marks in turn, and makes one stored answer stale. It then gives every text of a scratch index the vector of another text, so the index stays valid and its matching is noise, re-seals it, runs the command on it to exit 1, and starts the service on the verdict that run wrote, which refuses.
 - **EV-2** moves each of the seven marks, one at a time, just past what was measured, in a copy of the file, and expects exactly that mark to fail.
 - **EV-4** grades seven constructed pairs both ways round, scores a five-game toy index whose answer is known, then changes the real index in memory four ways: an invented quote, a quote cut from inside a word, a label on a field that should be silent, every label removed. It recounts recovery by hand.
@@ -271,4 +299,8 @@ Two proofs were also run against the code as it was before the fix they prove, a
 - **"Has a description" includes filler.** The index does not detect boilerplate, so the split by record condition is blunter than the plan's wording.
 - **The reviewer's live path** has run once, for the 26 stored answers, with no refusal, cut-short answer or API error. Their handling is proved on constructed responses.
 - **Costs are estimates:** reported tokens at list price, read on the date in the code.
-- **Nothing here was run on Windows or on a Node version other than 24.**
+- **Not run on Windows.** On macOS it was run on Node 24 only. In Linux containers the type-check, the tests and the evaluation were run on Node 24 and on Node 26.
+- **In the container a taken port is reported by Docker, in Docker's words** (`address already in use`, with the port), not by the service. The way to choose another is in the README and in `compose.yaml`.
+- **`npm start` compares only the packages `package.json` declares** with the lockfile, not everything they depend on. A `node_modules` damaged below that level is not noticed.
+- **The version check reads `engines` as `>=N`** and refuses any other form of range, loudly.
+- **With npm's `ignore-scripts` setting on, npm skips `pre...` lines**, so only `npm start` and the container still check the version. The other commands then fail on an older Node.js as they did before, with `Unknown file extension ".ts"`.

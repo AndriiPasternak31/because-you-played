@@ -1,5 +1,11 @@
 # because-you-played
 
+```sh
+npm start    # the one command, from a fresh clone: installs, starts the service, prints the address to open and a request to try
+```
+
+It needs Node.js 24 or newer and no API key. With Docker and no Node.js 24, `docker compose up --build` does the same. An older Node.js or a taken port stops it with the reason: see [Run it](#1-run-it-no-key).
+
 "Because you played X, you might like…": a related-games recommender over a fictional catalogue of 100 slot games, built as a take-home engineering assessment. A model enriches thin catalogue records offline, an evaluation decides whether the result may be served, and the service answers from memory with no model call.
 
 **After `npm install` it runs with no API key and no network.** The model responses it needs are stored in the repository, and the evaluation and the service replay them. Node 24, no build step.
@@ -32,6 +38,14 @@ flowchart LR
 Three separate things. The first two need no key.
 
 ### 1. Run it (no key)
+
+The short way is `npm start`, or `docker compose up --build` where there is Docker and no Node.js 24. Each ends by printing the address to open and a request to try.
+
+- **An older Node.js** stops every command here, the install included, and says which version it found, which it needs and how to get it.
+- **A taken port** stops the start and says so. To choose another: `npm start -- --port 9000`, or `PORT=9000 docker compose up --build`.
+- **With Docker alone**, the checks run in the container too: `docker compose run --rm app npm test`, and `npm run typecheck` and `npm run eval` the same way.
+
+Each step on its own:
 
 ```sh
 git clone https://github.com/AndriiPasternak31/because-you-played.git
