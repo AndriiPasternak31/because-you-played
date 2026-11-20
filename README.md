@@ -212,6 +212,8 @@ The decision record gives the reasons and the triggers.
 | Cloud deployment or infrastructure code | Out of scope for a local prototype. The decision record says how it would be deployed |
 | Hand-labelled reference data | Replaced by the generator's plan with a reviewer model and the owner's six-question check |
 
+**One thing was not left out that could have been: the page.** The assignment asks for no polished interface and does not assess one. The page still took three rejected versions and, in the end, a framework. What that cost is under [How the time was spent](#how-the-time-was-spent).
+
 ## Metrics to watch in production
 
 | Metric | Why | Alert |
@@ -233,15 +235,17 @@ None of this monitoring is built.
 |---|---|---|
 | Preparation, before the build | Not timed | Research into how real catalogues look, the product spec, the evaluation design and the agents' working rules. A second model from another vendor challenged the plan. Counted apart from the build and disclosed here. The rules were finished inside the first sitting: their commit is from 00:27 GMT |
 | The build: the owner's attention | About 4 hours | His own figure, inside the two sittings below. They are longer on the clock, because agents ran while he was away from the keyboard or waiting on them |
-| The build: the two sittings, on the clock | About 1 hour 40 minutes, then more than 3 hours 45 minutes | From the repository's timestamps. The first ran from 23:41 GMT on 18 November 2026 to 01:21 on the 19th. The second began at 19:28 GMT on 19 November and was still open after 23:15, when this was written |
-| The build: agents' running time | Roughly 7 to 8 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
+| The build: the two sittings, on the clock | About 1 hour 40 minutes, then about 5 hours 30 minutes | From the repository's timestamps. The first ran from 23:41 GMT on 18 November 2026 to 01:21 on the 19th. The second ran from 19:28 GMT on 19 November to the merge of the page at 00:56 on the 20th, with this write-up after it |
+| The build: agents' running time | Roughly 10 to 12 hours summed over agents, often two or three at once | Estimated from when each brief was sent and when its work landed in a pull request. Not measured |
 
 | Sitting | What was built in it |
 |---|---|
 | First | The catalogue: a 14-game pilot, then all 100. The architecture, workflow and interface documents. The first two reviews |
-| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the page. This write-up |
+| Second | The evaluation plan and pass marks, committed before any result. The pipeline. The service, the evaluation and the page. The page again, twice (#14, #17). The one-command run (#16). This write-up |
 
 The owner's part was briefing agents, reading what came back, and the decisions only he makes: cutting the rules, the evaluation plan and pass marks, reversing a pipeline rule, merging, and judging the page. Agents wrote the code, the tests and the drafts of the documents, this one included.
+
+**The page cost the most for what the assignment asks of it.** From the first restyle to the merge of the third version was about three hours on the clock, beside other work, and it ended with React, two interface libraries and a committed bundle. It was done because the page is where a reader sees what the system did, and the walkthrough is to be recorded from it.
 
 ## AI tools
 
@@ -270,7 +274,9 @@ The distance was measured in a browser, in a window 1280 by 900, on four request
 
 **How the cause was found.** The owner did not ask for a better-looking page. He asked a separate agent to find the hole in the rules, with evidence and not opinion, and a model from another vendor to criticise the proposed new layout ([the prompt and its answer](docs/process/second-opinion-page-layout.md)). That model's sharpest point: a quote proves that a label belongs to a game. It does not explain why another game ranks first, so the page must not suggest that it does.
 
-**The fix.** **To be added when #14 is merged.**
+**It was rejected twice more.** A reordered page put the result first, and he found it still overloaded; that pull request, #14, was closed unmerged. Rebuilt as one page of four sections in #17, it was "still overloaded and messy", and then half the window stood empty, before the version he merged. The hole was the same each time: how much is on the screen was treated as taste.
+
+**The fix.** One sentence added to the review protocol: "A criterion about what a reader sees (on one screen, first, without help) is behaviour, not look: check it in a browser at a fixed window size." Behind it, a browser check that fails unless the top panel, one question and the sentence that answers it are on screen on arrival, without scrolling, at four window sizes (`node tools/console-check.ts --first-screens`). And the guideline now asks for one question per section, with the evidence behind a named button.
 
 What this says about the rules themselves is in [the starter-kit note](docs/starter-kit.md#where-it-fell-short).
 
@@ -305,7 +311,7 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 |---|---|
 | `data/` | The raw catalogue, availability, stored model responses, the index. [`data/README.md`](data/README.md) |
 | `src/dataset/`, `src/pipeline/` | The generator and the offline pipeline |
-| `src/service/`, `src/console/` | The service and its page. `src/console/dist/` is the page as built and served, with the notices of the packages inside it |
+| `src/service/`, `src/console/` | The service and its page, which the code calls the console. `src/console/dist/` is the page as built and served, with the notices of the packages inside it |
 | `eval/` | The evaluation, the owner's plan and pass marks, the reviewer's stored answers, the results |
 | `docs/` | Architecture, the decision record, one file per part with its invariants and proofs, the process material |
 

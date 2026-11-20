@@ -33,4 +33,4 @@ The screenshot is not included. It showed the page as #12 merged it, for one gam
 
 ## What was done with it
 
-Point 3 is the one the README quotes: a quote shows that a label belongs to a game, and does not explain why another game ranks first. What the page became is in [`docs/features/interface.md`](../features/interface.md) and its pull request, #14. This file makes no claim about which of the seven points were taken.
+Point 3 is the one the README quotes: a quote shows that a label belongs to a game, and does not explain why another game ranks first. What the page became is in [`docs/features/interface.md`](../features/interface.md) and the pull request that built it, #17. #14, an earlier attempt, was closed unmerged. This file makes no claim about which of the seven points were taken.
