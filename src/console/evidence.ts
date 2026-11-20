@@ -357,14 +357,36 @@ function reviewerSays(reviewer: Shown | null | undefined): ReactNode {
   return h(Fragment, null, "reviewer: ", label("neutral", said.answer), said.note ? h(Fragment, null, " ", small(`(${words(said.note)}: it said ${said.said})`)) : null, said.words ? h(Fragment, null, " ", h("span", { className: "quote small" }, `“${said.words}”`)) : null);
 }
 
+/** What the owner's check came to once he has answered, and how little it can carry. Every number is the report's. */
+export function ownerCheckReading(check: Evaluation["report"]["owner_check"]): string {
+  const apart =
+    check.not_blind.of === 0
+      ? ""
+      : ` Counted apart, because he had been told the reviewer's answer before he answered: ${check.not_blind.of}, of which the reviewer matched ${check.not_blind.matched}.`;
+  const fromControl = check.from_control === 0 ? "" : `, ${check.from_control} of them from the control sample, where the answer key and the pipeline already agreed`;
+  return (
+    `Of the ${check.blind.of} answers the owner gave blind, the reviewer matched ${check.blind.matched}.${apart} ` +
+    `This is thin evidence: ${check.of} questions${fromControl}. It could have caught a reviewer that misreads plain cases; it cannot show that the reviewer is right where a label is disputed. ` +
+    "Until he answered, the reviewer's answers to these questions were kept out of the working tree but stayed in the repository's history, so that his answers were blind rests on his not having looked."
+  );
+}
+
 function Measures({ evaluation }: { evaluation: Evaluation }): ReactNode {
   const { report, verdict } = evaluation;
   const labelled = Object.keys(report.enrichment) as (keyof typeof report.enrichment)[];
   type Row = (typeof report.enrichment)[keyof typeof report.enrichment];
   const of = (value: { count: number; of: number }): ReactNode => h(Fragment, null, count(value.count), " ", small(`of ${count(value.of)}`));
   const precision = (row: Row): ReactNode => {
-    const held = row.precision.left_out.held_back;
-    return held === 0 ? share(row.precision) : h(Fragment, null, share(row.precision), small(`${held} held back; counted as wrong for the pass mark: ${row.precision.gate.count} of ${row.precision.gate.of}`));
+    const { held_back: held, unclear, unknowable } = row.precision.left_out;
+    // Every asserted label is accounted for: the ones precision leaves out are said beside it.
+    const leftOut = [unclear === 0 ? null : `${unclear} the reviewer left unclear`, unknowable === 0 ? null : `${unknowable} the answer key calls unknowable`].filter((part) => part !== null);
+    return h(
+      Fragment,
+      null,
+      share(row.precision),
+      leftOut.length === 0 ? null : small(`left out: ${leftOut.join(", ")}`),
+      held === 0 ? null : small(`${held} held back; counted as wrong for the pass mark: ${row.precision.gate.count} of ${row.precision.gate.of}`),
+    );
   };
   const measures: [string, string, (row: Row) => ReactNode][] = [
     ["Precision", "Of the labels asserted, the share that are correct", precision],
@@ -445,6 +467,7 @@ function Measures({ evaluation }: { evaluation: Evaluation }): ReactNode {
           ),
           "The owner's check",
         ),
+    report.owner_check.questions.length === 0 ? null : h("p", { className: "small", "data-owner-check": "" }, ownerCheckReading(report.owner_check)),
     report.reviewer.unclear.length === 0 ? null : h("p", { className: "small" }, "Recorded as unclear: ", report.reviewer.unclear.map((entry, index) => h(Fragment, { key: index }, index === 0 ? "" : ", ", mono(entry.question_id), ` (${words(entry.note ?? "it said unclear")})`)), "."),
   );
 }

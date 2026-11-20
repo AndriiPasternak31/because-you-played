@@ -10,6 +10,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { createElement as h, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { analyse, finish, questionsToAnswer, type Report } from "../../eval/evaluate.ts";
+import { ownerFile, ownerQuestions } from "../../eval/owner-check.ts";
+import { obtainAnswer, type ReviewerAnswer } from "../../eval/reviewer.ts";
+import { DEFAULT_EVAL_PATHS, loadInputs } from "../../eval/run.ts";
 import { buildConsole, drift } from "../../tools/build-console.ts";
 import { MODEL as CATALOGUE_TEXT_MODEL } from "../dataset/truth-writer.ts";
 import { ENRICHMENT_MODEL } from "../pipeline/enrich.ts";
@@ -748,7 +752,7 @@ test("UI-19: a brand, a version, a section or a parameter the page does not know
   assert.equal(render(h(AddressProblems, { problems: [] })), "");
 });
 
-test("UI-20: the split by record condition is not offered as the model's work, the limits are the plan's, and the held-back answers are described as they are", () => {
+test("UI-20: the split by record condition is not offered as the model's work, the limits are the plan's, and the owner's check is described as it is, outstanding and answered", async () => {
   const { report } = evaluation;
   const numbers = text(part("numbers"));
   assert.ok(!/where the model helps/i.test(numbers), "the split is still offered as where the model helps");
@@ -763,15 +767,60 @@ test("UI-20: the split by record condition is not offered as the model's work, t
   assert.equal(report.models.enrichment, ENRICHMENT_MODEL);
   assert.ok(!/answer key[^.]*one vendor/i.test(LIMITS));
   assert.ok(text(part("limits")).includes(LIMITS) && text(evidence("measures", null)).includes(PARTS.measures.limits));
-  // While the owner's check is outstanding the page says what is held back and where it is, and shows none of it.
-  const measures = part("enrichment");
-  if (report.owner_check.status === "outstanding") {
-    assert.ok(measures.includes("data-held-back") && text(measures).includes(`${report.reviewer.held_back} of the reviewer's ${report.reviewer.questions} answers`));
-    assert.ok(text(measures).includes("kept out of the working tree and out of every count on this page"));
-    assert.ok(text(measures).includes("They are not out of reach: the repository's history still holds them"));
-    assert.ok(!/not in the repository/i.test(text(measures)), "the page still says the answers are not in the repository");
-    assert.ok(!measures.includes("The owner&#x27;s check</caption>"));
-    // It points a reader at no commit and no file that holds them.
-    assert.ok(!/held-back\.json|[0-9a-f]{7,40}\b.*held/i.test(text(measures)));
-  }
+  // The owner's check, in each of its two states. Each report is built here, so that neither proof depends on the state the served one is in.
+  const outstandingInputs = loadInputs({ ...DEFAULT_EVAL_PATHS, ownerAnswers: null });
+  const outstanding = analyse(outstandingInputs);
+  const stored = new Map<string, ReviewerAnswer>();
+  for (const question of questionsToAnswer(outstanding)) stored.set(question.id, await obtainAnswer(question, { dir: DEFAULT_EVAL_PATHS.answersDir, live: null, log: () => {} }));
+  const drawn = (built: Report): { enrichment: string; verdict: string } => ({ enrichment: part("enrichment", { ...evaluation, report: built }), verdict: text(part("verdict", { ...evaluation, report: built })) });
+
+  // Outstanding: the page says what is held back and where it is, and shows none of it.
+  const open = finish(outstanding, (question) => stored.get(question.id) as ReviewerAnswer).report;
+  assert.equal(open.owner_check.status, "outstanding");
+  const before = drawn(open);
+  assert.ok(before.enrichment.includes("data-held-back") && text(before.enrichment).includes(`${open.reviewer.held_back} of the reviewer's ${open.reviewer.questions} answers`));
+  assert.ok(text(before.enrichment).includes("kept out of the working tree and out of every count on this page"));
+  assert.ok(text(before.enrichment).includes("They are not out of reach: the repository's history still holds them"));
+  assert.ok(!/not in the repository/i.test(text(before.enrichment)), "the page still says the answers are not in the repository");
+  assert.ok(!before.enrichment.includes("The owner&#x27;s check</caption>") && !before.enrichment.includes("data-owner-check"));
+  // It points a reader at no commit and no file that holds them.
+  assert.ok(!/held-back\.json|[0-9a-f]{7,40}\b.*held/i.test(text(before.enrichment)));
+  assert.ok(open.enrichment.model_where_thin.precision.left_out.held_back > 0 && text(before.enrichment).includes("held back; counted as wrong for the pass mark"));
+  assert.ok(before.verdict.includes("owner's check outstanding") && before.verdict.includes(open.owner_check.note));
+
+  // Answered: nothing is said to be held back. Every question is drawn with both answers, whether they match and whether his was blind;
+  // the counts are the report's; and the page says how little a check of this size carries.
+  const answeredPage = (built: Report): void => {
+    const check = built.owner_check;
+    assert.equal(check.status, "answered");
+    const after = drawn(built);
+    assert.ok(!after.enrichment.includes("data-held-back") && !/held back/.test(text(after.enrichment)), "the page still says something is held back");
+    const table = after.enrichment.slice(after.enrichment.indexOf("The owner&#x27;s check</caption>"));
+    const rows = [...(table.slice(0, table.indexOf("</table>")).match(/<tr>.*?<\/tr>/g) ?? [])].slice(1).map((row) => text(row).trim());
+    assert.deepEqual(
+      rows,
+      check.questions.map((entry) => `${entry.question_id} ${entry.source} ${entry.owner} ${entry.reviewer} ${entry.matched ? "match" : "differs"} ${entry.blind ? "yes" : "no: told the reviewer's answer first"}`),
+    );
+    const reading = text(after.enrichment.slice(after.enrichment.indexOf("data-owner-check")));
+    assert.ok(reading.includes(`Of the ${check.blind.of} answers the owner gave blind, the reviewer matched ${check.blind.matched}.`));
+    if (check.not_blind.of > 0) assert.ok(reading.includes(`Counted apart, because he had been told the reviewer's answer before he answered: ${check.not_blind.of}, of which the reviewer matched ${check.not_blind.matched}.`));
+    assert.ok(reading.includes(`This is thin evidence: ${check.of} questions, ${check.from_control} of them from the control sample`) && reading.includes("it cannot show that the reviewer is right where a label is disputed"));
+    assert.ok(reading.includes("rests on his not having looked"));
+    for (const version of ["model_where_thin", "model_everywhere"] as const) {
+      const leftOut = built.enrichment[version].precision.left_out;
+      if (leftOut.unclear > 0) assert.ok(text(after.enrichment).includes(`left out: ${leftOut.unclear} the reviewer left unclear`), "a label left out of precision is not accounted for beside it");
+    }
+    assert.ok(after.verdict.includes("owner's check answered") && after.verdict.includes(check.note));
+  };
+  // A constructed check: the owner says no to all six, and the reviewer no to the first three drawn, the one he had been told among them.
+  // So some rows match and some differ, and the blind count is not the count over all six.
+  const six = ownerQuestions(outstanding).map((entry) => entry.question.id);
+  const answered = analyse({ ...outstandingInputs, ownerAnswers: ownerFile(outstanding, six.map(() => "no"), "2026-11-20") });
+  const say = (word: "yes" | "no"): ReviewerAnswer => ({ answer: word, said: word, words: word === "yes" ? "some words" : "", note: null });
+  const constructed = finish(answered, (question) => (six.includes(question.id) ? say(six.indexOf(question.id) < 3 ? "no" : "yes") : (stored.get(question.id) as ReviewerAnswer))).report;
+  assert.deepEqual([constructed.owner_check.matched, constructed.owner_check.blind.matched, constructed.owner_check.not_blind.matched], [3, 2, 1]);
+  assert.ok(constructed.owner_check.not_blind.of === 1 && constructed.owner_check.from_control > 0);
+  answeredPage(constructed);
+  // And the report the service serves from the committed tree, which is in the answered state.
+  answeredPage(report);
 });

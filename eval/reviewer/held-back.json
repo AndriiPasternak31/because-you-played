@@ -1,5 +1,5 @@
 {
-  "why": "Six of the reviewer's questions are the owner's check. The plan has him answer them without sight of the reviewer's answers, so the reviewer's answers to those six are kept out of this tree, and out of everything the evaluation writes, until his answers exist.",
+  "why": "Six of the reviewer's questions are the owner's check. The plan has him answer them without sight of the reviewer's answers, so from the day they were held back until his answers existed, the reviewer's answers to those six were kept out of this tree and out of everything the evaluation wrote. This file is the record of that, and of their return.",
   "asked_on": "2026-11-19",
   "answers_stored_in_commit": "ead8bb4e0a4baa145f784507b6fcd27db12c3498",
   "question_ids": [
@@ -11,11 +11,15 @@
     "label.ulv-59335.east_asian"
   ],
   "spend": { "calls": 6, "input_tokens": 1400, "output_tokens": 280, "usd": 0.00028, "seconds": 11.735 },
+  "brought_back": {
+    "on": "2026-11-20",
+    "how": "The owner answered his six questions with npm run owner-check, then restored the six files from the commit named above, unchanged, into eval/reviewer/answers/. They are in the tree again and are read and counted like every other answer."
+  },
   "disclosed_to_the_owner_before_he_answered": [
     {
       "question_id": "label.qfi-77843.adventure",
       "what": "On 2026-11-19, before these answers were held back, the owner was told the reviewer's answer to this question in conversation. His answer to it is not blind."
     }
   ],
-  "also_said_before_they_were_held_back": "The owner was also told how many of the twenty control labels the reviewer agreed with the plan on. That total does not give the reviewer's answer to any one of his five control questions without the plan's side for that label, which is in the answer key under data/generation/ and nowhere in the evaluation's output. He should not open the answer key for those games before he answers."
+  "also_said_before_they_were_held_back": "The owner was also told how many of the twenty control labels the reviewer agreed with the plan on. That total does not give the reviewer's answer to any one of his five control questions without the plan's side for that label, which is in the answer key under data/generation/ and nowhere in the evaluation's output. He was asked not to open the answer key for those games, or the commit named above, before he answered. Nothing enforced that: that his other five answers were blind rests on him not having looked."
 }

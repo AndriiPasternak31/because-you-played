@@ -618,7 +618,7 @@ test("PL-4: the index carries its version, model ids, prompt version, dimensions
 
 test("PL-5: a tag the table does not know is listed and counted and gives no label; non-attribute and merchandising tags are dropped", () => {
   const record = recordFrom({
-    features: ["Megaways", "Free Spinz", "FREE-SPINS", "High Volatility", "Hold & Respin", "Freespins"],
+    features: ["Varnaways", "Free Spinz", "FREE-SPINS", "High Volatility", "Hold & Respin", "Freespins"],
     themes: ["Pirates", "Egyptian", "New Games", "Egypt themed"],
     tags: [{ name: "Hot" }, { name: "Free Spins" }],
   });
@@ -630,7 +630,7 @@ test("PL-5: a tag the table does not know is listed and counted and gives no lab
   assert.deepEqual(output.themes.map((label) => [label.label, label.quote]), [["ancient_egypt", "Egyptian"]]);
   // Close spellings are not guessed at.
   assert.deepEqual(output.unknown, [
-    { tag: "Megaways", source_field: "features" },
+    { tag: "Varnaways", source_field: "features" },
     { tag: "Free Spinz", source_field: "features" },
     { tag: "Pirates", source_field: "themes" },
     { tag: "Egypt themed", source_field: "themes" },
@@ -647,8 +647,8 @@ test("PL-5: a tag the table does not know is listed and counted and gives no lab
   assert.deepEqual(report.table.unknown_tags.map((entry) => `${entry.tag}@${entry.game_ids.join()}`), [
     "Egypt themed@tst-1",
     "Free Spinz@tst-1",
-    "Megaways@tst-1",
     "Pirates@tst-1",
+    "Varnaways@tst-1",
   ]);
   assert.deepEqual(
     [report.table.tags_seen, report.table.mapped_to_a_label, report.table.dropped_non_attribute, report.table.dropped_merchandising],
