@@ -66,7 +66,7 @@ A reproduced failure sends the change back to step 3, and the failing command be
 
 Some things an agent hands over and does not decide. The list is in [What is the owner's](../AGENTS.md#what-is-the-owners). Two more arrive from review: a disagreement between models that running something did not settle, and a finding the owner chooses to accept.
 
-For the console, the owner looks at it. Agents show that it works and do not say how it looks ([`ui-guidelines.md`](ui-guidelines.md#what-only-the-owner-judges)).
+For the page, the owner looks at it. Agents show that it works and do not say how it looks ([`ui-guidelines.md`](ui-guidelines.md#what-only-the-owner-judges)).
 
 ## 7. Squash merge
 

@@ -1,13 +1,19 @@
 # because-you-played
 
+```sh
+npm start    # the one command, from a fresh clone: installs, starts the service, prints the address to open and a request to try
+```
+
+It needs Node.js 24 or newer and no API key. With Docker, its Compose plugin and no Node.js 24, `docker compose up --build` does the same. An older Node.js or a taken port stops it with the reason: see [Run it](#1-run-it-no-key).
+
 "Because you played X, you might like…": a related-games recommender over a fictional catalogue of 100 slot games, built as a take-home engineering assessment. A model enriches thin catalogue records offline, an evaluation decides whether the result may be served, and the service answers from memory with no model call.
 
-**After `npm install` it runs with no API key and no network.** The model responses it needs are stored in the repository, and the evaluation and the service replay them. Node 24, no build step.
+**After `npm install` it runs with no API key and no network.** The model responses it needs are stored in the repository, and the evaluation and the service replay them. Node 24 runs the TypeScript as it is. The page is the one thing that is bundled, and its bundle is committed, so there is nothing to build before running; a test fails if the committed bundle is not what the source builds ([how](docs/features/interface.md#code-and-how-it-is-built)).
 
 ```sh
 npm install
 npm run eval     # scores four versions of the index against pass marks fixed in advance
-npm run serve    # http://127.0.0.1:8787, with a page at / that shows each step
+npm run serve    # http://127.0.0.1:8787, with the page at /
 ```
 
 ```mermaid
@@ -16,7 +22,7 @@ flowchart LR
   PIPE --> IDX[/"index<br/>four versions of every game"/]
   IDX --> EVAL["Evaluation<br/>picks one version, or none"]
   EVAL --> SVC["Service<br/>filter by availability, rank, or decline"]
-  SVC --> CON["A page that shows each step"]
+  SVC --> CON["The page"]
 ```
 
 | To read | Where |
@@ -25,12 +31,22 @@ flowchart LR
 | The reusable artifact: nine pieces that start the next repository | [`docs/starter-kit.md`](docs/starter-kit.md) |
 | The briefs given to the agents, and three explainer pages | [`docs/process/`](docs/process/README.md) |
 | A two-minute walkthrough | **To be added by the owner: link to the recording** |
+| The page: its four sections, the seven examples and their addresses | [`docs/features/interface.md`](docs/features/interface.md#starting-it-and-the-examples) |
 
 ## Run, evaluate, regenerate
 
 Three separate things. The first two need no key.
 
 ### 1. Run it (no key)
+
+The short way is `npm start`, or `docker compose up --build` where there is Docker with its Compose plugin and no Node.js 24. Each ends by printing the address to open and a request to try. Open the address it prints.
+
+- **An older Node.js** stops every command here and says which version it found, which it needs and how to get it. `npm install` stops the same way, after npm has downloaded the packages.
+- **A port another program holds**, on any address of this machine, stops the start and says so. To choose another, put `PORT=9000` in front of either command, or pass `npm start -- --port 9000`: the `--` is needed.
+- **With Docker and no Node.js**, the checks run in the container too: `docker compose run --rm app npm test`, and `npm run typecheck` and `npm run eval` the same way.
+- **Docker without the Compose plugin:** `docker build -t because-you-played . && docker run --rm --init -p 127.0.0.1:8787:8787 because-you-played`.
+
+Each step on its own:
 
 ```sh
 git clone https://github.com/AndriiPasternak31/because-you-played.git
@@ -48,7 +64,7 @@ Then, in a second terminal:
 curl 'http://127.0.0.1:8787/api/recommendations?game=okk-50023&brand=tavrenmoor'
 ```
 
-Or open <http://127.0.0.1:8787/> for the page: one request shown step by step, and the evaluation behind what is served. The code and the part files call it the console. If port 8787 is taken: `npm run serve -- --port 9000`.
+Or open <http://127.0.0.1:8787/> for the page: four sections switched from the top, and **Examples** at the top right. If port 8787 is taken: `npm run serve -- --port 9000`.
 
 | Try | Request | Answer |
 |---|---|---|
@@ -58,7 +74,7 @@ Or open <http://127.0.0.1:8787/> for the page: one request shown step by step, a
 | A record with almost nothing in it | `game=okk-43364&brand=tavrenmoor` | Declined: `insufficient_data` |
 | Nothing similar enough | `game=drw-32945&brand=tavrenmoor` | Declined: `nothing_above_floor` |
 
-A decline is a normal answer, a 200 with a reason and no results. Routes, the ten steps of a request and every refusal to start are in [`docs/features/service.md`](docs/features/service.md); the page's views are in [`docs/features/interface.md`](docs/features/interface.md).
+A decline is a normal answer, a 200 with a reason and no results. Routes, the ten steps of a request and every refusal to start are in [`docs/features/service.md`](docs/features/service.md); the page's sections are in [`docs/features/interface.md`](docs/features/interface.md).
 
 ### 2. Evaluate it (no key)
 
@@ -289,8 +305,12 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 |---|---|
 | `data/` | The raw catalogue, availability, stored model responses, the index. [`data/README.md`](data/README.md) |
 | `src/dataset/`, `src/pipeline/` | The generator and the offline pipeline |
-| `src/service/`, `src/console/` | The service and its page |
+| `src/service/`, `src/console/` | The service and its page. `src/console/dist/` is the page as built and served, with the notices of the packages inside it |
 | `eval/` | The evaluation, the owner's plan and pass marks, the reviewer's stored answers, the results |
 | `docs/` | Architecture, the decision record, one file per part with its invariants and proofs, the process material |
+
+## Open-source packages in the page
+
+The page is built with React 19 (MIT), [`@ui-sdk/react` and `@ui-sdk/core`](https://www.npmjs.com/package/@ui-sdk/react) 0.1.0-beta.13 (Apache-2.0) for its tabs, pickers, sheet, steps, bars and sliders, and [`metal-fx`](https://www.npmjs.com/package/metal-fx) 2.0.11 (MIT) for the liquid-metal ring on two controls. They are pinned to exact versions, bundled into `src/console/dist/` by esbuild, and their licences and notices travel with the bundle in [`src/console/dist/THIRD-PARTY-NOTICES.txt`](src/console/dist/THIRD-PARTY-NOTICES.txt). The service itself depends on none of them.
 
 Not run on Windows, or on a Node version other than 24.

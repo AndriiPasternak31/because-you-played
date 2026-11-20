@@ -14,6 +14,6 @@ A review here is an attempt to break the change by running it. Reading the diff 
 
 **Second opinion.** For decisions and design, not for diffs: a model from a different family answers the same question without seeing the first model's view. A disagreement is settled by running something, or by the owner.
 
-**The interface.** Agents show that it works. How it looks and feels is the owner's judgement, made by looking at it.
+**The interface.** Agents show that it works. How it looks and feels is the owner's judgement, made by looking at it. A criterion about what a reader sees (on one screen, first, without help) is behaviour, not look: check it in a browser at a fixed window size.
 
 **The record.** One row per finding in the pull request's Review table: what was found, how it was found (ran it, read it, second model), whether it reproduced, and how it was fixed. Keep it short and plain: no transcripts, commit hashes or script listings, and a small diagram or chart rather than a paragraph where one explains it faster. That is a log of what review produced on these pull requests. With no reading-only review to compare against and only a handful of cases, it says nothing about review methods in general.
