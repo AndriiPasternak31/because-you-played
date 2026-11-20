@@ -231,8 +231,8 @@ The owner's part was briefing agents, reading what came back, and the decisions 
 
 | Tool | Used for |
 |---|---|
-| Claude Code, running Claude models | Builder agents and reviewer agents. Each was briefed with a goal, the context it could not see, a bar for done and hard rules, never steps |
-| ChatGPT, a model from a different vendor | Independent second opinions on the plan and the evaluation design, before the build |
+| Claude Code, running Claude models | Builder agents and reviewer agents. Each was briefed with a goal, the context it could not see, a bar for done and hard rules, never steps. Every session loaded [the owner's personal instructions](docs/process/agent-setup/personal-instructions.md) before the project's rules. Review and research agents ran from [a profile](docs/process/agent-setup/opus-high.md) pinned to a different Claude model at high effort |
+| ChatGPT, a model from a different vendor, through OpenAI's command-line tool | Independent second opinions on the plan and the evaluation design before the build, and [a critique of the page's layout](docs/process/second-opinion-page-layout.md) during it |
 | OpenAI `gpt-6.2-sol` | Writing the fictional catalogue text, and the enrichment |
 | OpenAI `text-embedding-3-small` | Embeddings |
 | OpenAI `gpt-6-luna` | The evaluation's reviewer model |
@@ -252,7 +252,7 @@ The distance was measured in a browser, in a window 1280 by 900, on four request
 - **The tests could not see it.** They read the page's text, with no window size.
 - **A first restyling pass kept the same order.** Its screenshots scrolled to each section, so none showed what a visitor sees on arrival.
 
-**How the cause was found.** The owner did not ask for a better-looking page. He asked a separate agent to find the hole in the rules, with evidence and not opinion, and a model from another vendor to criticise the proposed new layout. That model's sharpest point: a quote proves that a label belongs to a game. It does not explain why another game ranks first, so the page must not suggest that it does.
+**How the cause was found.** The owner did not ask for a better-looking page. He asked a separate agent to find the hole in the rules, with evidence and not opinion, and a model from another vendor to criticise the proposed new layout ([the prompt and its answer](docs/process/second-opinion-page-layout.md)). That model's sharpest point: a quote proves that a label belongs to a game. It does not explain why another game ranks first, so the page must not suggest that it does.
 
 **The fix.** **To be added when #14 is merged.**
 
@@ -275,7 +275,10 @@ The agent starter kit: the nine pieces this repository began with, which a new r
 
 ## Process material
 
+- **Agent set-up.** The owner's personal instructions for coding agents, cleaned with every cut marked, and the agent profile the reviewers ran from: [`docs/process/agent-setup/`](docs/process/agent-setup/).
 - **Briefs.** Eight of the briefs given to builder and reviewer agents, cleaned of private details with every cut marked: [`docs/process/`](docs/process/README.md).
+- **A second opinion.** The prompt sent to another vendor's model about the page's layout, and its answer: [`docs/process/second-opinion-page-layout.md`](docs/process/second-opinion-page-layout.md).
+- **What was used and is not here** is listed in [the process index](docs/process/README.md#what-else-was-used-and-is-not-here): skills and plugins on the owner's machine, the agent's memory notes, the short follow-up messages and the planning briefs.
 - **Explainer pages**, made during the build. Their sources are in [`docs/process/pages/`](docs/process/pages/). Hosted copies, as a convenience: [the catalogue](https://because-you-played-status.vercel.app/catalogue), [the evaluation decisions](https://because-you-played-status.vercel.app/evaluation), and the [build status page](https://because-you-played-status.vercel.app/), which was locked while the repository was private. The product itself runs locally.
 - **The rules the agents worked under:** [`AGENTS.md`](AGENTS.md), [`REVIEW.md`](REVIEW.md), [`.claude/settings.json`](.claude/settings.json), [the pull-request template](.github/pull_request_template.md), [`LEARNINGS.md`](LEARNINGS.md), and the enrichment prompt in [`prompts/`](prompts/).
 - **The record of each change** is its pull request: what was checked, what was not verified, and what review found.
