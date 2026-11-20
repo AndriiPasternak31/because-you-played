@@ -1,0 +1,10 @@
+# What the image does not need, and what must never be copied into one.
+.git
+node_modules
+wt
+.plan
+.claude
+.env
+.env.*
+*.log
+.DS_Store

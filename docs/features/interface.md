@@ -38,7 +38,7 @@ flowchart LR
 
 ## Starting it, and the examples
 
-`npm run serve`, then open `http://127.0.0.1:8787`. If the port is taken: `npm run serve -- --port 9000`.
+`npm start` from a fresh clone (it installs what is missing, then serves), or `npm run serve` once installed; then open `http://127.0.0.1:8787`. If the port is taken: `npm start -- --port 9000`.
 
 The page opens on the first example. **Examples**, at the right of the top panel, lists seven; each opens the section that shows it. They are found by asking the service, so they follow the catalogue: a rebuild may change the game, and an example the data no longer holds is listed as not found. The open example is marked in that list and nowhere else. With the index and evaluation committed now:
 
