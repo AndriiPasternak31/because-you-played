@@ -1,6 +1,6 @@
 # Interface
 
-**Status:** built as one page with four sections, switched from a panel along the top, in the near-black and green look the owner chose for #4. How it looks is not signed off: that is the owner's, and #4 stays open until he has looked.
+**Status:** built as one page with four sections, switched from a panel along the top, in the near-black and green look the owner chose for #4. How it looks was signed off by the owner on 2026-11-20, after he opened it; #4 closed with #17.
 
 **Purpose.** A page, served by the service at `/`, that opens the recommender up: what it returns for one game on one brand, the evidence for it, and whether the language model earned its cost. It is the inspection view, not the screen a player would see, and it says so at its foot. A reader who has never seen the project should be able to follow it without help.
 
