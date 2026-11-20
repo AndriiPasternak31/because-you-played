@@ -812,12 +812,13 @@ test("UI-20: the split by record condition is not offered as the model's work, t
     }
     assert.ok(after.verdict.includes("owner's check answered") && after.verdict.includes(check.note));
   };
-  // A constructed check: the owner says no to all six, and the reviewer yes to three of them, so some rows match and some differ.
+  // A constructed check: the owner says no to all six, and the reviewer no to the first three drawn, the one he had been told among them.
+  // So some rows match and some differ, and the blind count is not the count over all six.
   const six = ownerQuestions(outstanding).map((entry) => entry.question.id);
   const answered = analyse({ ...outstandingInputs, ownerAnswers: ownerFile(outstanding, six.map(() => "no"), "2026-11-20") });
   const say = (word: "yes" | "no"): ReviewerAnswer => ({ answer: word, said: word, words: word === "yes" ? "some words" : "", note: null });
-  const constructed = finish(answered, (question) => (six.includes(question.id) ? say(six.indexOf(question.id) < 3 ? "yes" : "no") : (stored.get(question.id) as ReviewerAnswer))).report;
-  assert.equal(constructed.owner_check.matched, 3);
+  const constructed = finish(answered, (question) => (six.includes(question.id) ? say(six.indexOf(question.id) < 3 ? "no" : "yes") : (stored.get(question.id) as ReviewerAnswer))).report;
+  assert.deepEqual([constructed.owner_check.matched, constructed.owner_check.blind.matched, constructed.owner_check.not_blind.matched], [3, 2, 1]);
   assert.ok(constructed.owner_check.not_blind.of === 1 && constructed.owner_check.from_control > 0);
   answeredPage(constructed);
   // And the report the service serves from the committed tree, which is in the answered state.
