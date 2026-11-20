@@ -2,8 +2,8 @@
  * The four sections of the page, as plain functions from the service's responses to React elements.
  *
  * Each section states one question on the left and answers it on the right, for the game and brand
- * chosen. Whatever is true and not the answer is named on a button under the answer and drawn only
- * when asked for (evidence.ts). Nothing here fetches, keeps state or touches the document, so the
+ * chosen, with one sentence and one picture. Whatever else is true is named on a button under the
+ * answer and drawn only when asked for (evidence.ts); a legend is a hover on the thing it explains. Nothing here fetches, keeps state or touches the document, so the
  * tests render these functions as they are, and the browser gets the same code through the build.
  *
  * Written with `createElement` and no JSX, so that Node runs these files under test with no loader.
@@ -16,14 +16,12 @@ import { createContext, createElement as h, Fragment, useContext, type ReactNode
 import type { TraceAnchor } from "../service/recommend.ts";
 import {
   GROUPS,
-  TABS,
   count,
   estimate,
   failureTab,
   failuresHere,
   heldLabels,
   markText,
-  overlap,
   pct,
   plural,
   runsOf,
@@ -35,7 +33,6 @@ import {
   versionName,
   words,
   type Evaluation,
-  type Example,
   type Failure,
   type Held,
   type Loaded,
@@ -50,17 +47,18 @@ type Tone = "green" | "amber" | "red" | "blue" | "neutral";
 /** A status, in words: green kept or passed, amber caution, red failure, blue the model, neutral a plain fact. */
 export const label = (tone: Tone, text: string): ReactNode => h("span", { className: `label ${tone}` }, text);
 export const mono = (text: unknown): ReactNode => h("code", null, String(text));
-/** A theme or a mechanic. Blue when the model asserted it, plain when the synonym table did. */
-export const tag = (method: string, term: string, key?: string | number): ReactNode => h("span", { className: `tag ${method === "model" ? "model" : "table"}`, key }, words(term));
+/** A theme or a mechanic. Blue when the model asserted it, plain when the synonym table did; a hover says which. */
+export const tag = (method: string, term: string, key?: string | number): ReactNode =>
+  h("span", { className: `tag ${method === "model" ? "model" : "table"}`, title: method === "model" ? "added by the model" : "from the supplier's tags, through the lookup table", key }, words(term));
 export const ref = (numbers: readonly number[]): ReactNode => (numbers.length === 0 ? null : h("sup", { className: "ref" }, numbers.join(", ")));
 export const small = (...children: ReactNode[]): ReactNode => h("span", { className: "small" }, ...children);
 
 /** A bar as long as a number between 0 and 1, with an optional tick for a mark it is read against. */
-export function bar(value: number, name: string, options: { tone?: "blue" | "quiet"; at?: number } = {}): ReactNode {
+export function bar(value: number, name: string, options: { tone?: "blue" | "quiet"; at?: number; mark?: string } = {}): ReactNode {
   return h(
     Meter,
     { value: Math.max(0, Math.min(1, value)), min: 0, max: 1, "aria-label": name, className: "bar" },
-    h(MeterTrack, { className: "track" }, h(MeterIndicator, { className: `fill${options.tone ? ` ${options.tone}` : ""}` }), options.at === undefined ? null : h("span", { className: "at", style: { left: `${(options.at * 100).toFixed(2)}%` }, title: "similarity floor" })),
+    h(MeterTrack, { className: "track" }, h(MeterIndicator, { className: `fill${options.tone ? ` ${options.tone}` : ""}` }), options.at === undefined ? null : h("span", { className: "at", style: { left: `${(options.at * 100).toFixed(2)}%` }, title: options.mark ?? "similarity floor" })),
   );
 }
 
@@ -69,91 +67,84 @@ function exact(shown: string, full: string): ReactNode {
   return h(Tooltip, null, h(TooltipTrigger, { className: "exact num" }, shown), h(TooltipContent, { className: "tip" }, full));
 }
 
-/** How the page opens a piece of evidence. Outside the page (in a test) the buttons render and do nothing. */
-export const OpenEvidence = createContext<((id: string, opener: HTMLElement) => void) | null>(null);
+/** What a section can ask of the page. Outside the page (in a test) the buttons render and do nothing. */
+export interface PageActions {
+  openEvidence: (id: string, opener: HTMLElement) => void;
+  showVersion: (version: string) => void;
+}
+export const Actions = createContext<PageActions | null>(null);
 
 function EvidenceButton({ id, name }: { id: string; name: string }): ReactNode {
-  const open = useContext(OpenEvidence);
-  return h("button", { type: "button", className: "chip", "data-evidence": id, onClick: (event: { currentTarget: HTMLElement }) => open?.(id, event.currentTarget) }, name);
+  const page = useContext(Actions);
+  return h("button", { type: "button", className: "chip", "data-evidence": id, onClick: (event: { currentTarget: HTMLElement }) => page?.openEvidence(id, event.currentTarget) }, name);
 }
 
-/** The evidence behind an answer: named, and out of sight until asked for. */
-function more(items: readonly (readonly [id: string, name: string] | null)[]): ReactNode {
-  const shown = items.filter((item) => item !== null);
-  if (shown.length === 0) return null;
-  return h("div", { className: "more", "data-more": "" }, h("p", { className: "kicker" }, "The evidence, when you want it"), h("div", { className: "chips" }, shown.map(([id, name]) => h(EvidenceButton, { key: id, id, name }))));
+/** The evidence behind an answer: at most three buttons, each named for what it opens, and out of sight until pressed. */
+function more(...ids: (EvidenceId | null)[]): ReactNode {
+  const shown = ids.filter((id) => id !== null);
+  return shown.length === 0 ? null : h("div", { className: "chips", "data-more": "" }, shown.map((id) => h(EvidenceButton, { key: id, id, name: EVIDENCE[id] })));
 }
 
-/** The names of the evidence each section offers. One name per piece, and the name says what it opens. */
+/** The names of the evidence the sections offer. One name per piece, and the name says what it opens. */
 export const EVIDENCE = {
   scores: "Every score against the similarity floor",
   provenance: "Index, version and timings of this request",
   steps: "Step by step: cleaning, lookup table, thin rule, model",
   "raw-record": "The raw record, exactly as the supplier delivered it",
-  verdict: "The release gate's verdict and every pass mark",
-  "what-if": "What if the pass marks were different?",
+  gate: "The release gate: its verdict, every pass mark, and what if they moved",
   versions: "This request in every version of the index",
-  numbers: "Every measured number, and the split by record condition",
-  "enrichment-measures": "Is enrichment safe to automate? Label measures, tag conflicts and the reviewer",
-  gallery: "Failures: what went wrong, and what was planted on purpose",
+  measures: "Every measured number, the failures found, and what the numbers cannot show",
 } as const;
 export type EvidenceId = keyof typeof EVIDENCE;
-const offer = (id: EvidenceId): readonly [string, string] => [id, EVIDENCE[id]];
 
 export interface SectionProps {
   data: Loaded;
   evaluation?: Evaluation | undefined;
-  /** The example that is open, if the request is one: its line is shown with the question. */
-  example?: Example | null | undefined;
   /** A game to point out on the path. */
   focus?: string | null | undefined;
 }
 
-/** The left of a section: which question it answers, and why it matters. */
-function question(n: number, title: ReactNode, why: string, example: Example | null | undefined, tab: TabId): ReactNode {
-  const look =
-    example && example.found
-      ? h("p", { className: "look", "data-look": "" }, label("neutral", "this example"), " ", h("strong", null, example.name, "."), " ", example.note, example.tab && example.tab !== tab ? ` It is shown under “${TAB_NAMES[example.tab]}”.` : "")
-      : null;
-  return h("div", { className: "question" }, h("p", { className: "kicker" }, `Question ${n} of 4`), h("h2", { "data-question": "" }, title), h("p", { className: "why" }, why), look);
-}
-const TAB_NAMES = Object.fromEntries(TABS.map((tab) => [tab.id, tab.name])) as Record<TabId, string>;
-
-const section = (id: TabId, left: ReactNode, ...right: ReactNode[]): ReactNode => h("section", { className: "qa", "data-section": id }, left, h("div", { className: "answer" }, ...right));
+/** A section: its question and one short line on the left, its answer on the right. */
+const section = (id: TabId, title: ReactNode, line: string, ...right: ReactNode[]): ReactNode =>
+  h("section", { className: "qa", "data-section": id }, h("div", { className: "question" }, h("h2", { "data-question": "" }, title), h("p", { className: "why" }, line)), h("div", { className: "answer" }, ...right));
 
 function failureNote(entry: Failure, key: number): ReactNode {
-  const about = [typeof entry.detail["label"] === "string" ? `label ${words(entry.detail["label"])}` : "", entry.version ? `in ${versionName(entry.version)}` : ""].filter(Boolean).join(", ");
-  return h("p", { className: "callout amber", "data-failure": "", key }, h("span", null, label("amber", "a failure the evaluation found"), " ", entry.what, about ? h(Fragment, null, " ", small(about)) : null));
+  // The evaluation's own sentence, and the label it is about when it names one.
+  const named = (entry.detail as { label?: unknown }).label;
+  return h("p", { className: "callout amber", "data-failure": "", key }, h("span", null, label("amber", "a failure the evaluation found"), " ", entry.what, typeof named === "string" ? h(Fragment, null, " The label: ", mono(words(named)), ".") : null));
 }
 
-function inspection(data: Loaded): ReactNode {
+/** A version other than the served one is on screen: said wherever it is shown, with the way back. */
+function Inspection({ data }: { data: Loaded }): ReactNode {
+  const page = useContext(Actions);
   const { response } = data;
   if (!response.inspection || response.inspection.is_served_version) return null;
-  return h("p", { className: "callout blue", "data-inspection": "" }, h("span", null, label("neutral", "inspection"), ` This is ${versionName(response.served.version)}, shown for comparison. Players are served ${versionName(response.inspection.served_version)}.`));
+  const servedVersion = response.inspection.served_version;
+  return h(
+    "p",
+    { className: "callout blue", "data-inspection": "" },
+    h("span", null, label("neutral", "inspection"), ` This is ${versionName(response.served.version)}, shown for comparison. Players are served ${versionName(servedVersion)}. `, h("button", { type: "button", className: "link", onClick: () => page?.showVersion(servedVersion) }, "Back to the served version")),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // 1 · Shown
 // ---------------------------------------------------------------------------
 
-export function Shown({ data, evaluation, example }: SectionProps): ReactNode {
+export function Shown({ data, evaluation }: SectionProps): ReactNode {
   const { response, neighbours } = data;
   const anchor = response.trace?.anchor ?? null;
   const title = anchor ? anchor.title : response.request.game_id;
   const { brand } = response.request;
   const failures = failuresHere(evaluation, response).filter((entry) => failureTab(entry) === "shown").map(failureNote);
-  const left = question(
-    1,
-    h(Fragment, null, "A player has just played ", h("em", null, title), ` on ${brand}. What should they be shown next?`),
-    "A row of suggestions earns its place only if every game on it can be opened on this brand, and if it shows nothing rather than a guess.",
-    example,
-    "shown",
-  );
+  const ask = h(Fragment, null, "A player has just played ", h("em", null, title), ` on ${brand}. What should they be shown next?`);
+  const line = "Only games that can be opened on this brand, or nothing rather than a guess.";
   if (response.outcome === "declined" && response.decline) {
     return section(
       "shown",
-      left,
-      inspection(data),
+      ask,
+      line,
+      h(Inspection, { data }),
       h(
         "div",
         { className: "callout amber decline", "data-first": "" },
@@ -162,7 +153,7 @@ export function Shown({ data, evaluation, example }: SectionProps): ReactNode {
         h("p", null, "A player would see nothing. ", small("Reason code ", mono(response.decline.reason))),
       ),
       failures,
-      more([response.trace && response.trace.scores.length > 0 ? offer("scores") : null, offer("provenance")]),
+      more(response.trace && response.trace.scores.length > 0 ? "scores" : null, "provenance"),
     );
   }
   const floor = response.trace?.floor;
@@ -172,18 +163,15 @@ export function Shown({ data, evaluation, example }: SectionProps): ReactNode {
     if (anchor?.fields === null) common = h("p", { className: "why small" }, "No labels in this version: only the two texts are alike.");
     else if (shared.length === 0) common = h("p", { className: "why small" }, "No label in common: only the two texts are alike.");
     else common = h("p", { className: "why", "data-shared": "" }, small("in common"), " ", shared.map((held, at) => h(Fragment, { key: at }, tag(held.method, held.label), " ")));
-    return h(
-      "li",
-      { key: entry.game_id, style: { "--i": index } as Record<string, number>, ...(index === 0 ? { "data-first": "" } : {}) },
-      h("span", { className: "rank num" }, entry.rank),
-      h("div", null, h("strong", null, entry.title), " ", small(entry.provider), common),
-      h("span", { className: "score" }, small("score"), " ", exact(short(entry.score), `Similarity ${entry.score}${floor === undefined ? "" : `, against a floor of ${floor}`} · ${entry.game_id}`)),
-    );
+    // The exact score, and how to read the row, are one hover or one focus away.
+    const reading = `Similarity ${entry.score}${floor === undefined ? "" : `, against a floor of ${floor}`}. The order is a similarity between two texts and cannot be traced to single labels: what the two games have in common is shown to help read the list, not as the cause of its score.`;
+    return h("li", { key: entry.game_id, ...(index === 0 ? { "data-first": "" } : {}) }, h("span", { className: "rank num" }, entry.rank), h("div", { className: "who" }, h("strong", null, entry.title), " ", small(entry.provider)), common, h("span", { className: "score" }, exact(short(entry.score), reading)));
   });
   return section(
     "shown",
-    left,
-    inspection(data),
+    ask,
+    line,
+    h(Inspection, { data }),
     h(
       "p",
       { className: "lede", "data-answer": "" },
@@ -196,8 +184,7 @@ export function Shown({ data, evaluation, example }: SectionProps): ReactNode {
     ),
     h("ol", { className: "results", "data-results": "" }, rows),
     failures,
-    h("p", { className: "small" }, "In common is what both records hold in this version. The order is a similarity between two texts and cannot be traced to single labels, so what is in common is shown to help read the list, not as the cause of its score. ", tag("model", "blue"), " was added by the model, ", tag("table", "plain"), " came from the supplier's tags."),
-    more([offer("scores"), offer("provenance")]),
+    more("scores", "provenance"),
   );
 }
 
@@ -262,47 +249,25 @@ export function recordCards(anchor: TraceAnchor, version: string): ReactNode {
   };
   const holds =
     anchor.fields === null
-      ? h("p", null, label("neutral", "no labels"), " This version indexes the supplier's text as it is.")
-      : h(
-          Fragment,
-          null,
-          h("ul", { className: "fields" }, fieldLine("Themes", anchor.fields.themes), fieldLine("Mechanics", anchor.fields.mechanics)),
-          h("p", { className: "small" }, tag("model", "blue"), " was added by the model, ", tag("table", "plain"), " by the lookup table. A number joins a label to the words it was read from."),
-        );
+      ? h("p", { className: "small" }, "No labels: this version indexes the supplier's text as it is.")
+      : h("ul", { className: "fields" }, fieldLine("Themes", anchor.fields.themes), fieldLine("Mechanics", anchor.fields.mechanics));
   return h(
     Fragment,
     null,
     h("div", { className: "pair" }, h("div", { className: "card", "data-first": "" }, h("h3", null, "The supplier sent"), fields), h("div", { className: "card holds" }, h("h3", null, `${versionName(version)} holds`), holds)),
-    h("div", { className: "card" }, h("h3", null, "The supplier's text, with the words each label was read from"), prose),
+    h("div", { className: "card text" }, h("h3", null, "The supplier's text, with the words each label was read from", h("span", { className: "small" }, " · a number joins a label to its words")), prose),
   );
 }
 
-export function Added({ data, evaluation, example }: SectionProps): ReactNode {
+export function Added({ data, evaluation }: SectionProps): ReactNode {
   const { response } = data;
   const anchor = response.trace?.anchor ?? null;
   const version = response.served.version;
-  const left = question(
-    2,
-    "Suppliers send thin, messy records. Can a model fill in what is missing without inventing anything?",
-    "A label nobody can check is a liability. Here a label is kept only if it quotes the record's own words, and the model is asked offline, never while a player waits.",
-    example,
-    "added",
-  );
-  if (anchor === null) return section("added", left, inspection(data), h("p", { className: "lede", "data-answer": "", "data-first": "" }, label("amber", "no record"), ` The index holds no record for ${response.request.game_id}, so there is nothing a model could have added.`));
+  const ask = "Suppliers send thin, messy records. Can a model fill in what is missing without inventing anything?";
+  const line = "A label is kept only if it quotes the record's own words.";
+  if (anchor === null) return section("added", ask, line, h(Inspection, { data }), h("p", { className: "lede", "data-answer": "", "data-first": "" }, `The index holds no record for ${response.request.game_id}, so there is nothing a model could have added.`));
   const failures = failuresHere(evaluation, response).filter((entry) => failureTab(entry) === "added").map(failureNote);
-  const measured = (evaluation?.report.enrichment as Record<string, Evaluation["report"]["enrichment"]["table"]> | undefined)?.[version];
-  return section(
-    "added",
-    left,
-    inspection(data),
-    h("p", { className: "lede", "data-answer": "", "data-story": "" }, h("strong", null, anchor.title, "."), " ", story(anchor, version).join(" ")),
-    failures,
-    recordCards(anchor, version),
-    measured === undefined
-      ? null
-      : h("p", { className: "small", "data-invented": "" }, `Across the whole catalogue, ${plural(measured.invalid_quotes.count, "label", "labels")} of the ${count(measured.invalid_quotes.of)} that ${versionName(version)} holds ${measured.invalid_quotes.count === 1 ? "quotes" : "quote"} words that are not in the record. Whether a label is right is measured separately, under “Worth it”.`),
-    more([offer("steps"), offer("raw-record")]),
-  );
+  return section("added", ask, line, h(Inspection, { data }), h("p", { className: "lede", "data-answer": "", "data-story": "" }, story(anchor, version)), failures, recordCards(anchor, version), more("steps", "raw-record"));
 }
 
 // ---------------------------------------------------------------------------
@@ -310,67 +275,67 @@ export function Added({ data, evaluation, example }: SectionProps): ReactNode {
 // ---------------------------------------------------------------------------
 
 /**
- * Why these games and not others: the steps the trace gives, in its order, set out as the three
- * different things they decide. Eligibility is rules, the floor is a point in the spread of scores,
- * and the limit is a number: none of them is evidence that a player would find the result relevant.
+ * Why these games and not others: the steps the trace gives, in its order, as one flow with the number
+ * left after each. Every step says which of three different things it decides: a rule, a score or a
+ * limit. None of them is evidence that a player would find the result relevant, and the step that
+ * applies the floor says so when it is opened.
  */
-export function Removed({ data, example, focus }: SectionProps): ReactNode {
+export function Removed({ data, focus }: SectionProps): ReactNode {
   const { response } = data;
   const trace = response.trace;
   const filters = trace?.filters ?? [];
   const first = filters[0];
   const start = first === undefined ? null : first.removed.length + first.remaining;
   const shown = response.results.length;
-  const left = question(
-    3,
-    start === null ? "Out of the whole catalogue, why these games? What was removed, and in what order?" : `Out of ${count(start)} games, why ${shown === 0 ? "none" : `these ${count(shown)}`}? What was removed, and in what order?`,
-    "A game that cannot be opened on this brand must never be suggested, so availability is settled before any score exists. Similarity decides next, and a limit keeps the list short.",
-    example,
-    "removed",
-  );
+  const ask = start === null ? "Out of the whole catalogue, why these games? What was removed, and in what order?" : `Out of ${count(start)} games, why ${shown === 0 ? "none" : `these ${count(shown)}`}? What was removed, and in what order?`;
+  const line = "Availability is settled before any score exists.";
   if (trace === undefined || first === undefined || start === null) {
-    return section("removed", left, inspection(data), h("p", { className: "lede", "data-answer": "", "data-first": "" }, label("amber", "no steps"), " The request was declined before any filter ran: no game was removed and none was scored."), more([offer("provenance")]));
+    return section("removed", ask, line, h(Inspection, { data }), h("p", { className: "lede", "data-answer": "", "data-first": "" }, "The request was declined before any filter ran: no game was removed and none was scored."), more("provenance"));
   }
   const runs = runsOf(filters);
-  const length = (remaining: number): number => (start === 0 ? 0 : remaining / start);
   let found: ReactNode = null;
   let open: string[] = [];
+  /** What is true of every step that decides this kind of thing. Said when a step is opened. */
   const says = (run: (typeof runs)[number]): ReactNode => {
-    if (run.group === "eligible") return "Rules, not scores. A game that is not live on the brand is removed before anything is scored.";
+    if (run.group === "eligible") return "A rule, not a score. A game that is not live on the brand is removed before anything is scored.";
     if (run.group === "similar") return `The floor is ${trace.floor}. ${trace.floor_rule} It is a point in the spread of scores: it says a game is closer than most pairs are, not that a player would find it relevant.`;
     if (run.group !== "limit") return null;
     const cut = run.steps.flatMap(({ step }) => step.removed);
-    if (cut.length === 0) return "Every game that cleared the floor is shown.";
-    if (cut.length > 3) return `${plural(cut.length, "game", "games")} cleared the floor and are not shown. Open a step to see them.`;
-    return h(Fragment, null, "Cleared the floor and not shown: ", cut.map((entry, index) => h(Fragment, { key: entry.game_id }, index === 0 ? "" : ", ", h("strong", null, entry.title), ` (${words(entry.why)})`)), ".");
+    if (cut.length === 0) return "A limit, not a score. Every game that cleared the floor is shown.";
+    return h(Fragment, null, "A limit, not a score. Cleared the floor and not shown: ", cut.map((entry, index) => h(Fragment, { key: entry.game_id }, index === 0 ? "" : ", ", h("strong", null, entry.title), ` (${words(entry.why)})`)), ".");
   };
-  const stages = runs.map((run, at) => {
-    const nodes = run.steps.map(({ step, index }) => {
+  const steps = runs.flatMap((run) =>
+    run.steps.map(({ step, index }) => {
       const name = stepName(step.filter);
       const hit = focus ? step.removed.find((entry) => entry.game_id === focus) : undefined;
       if (hit) {
         open = [`step-${index}`];
         found = h("p", { className: "callout amber", "data-focus": "" }, h("span", null, label("amber", "removed"), " ", h("strong", null, hit.title), ` was taken out at the step “${name}”: ${words(hit.why)}.`));
       }
+      // The game a link points at comes first in its list, so it is in view when the step opens.
       const removed =
         step.removed.length === 0
           ? h("p", { className: "small" }, "This step removed nothing.")
-          : h("ul", { className: "removed" }, step.removed.map((entry) => h("li", { key: entry.game_id, className: entry.game_id === focus ? "focus" : undefined }, h("span", null, entry.title, " ", small(entry.provider)), h("span", { className: "why" }, words(entry.why)))));
+          : h("ul", { className: "removed" }, [...step.removed].sort((a, b) => Number(b.game_id === focus) - Number(a.game_id === focus)).map((entry) => h("li", { key: entry.game_id, className: entry.game_id === focus ? "focus" : undefined }, h("span", null, entry.title, " ", small(entry.provider)), h("span", { className: "why" }, words(entry.why)))));
       return h(
         AccordionItem,
         { key: index, value: `step-${index}`, className: "step-item" },
         h(
           AccordionHeader,
-          { render: h("h4", index === 0 ? { "data-first": "" } : null) },
-          h(AccordionTrigger, { className: `node step${step.removed.length === 0 ? " quiet" : ""}`, title: step.filter }, h("span", { className: "n num" }, count(step.remaining)), h("span", { className: "name" }, name), h("span", { className: "cut num" }, step.removed.length === 0 ? "none removed" : `${count(step.removed.length)} removed`), bar(length(step.remaining), `${name}: games left`)),
+          { render: h("h3", index === 0 ? { "data-first": "" } : null) },
+          h(
+            AccordionTrigger,
+            { className: `node step${step.removed.length === 0 ? " quiet" : ""}`, title: `${name}: ${step.rule}`, ...{ "data-group": run.group } },
+            h("span", { className: "kind" }, GROUPS[run.group]),
+            h("span", { className: "n num" }, count(step.remaining)),
+            h("span", { className: "name" }, name),
+            h("span", { className: "cut num" }, step.removed.length === 0 ? "none removed" : `−${count(step.removed.length)}`),
+          ),
         ),
-        h(AccordionPanel, { className: "step-panel" }, h("p", null, h("strong", null, `${name}.`), " ", step.rule), removed),
+        h(AccordionPanel, { className: "step-panel" }, h("p", null, h("strong", null, `${name}.`), " ", step.rule), h("p", { className: "small" }, says(run)), removed),
       );
-    });
-    const begin = at === 0 ? h("div", { className: "node start" }, h("span", { className: "n num" }, count(start)), h("span", { className: "name" }, "In the catalogue"), h("span", { className: "cut" }, " "), bar(length(start), "In the catalogue")) : null;
-    const end = at === runs.length - 1 ? h("div", { className: `node end${shown === 0 ? " none" : ""}` }, h("span", { className: "n num" }, count(shown)), h("span", { className: "name" }, "Shown"), h("span", { className: "cut" }, " "), bar(length(shown), "Shown")) : null;
-    return h("div", { className: `stage ${run.group}`, key: at }, h("h3", null, h("span", { className: "num" }, at + 1), " ", GROUPS[run.group]), h("div", { className: "path" }, begin, nodes, end), h("p", { className: "small" }, says(run)));
-  });
+    }),
+  );
   if (focus && found === null) {
     const result = response.results.find((entry) => entry.game_id === focus);
     if (result) found = h("p", { className: "callout green", "data-focus": "" }, h("span", null, label("green", "shown"), " ", h("strong", null, result.title), ` passes every step here and is shown at rank ${result.rank}.`));
@@ -378,13 +343,20 @@ export function Removed({ data, example, focus }: SectionProps): ReactNode {
   const before = runs[0]?.group === "eligible" ? runs[0].steps.reduce((sum, { step }) => sum + step.removed.length, 0) : null;
   return section(
     "removed",
-    left,
-    inspection(data),
+    ask,
+    line,
+    h(Inspection, { data }),
     h("p", { className: "lede", "data-answer": "" }, `Of the ${plural(start, "game", "games")} in the catalogue, ${shown === 0 ? "none is shown" : `${count(shown)} ${shown === 1 ? "is" : "are"} shown`}.`, before === null ? "" : ` ${plural(before, "was", "were")} removed by rules before anything was scored.`, " Open a step to see what it removed."),
     found,
-    // One step is open at a time. A game an address points at opens the step that removed it.
-    h(Accordion, { className: "stages", defaultValue: open, collapsible: true, key: `${response.request.game_id} ${response.request.brand} ${response.served.version} ${focus ?? ""}`, "aria-label": "The steps from the catalogue to the result" }, stages),
-    more([trace.scores.length > 0 ? offer("scores") : null, offer("provenance")]),
+    // One flow, read from left to right. One step is open at a time; a game an address points at opens the step that removed it.
+    h(
+      Accordion,
+      { className: "flow", style: { "--steps": filters.length + 2 } as Record<string, number>, defaultValue: open, collapsible: true, key: `${response.request.game_id} ${response.request.brand} ${response.served.version} ${focus ?? ""}`, "aria-label": "The steps from the catalogue to the result" },
+      h("div", { className: "node start" }, h("span", { className: "kind" }, "start"), h("span", { className: "n num" }, count(start)), h("span", { className: "name" }, "In the catalogue"), h("span", { className: "cut" }, " ")),
+      steps,
+      h("div", { className: `node end${shown === 0 ? " none" : ""}` }, h("span", { className: "kind" }, "result"), h("span", { className: "n num" }, count(shown)), h("span", { className: "name" }, "Shown"), h("span", { className: "cut" }, " ")),
+    ),
+    more(trace.scores.length > 0 ? "scores" : null, "provenance"),
   );
 }
 
@@ -396,16 +368,13 @@ export function Removed({ data, example, focus }: SectionProps): ReactNode {
 export const LIMITS =
   "The catalogue is fictional and easier than real supplier data. Its answer key is the generator's own plan, its text was written by the same model that does the enrichment, and the reviewer of disputed cases is a model from the same vendor, so the three can share blind spots. These numbers show direction and the absence of glaring failure, not production accuracy.";
 
-export function Worth({ data, evaluation, example }: SectionProps): ReactNode {
-  const { response, versions } = data;
-  const left = question(
-    4,
-    "The model costs money. Does it rank related games better than plain code, and by how much?",
-    "The model is paid for on every rebuild. So every version of the index is measured against the same answer key, and the simplest one that is good enough is the one served.",
-    example,
-    "worth",
-  );
-  if (evaluation === undefined) return section("worth", left, h("p", { "data-answer": "", "data-first": "" }, "Loading"));
+/** What "ranked right" measures. A hover on the column's heading, and written out with the numbers. */
+export const RANKED_RIGHT = "Ranked right: how often a game the answer key calls related scores above one it calls unrelated, over every game of this fictional catalogue.";
+
+export function Worth({ evaluation }: SectionProps): ReactNode {
+  const ask = "The model costs money. Does it rank related games better than plain code, and by how much?";
+  const line = "Every version is measured against one answer key; the simplest that is good enough is served.";
+  if (evaluation === undefined) return section("worth", ask, line, h("p", { "data-answer": "", "data-first": "" }, "Loading"));
   const { report, verdict } = evaluation;
   const names = Object.keys(report.matching) as (keyof typeof report.matching)[];
   const row = (version: string) => (report.matching as Record<string, (typeof report.matching)["raw"] | undefined>)[version];
@@ -421,52 +390,39 @@ export function Worth({ data, evaluation, example }: SectionProps): ReactNode {
     const otherRow = other === undefined ? undefined : row(other);
     const mine = servedRow.pairwise.pooled.rate;
     const theirs = otherRow?.pairwise.pooled.rate;
-    let against: ReactNode = null;
+    let against: ReactNode = ".";
     if (other !== undefined && otherRow !== undefined && typeof mine === "number" && typeof theirs === "number") {
       const points = Math.abs((mine - theirs) * 100).toFixed(1);
-      const gap = mine === theirs ? "the same" : `${points} points ${mine > theirs ? "fewer" : "more"}`;
-      against = h(Fragment, null, ` The best version built ${usesModel ? "without" : "with"} the model, `, h("strong", null, versionName(other)), `, ranks ${pct(theirs)}: ${gap}. Estimated cost of a build: ${estimate(servedRow.cost.estimated_usd)} against ${estimate(otherRow.cost.estimated_usd)}.`);
+      const gap = mine === theirs ? "the same" : `${points} points ${mine > theirs ? "more" : "fewer"}`;
+      against = h(Fragment, null, `, against ${pct(theirs)} for `, h("strong", null, versionName(other)), `, the best version built ${usesModel ? "without" : "with"} the model: ${gap}, for an estimated ${estimate(servedRow.cost.estimated_usd).replace("about ", "")} a build against ${estimate(otherRow.cost.estimated_usd)}.`);
     }
-    sentence = h(Fragment, null, label("green", "served"), " ", h("strong", null, versionName(served)), `, built ${usesModel ? `with ${plural(servedRow.cost.model_calls, "model call", "model calls")}` : "without the model"}, ranks ${pct(mine)} of the test pairs in the right order.`, against);
+    sentence = h(Fragment, null, h("strong", null, versionName(served)), ` is served. It ranks ${pct(mine)} of the test pairs in the right order`, against);
   }
-  const dearest = Math.max(...names.map((version) => report.matching[version].cost.estimated_usd));
+  const passMark = evaluation.thresholds.matching.min_pairwise_accuracy;
   const rows = names.map((version, index) => {
     const entry = report.matching[version];
     const failed = report.decision.versions[version]?.passed === false;
     return h(
       "tr",
       { key: version, className: version === served ? "served" : undefined, ...(index === 0 ? { "data-first": "" } : {}) },
-      h("th", { scope: "row" }, versionName(version), " ", version === served ? label("green", "served") : null, " ", entry.cost.model_calls === 0 ? label("neutral", "no model") : label("blue", "model"), failed ? h(Fragment, null, " ", label("red", "fails a pass mark")) : null),
-      h("td", { className: "num" }, pct(entry.pairwise.pooled.rate), bar(entry.pairwise.pooled.rate ?? 0, `${versionName(version)}: ranked right`)),
-      h("td", { className: "num" }, estimate(entry.cost.estimated_usd), bar(dearest > 0 ? entry.cost.estimated_usd / dearest : 0, `${versionName(version)}: estimated cost`, { tone: "blue" })),
+      h("th", { scope: "row" }, h("span", { className: "name" }, versionName(version), version === served ? h(Fragment, null, " ", label("green", "served")) : null), small(entry.cost.model_calls === 0 ? "no model" : plural(entry.cost.model_calls, "model call", "model calls"), failed ? h("span", { className: "fails" }, " · fails a pass mark") : null)),
+      h("td", null, h("div", { className: "rate" }, h("span", { className: "big num" }, pct(entry.pairwise.pooled.rate)), bar(entry.pairwise.pooled.rate ?? 0, `${versionName(version)}: ranked right`, { at: passMark, mark: `pass mark ${passMark}` }))),
+      h("td", { className: "num cost" }, estimate(entry.cost.estimated_usd)),
     );
   });
-  const mine = response.results.map((entry) => entry.game_id);
-  const lines = Object.keys(versions)
-    .filter((version) => version !== response.served.version)
-    .map((version) => {
-      const other = versions[version];
-      if (other === undefined) return null;
-      const calls = row(version)?.cost.model_calls;
-      return h("li", { key: version }, h("span", null, versionName(version), " ", calls === undefined ? null : calls === 0 ? label("neutral", "no model") : label("blue", "model")), h("span", { className: "num" }, overlap(mine, other)));
-    });
-  const title = response.trace?.anchor?.title ?? response.request.game_id;
   return section(
     "worth",
-    left,
+    ask,
+    line,
     h("p", { className: "lede", "data-answer": "" }, sentence),
     h(
       "table",
-      { className: "mini-race", "data-measured": "" },
-      h("thead", null, h("tr", null, h("th", { scope: "col" }, "Version of the index"), h("th", { scope: "col", className: "num" }, "Ranked right"), h("th", { scope: "col", className: "num" }, "Estimated cost to build"))),
+      { className: "race", "data-measured": "" },
+      h("thead", null, h("tr", null, h("th", { scope: "col" }, "Version of the index"), h("th", { scope: "col", title: `${RANKED_RIGHT} The tick is the pass mark.` }, "Ranked right"), h("th", { scope: "col", className: "num", title: "An estimate from the model calls each build made, not a bill." }, "Estimated cost of a build"))),
       h("tbody", null, rows),
     ),
-    h("p", { className: "small" }, "Ranked right: how often a game the answer key calls related scores above one it calls unrelated, over every game of this fictional catalogue. It shows direction, not how real players would judge a list. Costs are estimates from the calls each build made."),
-    h("h3", null, "For ", h("em", null, title), ` on ${response.request.brand}, against ${versionName(response.served.version)}`),
-    h("ul", { className: "others", "data-others": "" }, lines),
-    h("p", { className: "small" }, "A different list is not a better list. Whether a version's lists are better is what the numbers above measure, over every game."),
-    h("p", { className: "callout", "data-limits": "" }, h("span", null, label("neutral", "what this does not show"), " ", LIMITS)),
-    more([offer("verdict"), offer("what-if"), offer("versions"), offer("numbers"), offer("enrichment-measures"), offer("gallery")]),
+    h("p", { className: "small", "data-limits": "" }, "A fictional catalogue, scored against its generator's own answer key: these numbers show direction, not how real players would judge a list."),
+    more("gate", "versions", "measures"),
   );
 }
 

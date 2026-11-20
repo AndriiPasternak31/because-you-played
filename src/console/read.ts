@@ -134,33 +134,25 @@ export function markText(text: string, labels: readonly { quote: string; n: numb
 export const sameTag = (a: unknown, b: unknown): boolean => a === b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
 /**
- * What happened to this record on its way into this version of the index, in two or three sentences.
+ * What happened to this record on its way into this version of the index, in one sentence.
  * Every clause is read from the record: what the lookup table found is the table's own output, whatever
  * version is on screen, and what the version holds is counted from the labels it holds.
  */
-export function story(anchor: TraceAnchor, version: string): string[] {
+export function story(anchor: TraceAnchor, version: string): string {
   const { table, conflict, model } = anchor.steps;
   const found = table.themes.length + table.mechanics.length;
-  const sentences: string[] = [];
-  if (conflict !== null) {
-    sentences.push(`A supplier tag says ${words(conflict.tag_asserts)}, but the description says ${conflict.description_states.map(words).join(", ")}. A lookup cannot tell which is right, so it asserts no mechanic.`);
-  } else if (found === 0) sentences.push("The lookup table found no label in the supplier's tags.");
-  else {
-    const empty = [table.themes.length === 0 ? "themes" : "", table.mechanics.length === 0 ? "mechanics" : ""].filter(Boolean);
-    sentences.push(`The lookup table read ${plural(found, "label", "labels")} from the supplier's tags${empty.length === 0 ? "" : `, none of them for its ${empty.join(" or ")}`}.`);
-  }
-  if (anchor.thin) sentences.push("The record counts as thin.");
-  if (anchor.fields === null) {
-    sentences.push(`${versionName(version)} holds no labels: it indexes the supplier's text as it is.`);
-    return sentences;
-  }
+  let first: string;
+  if (conflict !== null) first = `a supplier tag says ${words(conflict.tag_asserts)} but the description says ${conflict.description_states.map(words).join(", ")}, so the lookup table asserts no mechanic`;
+  else if (found === 0) first = "the lookup table found no label in the supplier's tags";
+  else first = `the lookup table read ${plural(found, "label", "labels")} from the supplier's tags`;
+  first = anchor.thin ? `A thin record: ${first}` : `${first[0]?.toUpperCase()}${first.slice(1)}`;
+  if (anchor.fields === null) return `${first}; ${versionName(version)} holds no labels and indexes the supplier's text as it is.`;
   const held = heldLabels(anchor);
   const fromModel = held.filter((entry) => entry.method === "model").length;
   const fromTable = held.length - fromModel;
-  if (!model.used) sentences.push(`${versionName(version)} does not use the model for this record, and holds ${plural(fromTable, "label", "labels")} from the table.`);
-  else if (fromModel === 0) sentences.push(`The model was asked, and ${versionName(version)} holds no label from it.`);
-  else sentences.push(`${versionName(version)} holds ${plural(fromModel, "label", "labels")} the model read from the text, each copied from the words marked below${fromTable === 0 ? "" : `, and ${count(fromTable)} from the table`}.`);
-  return sentences;
+  if (!model.used) return `${first}; ${versionName(version)} does not use the model for this record and holds ${plural(fromTable, "label", "labels")} from the table.`;
+  if (fromModel === 0) return `${first}; the model was asked, and ${versionName(version)} holds no label from it.`;
+  return `${first}; ${versionName(version)} holds ${plural(fromModel, "label", "labels")} the model read from the text${fromTable === 0 ? "" : ` and ${count(fromTable)} from the table`}, each marked in the words it was read from.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,14 +196,16 @@ const STEPS: Record<string, { name: string; group: Group }> = {
   not_live_on_brand: { name: "Live on this brand", group: "eligible" },
   anchor_or_duplicate: { name: "Not the game itself", group: "eligible" },
   insufficient_data: { name: "Enough to compare", group: "eligible" },
-  below_floor: { name: "Similar enough", group: "similar" },
+  below_floor: { name: "Above the floor", group: "similar" },
   family_cap: { name: "One per family", group: "limit" },
   over_limit: { name: "Within the limit", group: "limit" },
 };
-export const GROUPS: Record<Group, string> = { eligible: "Which games may be shown at all", similar: "Which of them are similar enough", limit: "How many are shown", other: "Other steps" };
+/** The three different things a step can decide, in a word. */
+export const GROUPS: Record<Group, string> = { eligible: "rule", similar: "score", limit: "limit", other: "step" };
 export const stepName = (filter: string): string => STEPS[filter]?.name ?? words(filter);
 const stepGroup = (filter: string): Group => STEPS[filter]?.group ?? "other";
 
+export type { Group };
 export interface Run {
   group: Group;
   steps: { step: FilterStep; index: number }[];

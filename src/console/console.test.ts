@@ -5,6 +5,7 @@
  * (the first screen, clicking, the keyboard, the drawer) is proved by tools/console-check.ts.
  */
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { createElement as h, type ReactNode } from "react";
@@ -16,9 +17,9 @@ import { VERSIONS, type Version } from "../pipeline/versions.ts";
 import { route } from "../service/http.ts";
 import type { Recommendation } from "../service/recommend.ts";
 import { loadService } from "../service/state.ts";
-import { Compare, Evidence, WhatIfView } from "./evidence.ts";
+import { Compare, Evidence, PARTS, Part, WhatIfView, type PartId } from "./evidence.ts";
 import { TABS, addressOf, estimate, failuresHere, findExamples, gameOptions, latestOnly, loadRequest, readAddress, versionName, type Answer, type Catalogue, type Evaluation, type Loaded, type TabId, type WhatIf } from "./read.ts";
-import { AddressProblems, EVIDENCE, LIMITS, SECTIONS, type EvidenceId, type SectionProps } from "./view.ts";
+import { AddressProblems, EVIDENCE, LIMITS, RANKED_RIGHT, SECTIONS, type EvidenceId, type SectionProps } from "./view.ts";
 
 const service = loadService();
 const games = service.index.records.map((record) => record.game_id);
@@ -57,6 +58,9 @@ function load(game: string, brand: string, version: Version = served): Promise<L
 const render = (node: ReactNode): string => renderToStaticMarkup(node);
 const section = (tab: TabId, data: Loaded, more: Partial<SectionProps> = {}): string => render(h(SECTIONS[tab], { data, evaluation, ...more }));
 const evidence = (id: EvidenceId, data: Loaded | null): string => render(h(Evidence, { id, data, evaluation }));
+/** One part of the evaluation's evidence, as it is drawn when its name is pressed. */
+const part = (id: PartId, report: Evaluation = evaluation): string => render(h(Part, { id, evaluation: report }));
+const PART_IDS = [...Object.keys(PARTS.gate), ...Object.keys(PARTS.measures)] as PartId[];
 /** The words of a piece of markup, as a reader sees them. */
 const text = (html: string): string =>
   html
@@ -93,7 +97,7 @@ test("UI-1: every view asks only this service's own routes, and shows the number
   assert.ok(shown.includes("0.123456") && shown.includes(">0.12<"), "the changed score is not on the page, rounded and exact");
   const scores = evidence("scores", data);
   for (const value of ["0.654321", "0.111111"]) assert.ok(scores.includes(value), `${value} is not in the scores`);
-  assert.ok(section("removed", data).includes("The floor is 0.111111."));
+  assert.ok(shown.includes("against a floor of 0.111111"));
 });
 
 test("UI-2: every declined request shows its reason, the word declined and no results, and never a failure label", async () => {
@@ -159,7 +163,8 @@ test("UI-3: the page is served, and for every brand, game and version every sect
     }
   }
   assert.equal(rendered, catalogue.brands.length * catalogue.games.length * catalogue.versions.length);
-  for (const id of ["verdict", "numbers", "enrichment-measures", "gallery"] as const) assert.ok(evidence(id, null).length > 500, id);
+  for (const id of ["gate", "measures"] as const) assert.ok(evidence(id, null).length > 500, id);
+  for (const id of PART_IDS.filter((id) => id !== "what-if")) assert.ok(part(id).length > 200, id);
 });
 
 test("UI-4: the what-if panel says the gate reads only the committed file, shows the committed mark, and moving a mark flips pass and fail without touching a file", async () => {
@@ -202,12 +207,14 @@ test("UI-5: text from the catalogue and from a model reaches the page as text, n
   const bad = { ...(poison(evaluation) as Evaluation), marks: evaluation.marks };
   const pages = [
     ...TABS.map((tab) => render(h(SECTIONS[tab.id], { data, evaluation: bad }))),
-    ...(Object.keys(EVIDENCE) as EvidenceId[]).filter((id) => id !== "what-if").map((id) => render(h(Evidence, { id, data, evaluation: bad }))),
+    ...(Object.keys(EVIDENCE) as EvidenceId[]).map((id) => render(h(Evidence, { id, data, evaluation: bad }))),
+    ...PART_IDS.filter((id) => id !== "what-if" && id !== "limits").map((id) => part(id, bad)),
     render(h(AddressProblems, { problems: readAddress(`?brand=${encodeURIComponent(hostile)}&game=${encodeURIComponent(hostile)}`, catalogue).problems })),
   ];
   for (const [index, html] of pages.entries()) {
     assert.ok(!html.includes("<script") && !html.includes("<img"), `page ${index}: hostile text reached the page as markup`);
-    assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;"), `page ${index}: the hostile text is not on the page as text`);
+    // The fourth section draws the evaluation's numbers and the versions' own names: it has no free text to carry.
+    if (index !== TABS.findIndex((tab) => tab.id === "worth")) assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;"), `page ${index}: the hostile text is not on the page as text`);
   }
   // The records that carry markup or a planted instruction render with their text escaped.
   const marked = service.index.records.filter((record) => /<p>|&amp;|&#39;/.test(record.canonical.description_as_delivered ?? ""));
@@ -230,7 +237,7 @@ test("UI-6: for a game whose tag contradicts its description, the page shows the
     for (const data of [table, model]) {
       const added = section("added", data);
       assert.ok(added.includes(`<span class="tag contradicted">${esc(record.conflict?.tag ?? "")}</span>`), `${record.game_id}: the contradicted tag is not marked`);
-      assert.ok(text(added).includes("A lookup cannot tell which is right, so it asserts no mechanic."));
+      assert.ok(text(added).includes(`a supplier tag says ${record.conflict?.tag_asserts.replaceAll("_", " ")} but the description says`) && text(added).includes("so the lookup table asserts no mechanic"));
       const steps = text(evidence("steps", data));
       assert.ok(steps.includes(`The tag ${record.conflict?.tag} asserts`), `${record.game_id}: the contradicted tag is not named`);
       assert.ok(steps.includes("the table version asserts no mechanic"));
@@ -244,7 +251,7 @@ test("UI-6: for a game whose tag contradicts its description, the page shows the
       assert.ok(text(evidence("steps", model)).includes("the field stays empty in every version"));
     }
     // Side by side: one column per version, the table's cell says conflicting and a resolved model cell lists labels.
-    const compare = render(h(Compare, { versions: table.versions, served }));
+    const compare = render(h(Compare, { versions: table.versions, served, shown: "table" }));
     const cells = (compare.split('<tr data-row="mechanics">')[1] ?? "").split("</tr>")[0]?.split("<td>").slice(1) ?? [];
     assert.equal(cells.length, VERSIONS.length);
     assert.ok((cells[VERSIONS.indexOf("table")] ?? "").includes("conflicting"));
@@ -299,7 +306,7 @@ test("UI-7: a quote is marked where it sits in the record's own text, a quote th
   assert.ok(scores.includes('style="left:12.34%"'), "the tick is not at the floor");
 });
 
-test("UI-8: each section states one question and answers it in a sentence, and the evidence stays out of sight under a button with its own name", async () => {
+test("UI-8: each section states one question with one short line, answers it in one sentence, and keeps everything else out of sight under at most three named buttons", async () => {
   let results = 0;
   let declines = 0;
   for (const brand of brands) {
@@ -310,11 +317,18 @@ test("UI-8: each section states one question and answers it in a sentence, and t
         const where = `${game} on ${brand}, ${tab.id}`;
         for (const marker of ["data-question", "data-answer"]) assert.equal(html.split(`${marker}=""`).length - 1, 1, `${where}: not exactly one ${marker}`);
         assert.ok(html.includes('data-first=""'), `${where}: nothing is marked as the first thing of the answer`);
-        // The question is on the left, before its answer, and it is a question.
-        assert.ok(html.indexOf("data-question") < html.indexOf("data-answer"), `${where}: the answer comes before the question`);
+        // The left: the question, which is a question, and one short line. Nothing else.
+        const left = /<div class="question">(.*?)<\/div><div class="answer">/.exec(html)?.[1] ?? "";
+        assert.match(left, /^<h2 data-question="">.*?<\/h2><p class="why">[^<]{20,110}<\/p>$/, `${where}: the left holds more than a question and one short line`);
         assert.match(text(/<h2 data-question="">(.*?)<\/h2>/.exec(html)?.[1] ?? ""), /\?$/, `${where}: the question is not a question`);
-        // What is true and not the answer is not drawn: no table of scores, no raw record, no step-by-step, no pass marks.
-        for (const hidden of ['class="scores"', 'class="raw"', 'class="steps"', 'class="measures"', 'class="matrix"', "data-what-if", 'class="gallery"', "<details"]) assert.ok(!html.includes(hidden), `${where}: ${hidden} is on screen before it is asked for`);
+        // What is true and not the answer is not drawn: no table of scores, no raw record, no step-by-step, no pass marks, no other version's list.
+        for (const hidden of ['class="scores"', 'class="raw"', 'class="steps"', 'class="measures"', 'class="matrix"', "data-what-if", 'class="gallery"', "data-others", "<details"]) assert.ok(!html.includes(hidden), `${where}: ${hidden} is on screen before it is asked for`);
+        const offered = html.split("data-evidence=").length - 1;
+        assert.ok(offered >= 1 && offered <= 3, `${where}: ${offered} evidence buttons`);
+        // No boxed note on the surface, unless the request calls for one: a decline, a failure the evaluation found, or a game pointed at.
+        const boxes = html.split('class="callout').length - 1;
+        const due = html.split("data-decline").length - 1 + (html.split("data-failure").length - 1);
+        assert.equal(boxes, due, `${where}: ${boxes} boxed notes for ${due} reasons`);
       }
       const shown = section("shown", data);
       if (shown.includes("data-results")) {
@@ -327,15 +341,20 @@ test("UI-8: each section states one question and answers it in a sentence, and t
     }
   }
   assert.ok(results > 0 && declines > 0);
-  // Every piece of evidence a section offers has its own name, the name says what it opens, and it opens.
+  // Every piece of evidence is offered by a section under its own name, the name says what it opens, and it opens.
   const data = await load(games.find((id) => ask(`/api/recommendations?game=${id}&brand=${home}`).results.length > 0) as string, home);
   const offered = TABS.flatMap((tab) => [...section(tab.id, data).matchAll(/<button type="button" class="chip" data-evidence="([^"]+)">(.*?)<\/button>/g)].map((match) => [match[1] as EvidenceId, text(match[2] as string)] as const));
   assert.deepEqual([...new Set(offered.map(([id]) => id))].sort(), Object.keys(EVIDENCE).sort(), "a piece of evidence is offered by no section");
-  for (const [id, name] of offered) {
-    assert.equal(name.trim(), EVIDENCE[id], `${id} is offered under another name`);
-    assert.ok(EVIDENCE[id].length > 20 && !/^(show )?(more|details)$/i.test(EVIDENCE[id]), `"${EVIDENCE[id]}" does not say what it opens`);
-  }
-  assert.equal(new Set(Object.values(EVIDENCE)).size, Object.keys(EVIDENCE).length, "two pieces of evidence carry the same name");
+  const names = [...Object.values(EVIDENCE), ...Object.values(PARTS.gate), ...Object.values(PARTS.measures)];
+  for (const [id, name] of offered) assert.equal(name.trim(), EVIDENCE[id], `${id} is offered under another name`);
+  for (const name of names) assert.ok(name.length > 20 && !/^(show )?(more|details)$/i.test(name), `"${name}" does not say what it opens`);
+  assert.equal(new Set(names).size, names.length, "two pieces of evidence carry the same name");
+  // A piece with several parts names each of them, and opens on the first.
+  for (const id of ["gate", "measures"] as const) for (const name of Object.values(PARTS[id])) assert.ok(text(evidence(id, data)).includes(name), `${id} does not name its part "${name}"`);
+  // A version other than the served one says so wherever it is shown, with the way back.
+  const inspected = await load(data.response.request.game_id, home, "raw");
+  for (const tab of ["shown", "added", "removed"] as const) assert.ok(section(tab, inspected).includes("data-inspection") && text(section(tab, inspected)).includes(`This is Raw text, shown for comparison. Players are served ${versionName(served)}. Back to the served version`));
+  assert.ok(!section("shown", data).includes("data-inspection"));
 });
 
 test("UI-9: what a result is said to have in common with the game played is held by both, and it is never offered as the cause of the score", async () => {
@@ -346,12 +365,12 @@ test("UI-9: what a result is said to have in common with the game played is held
     if (response.outcome !== "results") continue;
     const html = section("shown", data);
     const mine = held(response);
-    const items = (html.split('<ol class="results" data-results="">')[1] ?? "").split("</ol>")[0]?.split("<li ").slice(1) ?? [];
+    const items = (html.split('<ol class="results" data-results="">')[1] ?? "").split("</ol>")[0]?.split(/<li[ >]/).slice(1) ?? [];
     assert.equal(items.length, response.results.length);
     for (const [index, result] of response.results.entries()) {
       const theirs = held(ask(`/api/inspect?game=${result.game_id}&brand=${home}&version=${served}`));
       const expected = mine.filter((label) => theirs.some((other) => other.field === label.field && other.label === label.label)).map((label) => label.label.replaceAll("_", " "));
-      const shown = [...(items[index] ?? "").matchAll(/<span class="tag (?:model|table)">(.*?)<\/span>/g)].map((match) => match[1] as string);
+      const shown = [...(items[index] ?? "").matchAll(/<span class="tag (?:model|table)"[^>]*>(.*?)<\/span>/g)].map((match) => match[1] as string);
       assert.deepEqual(shown, expected.map((label) => esc(label)), `${game}: what ${result.game_id} has in common is not what both hold`);
       if (expected.length === 0) assert.ok(text(items[index] ?? "").includes("No label in common"), `${game}: ${result.game_id} shows no reason and does not say so`);
       cards += 1;
@@ -366,7 +385,7 @@ test("UI-10: the other versions' answers are counted as the service gave them, t
   const { matching } = evaluation.report;
   let differing = 0;
   for (const game of games) {
-    const html = section("worth", await load(game, home));
+    const html = evidence("versions", await load(game, home));
     const mine = ask(`/api/recommendations?game=${game}&brand=${home}`).results.map((entry) => entry.game_id);
     const lines = (html.split('data-others="">')[1] ?? "").split("</ul>")[0]?.split("<li>").slice(1) ?? [];
     const others = VERSIONS.filter((version) => version !== served);
@@ -377,7 +396,7 @@ test("UI-10: the other versions' answers are counted as the service gave them, t
       const same = theirs.filter((id) => mine.includes(id)).length;
       const line = text(lines[index] ?? "");
       assert.ok(line.includes(versionName(version)), `${game}: no line for ${version}`);
-      assert.ok(line.includes(matching[version].cost.model_calls === 0 ? "no model" : "model"), `${game}: ${version} is not marked by how it was built`);
+      assert.ok(line.includes(matching[version].cost.model_calls === 0 ? "no model" : " model "), `${game}: ${version} is not marked by how it was built`);
       if (other.outcome === "declined") assert.ok(line.includes("declines"), `${game}: ${version} declines and the line does not say so`);
       else if (mine.length === 0) assert.ok(line.includes(`returns ${theirs.length} game`));
       else if (same === mine.length && theirs.length === same) assert.ok(line.includes("the same games"), `${game}: ${version} returns the same games`);
@@ -390,6 +409,9 @@ test("UI-10: the other versions' answers are counted as the service gave them, t
     assert.ok(text(html).includes("A different list is not a better list."));
   }
   assert.ok(differing > 0, "no version ever differed, so the differing case was not checked");
+  // Looking at another version, the others are counted against the list on screen.
+  const raw = await load(games.find((id) => ask(`/api/inspect?game=${id}&brand=${home}&version=raw`).results.length > 0) as string, home, "raw");
+  assert.ok(text(evidence("versions", raw)).includes("Against the list of Raw text") && !(evidence("versions", raw).split('data-others="">')[1] ?? "").split("</ul>")[0]?.includes(">Raw text"));
 
   const html = section("worth", await load(games[0] as string, home));
   const measured = (html.split('data-measured="">')[1] ?? "").split("</table>")[0] ?? "";
@@ -397,23 +419,30 @@ test("UI-10: the other versions' answers are counted as the service gave them, t
     const row = matching[version];
     assert.ok(text(measured).includes(`${((row.pairwise.pooled.rate ?? 0) * 100).toFixed(1)}%`) && text(measured).includes(estimate(row.cost.estimated_usd)), `${version}: its measured numbers are not in the answer`);
   }
-  // The answer is said in a sentence, from the report: the served version, the best version built the other way, and both rates.
+  // Each bar is as long as its rate, from zero: a difference is not drawn larger than it is.
+  const widths = [...measured.matchAll(/data-slot="meter-indicator" style="[^"]*width:([\d.]+)%/g)].map((match) => Number(match[1]));
+  assert.equal(widths.length, VERSIONS.length);
+  for (const [index, version] of VERSIONS.entries()) assert.ok(Math.abs((widths[index] ?? -1) - (matching[version].pairwise.pooled.rate ?? 0) * 100) < 0.01, `${version}: its bar is ${widths[index]}% long, its rate is ${matching[version].pairwise.pooled.rate}`);
+  assert.ok(measured.includes(`left:${(evaluation.thresholds.matching.min_pairwise_accuracy * 100).toFixed(2)}%`), "the tick is not at the pass mark");
+  // The answer is said in one sentence, from the report: the served version, the best version built the other way, and both rates.
   const answer = text(/<p class="lede" data-answer="">(.*?)<\/p>/.exec(html)?.[1] ?? "");
   const plain = VERSIONS.filter((version) => matching[version].cost.model_calls === 0).sort((a, b) => (matching[b].pairwise.pooled.rate ?? 0) - (matching[a].pairwise.pooled.rate ?? 0))[0] as Version;
   assert.ok(matching[served].cost.model_calls > 0, "the served version is built without the model, so this proof needs another sentence");
-  for (const part of [versionName(served), versionName(plain), `${((matching[served].pairwise.pooled.rate ?? 0) * 100).toFixed(1)}%`, `${((matching[plain].pairwise.pooled.rate ?? 0) * 100).toFixed(1)}%`]) assert.ok(answer.includes(part), `the answer does not say ${part}: ${answer}`);
-  assert.ok(answer.includes(`${Math.abs(((matching[served].pairwise.pooled.rate ?? 0) - (matching[plain].pairwise.pooled.rate ?? 0)) * 100).toFixed(1)} points`));
+  for (const piece of [`${versionName(served)} is served`, versionName(plain), `${((matching[served].pairwise.pooled.rate ?? 0) * 100).toFixed(1)}%`, `${((matching[plain].pairwise.pooled.rate ?? 0) * 100).toFixed(1)}%`, "the best version built without the model"]) assert.ok(answer.includes(piece), `the answer does not say ${piece}: ${answer}`);
+  assert.ok(answer.includes(`${Math.abs(((matching[served].pairwise.pooled.rate ?? 0) - (matching[plain].pairwise.pooled.rate ?? 0)) * 100).toFixed(1)} points ${(matching[served].pairwise.pooled.rate ?? 0) > (matching[plain].pairwise.pooled.rate ?? 0) ? "more" : "fewer"}`), answer);
   // A cost is an estimate and reads as one: never a figure to four places, in the answer or in its table.
   assert.ok(!/\$\d+\.\d{3,}/.test(html), "a cost is shown to more places than an estimate has");
-  assert.ok(text(html).includes("Estimated cost") && text(html).includes("Costs are estimates"));
+  assert.ok(answer.includes("for an estimated $") && text(html).includes("Estimated cost of a build") && html.includes("An estimate from the model calls each build made, not a bill."));
   assert.equal(estimate(0.115985), "about $0.12");
   assert.equal(estimate(0.000148), "under $0.01");
-  assert.ok(text(html).includes("It shows direction, not how real players would judge a list."));
-  assert.ok(html.includes("data-limits"));
+  // The one limit that stays on the surface is true on its own; what "ranked right" measures is a hover away and written out with the numbers.
+  assert.ok(/<p class="small" data-limits="">A fictional catalogue, scored against its generator(&#x27;|')s own answer key: these numbers show direction, not how real players would judge a list\.<\/p>/.test(html));
+  assert.ok(html.includes(esc(RANKED_RIGHT)) && text(part("numbers")).includes(RANKED_RIGHT));
 });
 
 test("UI-11: the path shows the trace's own counts in the trace's order, availability first, as three different things, and points out a game where it was removed", async () => {
   let limited = 0;
+  let floored = 0;
   for (const brand of brands) {
     for (const game of games) {
       const data = await load(game, brand);
@@ -428,26 +457,40 @@ test("UI-11: the path shows the trace's own counts in the trace's order, availab
       assert.deepEqual(counts[1], [String(first.remaining), "Live on this brand"]);
       assert.deepEqual(counts.slice(1, -1).map((entry) => entry[0]), filters.map((step) => String(step.remaining)), `${game} on ${brand}: the counts are not the trace's`);
       assert.deepEqual(counts.at(-1), [String(response.results.length), "Shown"]);
-      const stages = [...path.matchAll(/<div class="stage (\w+)"/g)].map((match) => match[1]);
-      // Three different things, in this order. A request that ends at the floor has no third.
-      assert.deepEqual(stages, ["eligible", "similar", "limit"].slice(0, stages.length), `${game} on ${brand}`);
+      // Each step says which of three different things it decides, in this order. A request that ends at the floor has no third.
+      const kinds = [...path.matchAll(/data-group="(\w+)"[^>]*><span class="kind">(\w+)<\/span>/g)].map((match) => `${match[1]}:${match[2]}`);
+      const stages = [...new Set(kinds)];
+      assert.deepEqual(stages, ["eligible:rule", "similar:score", "limit:limit"].slice(0, stages.length), `${game} on ${brand}`);
+      assert.equal(kinds.length, filters.length);
       assert.ok(stages.length >= 2 && (response.outcome !== "results" || stages.length === 3), `${game} on ${brand}: ${stages.join(", ")}`);
-      assert.ok(text(path).includes("Rules, not scores.") && text(path).includes("not that a player would find it relevant"));
       // The answer counts what the rules removed before anything was scored, from the trace.
       const byRules = filters.filter((step) => ["not_live_on_brand", "anchor_or_duplicate", "insufficient_data"].includes(step.filter)).reduce((sum, step) => sum + step.removed.length, 0);
       assert.ok(text(path).includes(`${byRules} ${byRules === 1 ? "was" : "were"} removed by rules before anything was scored.`), `${game} on ${brand}: the answer does not count the ${byRules} removed by rules`);
+      assert.ok(!path.includes('aria-expanded="true"') && !path.includes("data-focus") && !path.includes("step-panel"), "a step is open though nothing was pointed out");
+      // Opened, a step says what kind of thing it decided. The floor is a point in the spread of scores, never evidence of relevance.
+      const opened = (filter: string): string | null => {
+        const gone = filters.find((step) => step.filter === filter)?.removed[0];
+        return gone === undefined ? null : text(section("removed", data, { focus: gone.game_id }));
+      };
+      const rule = opened("not_live_on_brand");
+      if (rule !== null) assert.ok(rule.includes("A rule, not a score. A game that is not live on the brand is removed before anything is scored."), `${game} on ${brand}`);
+      const floor = opened("below_floor");
+      if (floor !== null) {
+        floored += 1;
+        assert.ok(floor.includes(`The floor is ${response.trace?.floor}.`) && floor.includes("It is a point in the spread of scores: it says a game is closer than most pairs are, not that a player would find it relevant."), `${game} on ${brand}`);
+      }
       // A game that cleared the floor and is not shown is named, with the reason the trace gives.
       const cut = filters.filter((step) => step.filter === "family_cap" || step.filter === "over_limit").flatMap((step) => step.removed);
       if (stages.length < 3) assert.equal(cut.length, 0);
-      else if (cut.length === 0) assert.ok(text(path).includes("Every game that cleared the floor is shown."));
-      else if (cut.length <= 3) {
+      else if (cut[0] !== undefined) {
         limited += 1;
-        for (const entry of cut) assert.ok(path.includes(`<strong>${esc(entry.title)}</strong> (${esc(entry.why.replaceAll("_", " "))})`), `${game} on ${brand}: ${entry.game_id} cleared the floor, is not shown, and is not named`);
+        const limit = section("removed", data, { focus: cut[0].game_id });
+        assert.ok(text(limit).includes("A limit, not a score. Cleared the floor and not shown:"));
+        for (const entry of cut) assert.ok(limit.includes(`<strong>${esc(entry.title)}</strong> (${esc(entry.why.replaceAll("_", " "))})`), `${game} on ${brand}: ${entry.game_id} cleared the floor, is not shown, and is not named`);
       }
-      assert.ok(!path.includes('aria-expanded="true"') && !path.includes("data-focus"), "a step is open though nothing was pointed out");
     }
   }
-  assert.ok(limited > 0, "no game was ever cut by the limit, so that sentence was not checked");
+  assert.ok(limited > 0 && floored > 100, `the limit was checked on ${limited} requests and the floor on ${floored}`);
   // Pointed at a game the first filter removed, the page opens that step and marks the game.
   let withRemoved: Loaded | undefined;
   for (const game of games) {
@@ -502,10 +545,9 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   assert.ok(listed.length > 0);
   const opened = section(failure.tab, failure.data);
   assert.ok(opened.includes("data-failure") && listed.some((entry) => opened.includes(esc(entry.what))));
-  // Each example opens the section that shows it, and its line is shown with the question in every section.
+  // Each example opens the section that shows it.
   assert.deepEqual(examples.map((example) => example.tab), ["added", "added", "added", "removed", "shown", "worth", failure.tab]);
   for (const example of examples) assert.equal(example.href, addressOf({ game: example.game as string, brand: example.brand as string, version: example.version, tab: example.tab, focus: example.focus }, served));
-  for (const tab of TABS) assert.ok(section(tab.id, thin.data, { example: thin }).includes("data-look") && section(tab.id, thin.data, { example: thin }).includes(esc(thin.note)));
 
   // No game is named in the page's own files.
   const sources = [...readdirSync("src/console").filter((file) => /\.(ts|html|css)$/.test(file) && !file.endsWith(".test.ts"))].map((file) => readFileSync(`src/console/${file}`, "utf8")).join("\n");
@@ -523,9 +565,16 @@ test("UI-12: the examples are found in the data, each shows what it says, and th
   assert.ok(missing !== undefined && !missing.found && missing.href === undefined && missing.note === "No game in this catalogue shows it.");
 });
 
-test("UI-14: the script and the stylesheet the service serves are what the source builds, and carry the notices of what is inside them", async () => {
+test("UI-14: the script and the stylesheet the service serves are what the source builds, are in the repository, and carry the notices of what is inside them", async (t) => {
   const built = await buildConsole();
   assert.deepEqual(drift(built), [], 'src/console/dist differs from a fresh build: run "npm run build" and commit the result');
+  // A clone has to hold them: a built file that an ignore rule keeps out of the repository serves nothing after "npm install".
+  const root = new URL("../../", import.meta.url);
+  if (spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: root }).status !== 0) t.diagnostic("not a git checkout: whether the built files are in the repository was not checked");
+  else {
+    const tracked = spawnSync("git", ["ls-files", "--error-unmatch", ...[...built.keys()].map((name) => `src/console/dist/${name}`)], { cwd: root, encoding: "utf8" });
+    assert.equal(tracked.status, 0, `a built file is not in the repository: ${tracked.stderr.trim()}`);
+  }
   const notices = built.get("THIRD-PARTY-NOTICES.txt") ?? "";
   for (const name of ["react ", "react-dom ", "scheduler ", "@ui-sdk/react ", "@ui-sdk/core ", "metal-fx "]) assert.ok(notices.includes(`\n${name}`), `no notice for ${name}`);
   for (const licence of ["MIT License", "Apache License", "Paper Design"]) assert.ok(notices.includes(licence), `the notices do not carry: ${licence}`);
@@ -554,7 +603,7 @@ test("UI-15: a returned game is described as above the similarity floor and live
   }
   assert.ok(checked > 300);
   // The one place the word stands is the evaluation's own measure, where the answer key decides it.
-  assert.ok(text(section("worth", await load(games[0] as string, home))).includes("a game the answer key calls related scores above one it calls unrelated"));
+  assert.ok(RANKED_RIGHT.includes("a game the answer key calls related scores above one it calls unrelated") && section("worth", await load(games[0] as string, home)).includes(esc(RANKED_RIGHT)));
 });
 
 test("UI-16: what the page says the lookup table and the model found is read from the record, in every version", async () => {
@@ -570,20 +619,23 @@ test("UI-16: what the page says the lookup table and the model found is read fro
       const mine = held(data.response);
       const fromModel = mine.filter((label) => label.method === "model").length;
       const where = `${game} in ${version}: "${said}"`;
+      const lower = said.toLowerCase();
       if (anchor.steps.conflict === null) {
         if (found === 0) {
           without += 1;
-          assert.ok(said.includes("The lookup table found no label in the supplier's tags."), where);
+          assert.ok(lower.includes("the lookup table found no label in the supplier's tags;"), where);
         } else {
           withLabels += 1;
-          assert.ok(said.includes(`The lookup table read ${found} label${found === 1 ? "" : "s"} from the supplier's tags`) && !said.includes("found no label"), where);
+          assert.ok(lower.includes(`the lookup table read ${found} label${found === 1 ? "" : "s"} from the supplier's tags;`) && !lower.includes("found no label"), where);
         }
-      }
-      assert.equal(said.includes("counts as thin"), anchor.thin, where);
+      } else assert.ok(lower.includes("so the lookup table asserts no mechanic;"), where);
+      assert.equal(said.trim().startsWith("A thin record:"), anchor.thin, where);
       if (anchor.fields === null) assert.ok(said.includes("holds no labels"), where);
-      else if (!anchor.steps.model.used) assert.ok(said.includes(`does not use the model for this record, and holds ${mine.length - fromModel} label`), where);
+      else if (!anchor.steps.model.used) assert.ok(said.includes(`does not use the model for this record and holds ${mine.length - fromModel} label`), where);
       else if (fromModel === 0) assert.ok(said.includes("holds no label from it"), where);
       else assert.ok(said.includes(`holds ${fromModel} label${fromModel === 1 ? "" : "s"} the model read from the text`), where);
+      // One sentence.
+      assert.equal(said.trim().split(". ").length, 1, where);
     }
   }
   assert.ok(withLabels > 100 && without > 0, `the table found labels on ${withLabels} pages and none on ${without}`);
@@ -618,7 +670,7 @@ test("UI-17: a failure the evaluation found is shown where it happened, and nowh
   // is a failure of the ranking for a game the service declines on every brand: no request shows a ranking for it.
   let onRequests = 0;
   for (const entry of real) {
-    assert.ok(text(evidence("gallery", null)).includes(entry.what), `the failure "${entry.kind}" is not in the list of failures`);
+    assert.ok(text(part("gallery")).includes(entry.what), `the failure "${entry.kind}" is not in the list of failures`);
     if ((seen.get(entry.what) ?? []).length > 0) onRequests += 1;
     else for (const brand of brands) assert.equal((await load(entry.game_id, brand, entry.version ?? served)).response.trace?.scores.length ?? 0, 0, `the failure "${entry.kind}" on ${entry.game_id} is shown on no page, though ${brand} shows a ranking for it`);
   }
@@ -678,7 +730,7 @@ test("UI-19: a brand, a version, a section or a parameter the page does not know
 
 test("UI-20: the split by record condition is not offered as the model's work, the limits are the plan's, and the held-back answers are described as they are", () => {
   const { report } = evaluation;
-  const numbers = text(evidence("numbers", null));
+  const numbers = text(part("numbers"));
   assert.ok(!/where the model helps/i.test(numbers), "the split is still offered as where the model helps");
   // A version that calls the model for only some records is said to, with the report's own counts.
   const partial = VERSIONS.filter((version) => report.matching[version].cost.model_calls > 0 && report.matching[version].cost.model_calls < report.games);
@@ -690,9 +742,9 @@ test("UI-20: the split by record condition is not offered as the model's work, t
   assert.equal(CATALOGUE_TEXT_MODEL, ENRICHMENT_MODEL, "the catalogue text and the enrichment no longer come from one model, so the limits text is wrong");
   assert.equal(report.models.enrichment, ENRICHMENT_MODEL);
   assert.ok(!/answer key[^.]*one vendor/i.test(LIMITS));
-  for (const tab of ["worth"] as const) assert.ok(text(render(h(SECTIONS[tab], { data: { response: ask(`/api/recommendations?game=${games[0]}&brand=${home}&trace=1`), neighbours: {}, versions: {} }, evaluation }))).includes(LIMITS));
+  assert.ok(text(part("limits")).includes(LIMITS) && text(evidence("measures", null)).includes(PARTS.measures.limits));
   // While the owner's check is outstanding the page says what is held back and where it is, and shows none of it.
-  const measures = evidence("enrichment-measures", null);
+  const measures = part("enrichment");
   if (report.owner_check.status === "outstanding") {
     assert.ok(measures.includes("data-held-back") && text(measures).includes(`${report.reviewer.held_back} of the reviewer's ${report.reviewer.questions} answers`));
     assert.ok(text(measures).includes("kept out of the working tree and out of every count on this page"));

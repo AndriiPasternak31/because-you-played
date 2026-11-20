@@ -10,11 +10,12 @@
  *   node tools/console-check.ts --also "/?game=<id>&brand=<brand>"   the first screen of that address too (repeatable)
  *
  * The first screen is behaviour, not look: on arrival, with no scrolling, the top panel, the one question
- * that is open, the sentence that answers it and the first thing of the answer are wholly inside the window.
- * It is checked for the landing page and every example at four windows (a desktop, a short laptop, a phone,
- * and the same phone with the browser's bars taken off), and with --every-request for every game on every
- * brand in the served version at the short laptop and the phone without bars, and for every other version
- * at the phone without bars.
+ * that is open and the sentence that answers it are wholly inside the window; in a desktop window so is
+ * the first thing of the answer, and on a phone the rest scrolls. It is checked for the landing page and
+ * every example at four windows (a desktop, a short laptop, a phone, and the same phone with the browser's
+ * bars taken off), and with --every-request for every game on every brand in the served version at the
+ * short laptop and the phone without bars, and for every other version at the phone without bars.
+ * At 1366 by 768 no section of the landing page or of an example scrolls at all.
  *
  * The examples are found the way the page finds them, by asking the service, so no game is named here.
  * It needs a local Chrome or Chromium (set CHROME to its path when it is not found) and no package beyond
@@ -45,6 +46,8 @@ const WIDTHS = [
 ] as const;
 type Width = { name: string; width: number; height: number; scale: number; mobile: boolean };
 const NARROW: Width = { name: "narrow phone", width: 320, height: 568, scale: 2, mobile: true };
+const LAPTOP: Width = { name: "laptop", width: 1366, height: 768, scale: 1, mobile: false };
+const LOW: Width = { name: "low laptop", width: 1288, height: 650, scale: 2, mobile: false };
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const windowOf = (view: Width): Record<string, unknown> => ({ width: view.width, height: view.height, deviceScaleFactor: view.scale, mobile: view.mobile });
@@ -212,20 +215,19 @@ const LAYOUT = `(() => {
  * What a visitor sees on arrival, with no scrolling: the top panel, one question, and its answer.
  * "On screen" means wholly inside the window: a result cut off by the bottom edge does not count.
  */
-const FIRST_SCREEN = `(() => {
+const firstScreen = (wholeAnswer: boolean): string => `(() => {
   const problems = [];
   const where = (element) => { const box = element.getBoundingClientRect(); return "it runs from " + Math.round(box.top) + " to " + Math.round(box.bottom) + "px in a window " + innerHeight + "px tall"; };
   const onScreen = (element) => { if (!element) return false; const box = element.getBoundingClientRect(); return box.height > 0 && box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth; };
   if (scrollY !== 0) problems.push("the page arrived scrolled to " + Math.round(scrollY) + "px");
-  const what = document.querySelector("[data-what]");
-  if (!onScreen(what) || !/not the (screen|page) a player/i.test(what.textContent)) problems.push("the line saying what this page is, is not on screen");
+  if (!onScreen(document.querySelector("header h1"))) problems.push("the title of the page is not on screen");
   const tabs = [...document.querySelectorAll("[role=tablist] [role=tab]")];
   if (tabs.length !== 4 || !tabs.every(onScreen)) problems.push("the four tabs of the top panel are not all on screen");
   if (tabs.filter((tab) => tab.getAttribute("aria-selected") === "true").length !== 1) problems.push("not exactly one tab is selected");
   const sections = [...document.querySelectorAll("[data-section]")].filter((section) => section.getBoundingClientRect().height > 0);
   if (sections.length !== 1) return [...problems, sections.length + " sections are on the page, not one"];
   const section = sections[0];
-  for (const [name, selector] of [["the question", "[data-question]"], ["the sentence that answers it", "[data-answer]"], ["the first thing of the answer", "[data-first]"]]) {
+  for (const [name, selector] of [["the question", "[data-question]"], ["the sentence that answers it", "[data-answer]"], ...(${wholeAnswer} ? [["the first thing of the answer", "[data-first]"]] : [])]) {
     const element = section.querySelector(selector);
     if (!element) problems.push(name + " is missing from the section " + section.dataset.section);
     else if (!onScreen(element)) problems.push(name + " is not on screen: " + where(element));
@@ -260,7 +262,7 @@ const SHOWS: Record<Example["kind"], string> = {
     const section = document.querySelector("[data-section=added]");
     if (!section) return ["the section Added is not the one open"];
     if (!section.querySelector(".tag.contradicted")) problems.push("no supplier tag is marked as contradicted");
-    if (!/A lookup cannot tell which is right/.test(section.querySelector("[data-story]")?.textContent ?? "")) problems.push("the page does not say what the table did");
+    if (!/so the lookup table asserts no mechanic/.test(section.querySelector("[data-story]")?.textContent ?? "")) problems.push("the page does not say what the table did");
     return problems;
   })()`,
   filter: `(() => {
@@ -282,10 +284,15 @@ const SHOWS: Record<Example["kind"], string> = {
     if (section.querySelector(".label.red")) problems.push("the decline carries a failure label");
     return problems;
   })()`,
-  versions: `(() => {
+  versions: `(async () => {
     const section = document.querySelector("[data-section=worth]");
     if (!section) return ["the section Worth it is not the one open"];
-    const lines = [...section.querySelectorAll("[data-others] li")].map((line) => line.lastElementChild.textContent);
+    // The other versions' lists are one press away, under the button that names them.
+    section.querySelector("[data-evidence=versions]").click();
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    const lines = [...document.querySelectorAll("[data-evidence-body=versions] [data-others] li")].map((line) => line.lastElementChild.textContent);
+    document.querySelector("#evidence-close")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 700));
     if (lines.length === 0) return ["no other version is compared"];
     return lines.some((line) => line !== "the same games, same order") ? [] : ["every version returns the same games in the same order"];
   })()`,
@@ -368,7 +375,7 @@ async function firstScreens(view: Width, paths: readonly string[]): Promise<stri
           await page.goto(`${base}${path}`);
           await page.waitFor(`document.querySelector("main[data-ready] [data-section]") && !document.querySelector("[data-starting-style], [data-ending-style]")`, `${path} to show its section`);
           await sleep(380);
-          const wrong = await page.evaluate<string[]>(FIRST_SCREEN);
+          const wrong = await page.evaluate<string[]>(firstScreen(!view.mobile));
           if (wrong.length > 0) problems.push(`${path}: ${wrong.join("; ")}`);
         } catch (error) {
           problems.push(`${path}: ${error instanceof Error ? error.message : String(error)}`);
@@ -390,7 +397,7 @@ try {
     for (const [view, version] of [[laptop, catalogue.served.version], [phone, catalogue.served.version], ...catalogue.versions.filter((version) => version !== catalogue.served.version).map((version) => [phone, version] as const)] as const) {
       const paths = all(version);
       const problems = await firstScreens(view, paths);
-      check(`${view.name} ${view.width}x${view.height}: ${version}: the first screen of every game on every brand shows the top panel, the question and its answer, without scrolling (${paths.length} addresses)`, problems.length > 8 ? [...problems.slice(0, 8), `and ${problems.length - 8} more`] : problems);
+      check(`${view.name} ${view.width}x${view.height}: ${version}: the first screen of every game on every brand shows the top panel, the question and ${view.mobile ? "the sentence that answers it" : "its answer"}, without scrolling (${paths.length} addresses)`, problems.length > 8 ? [...problems.slice(0, 8), `and ${problems.length - 8} more`] : problems);
     }
   } else {
     for (const view of WIDTHS) {
@@ -401,9 +408,9 @@ try {
       // 1. The first screen: the landing page, then every example, each on arrival.
       const arrivals = [["landing", "/"], ...found.map((example) => [example.kind, example.href as string]), ...options.also.map((path, index) => [`address ${index + 1} (${path})`, path])] as [string, string][];
       for (const [name, path] of arrivals) {
-        await ask(`${at}: ${name}: on arrival the top panel, one question and its answer are on screen, without scrolling`, async () => {
+        await ask(`${at}: ${name}: on arrival the top panel, one question and ${view.mobile ? "the sentence that answers it" : "its answer"} are on screen, without scrolling`, async () => {
           await arrive(page, path);
-          return page.evaluate<string[]>(FIRST_SCREEN);
+          return page.evaluate<string[]>(firstScreen(!view.mobile));
         });
         if (!full) continue;
         await ask(`${at}: ${name}: nothing is wider than the window`, () => page.evaluate<string[]>(LAYOUT));
@@ -456,7 +463,48 @@ try {
         await page.waitFor(`document.querySelector("main").dataset.request?.startsWith(${JSON.stringify(`${pick.game} ${pick.brand} `)}) && ${SETTLED}`, "the pressed example to open");
         await sleep(450);
         if (!(await page.evaluate<boolean>(`location.pathname + location.search === ${JSON.stringify(pick.href)}`))) problems.push("the address is not the example's");
-        return [...problems, ...(await page.evaluate<string[]>(FIRST_SCREEN)), ...(await page.evaluate<string[]>(SHOWS[pick.kind]))];
+        problems.push(...(await page.evaluate<string[]>(firstScreen(!view.mobile))), ...(await page.evaluate<string[]>(SHOWS[pick.kind])));
+        // The open example is marked where the examples are chosen, and nowhere else on the page.
+        await page.evaluate(`document.querySelector("#examples-open").click()`);
+        await page.waitFor(`document.querySelectorAll("a[data-example]").length > 0`, "the examples again");
+        const marked = await page.evaluate<string[]>(`[...document.querySelectorAll('a[data-example][aria-current="true"]')].map((a) => a.dataset.example)`);
+        if (marked.length !== 1 || marked[0] !== pick.kind) problems.push(`the list marks ${marked.join(", ") || "no example"} as open, not ${pick.kind}`);
+        // The button is the way in: it is not dimmed, with the metal ring or without.
+        const dim = await page.evaluate<string[]>(`(() => { const out = []; for (let e = document.querySelector("#examples-open"); e && e !== document.body; e = e.parentElement) if (getComputedStyle(e).opacity !== "1") out.push(e.tagName.toLowerCase() + "." + e.className + " has opacity " + getComputedStyle(e).opacity); if (document.querySelector("#examples-open").disabled) out.push("the button is disabled"); return out; })()`);
+        return [...problems, ...dim];
+      });
+
+      // The pickers list what there is to choose from the moment they open; typing is an optional way to narrow the games.
+      await ask(`${at}: the game picker lists every game when opened and typing narrows it, the brand picker lists every brand, and the closed picker shows the title alone`, async () => {
+        await arrive(page, "/");
+        const problems: string[] = [];
+        const listed = `[...document.querySelectorAll("[data-slot=select-item]")].filter((item) => item.getBoundingClientRect().height > 0).map((item) => item.textContent)`;
+        const chosen = catalogue.games.find((game) => game.game_id === found[0]?.game) ?? catalogue.games[0];
+        if (chosen === undefined) return ["the catalogue holds no game"];
+        const closed = await page.evaluate<string>(`document.querySelector("#pick-game .select-value").textContent`);
+        if (closed !== chosen.title) problems.push(`the closed game picker reads "${closed}", not the title "${chosen.title}"`);
+        await page.evaluate(`document.querySelector("#pick-game").click()`);
+        await page.waitFor(`document.querySelector("[data-slot=select-input]") !== null`, "the game picker to open");
+        await sleep(500);
+        const all = await page.evaluate<string[]>(listed);
+        if (all.length !== catalogue.games.length) problems.push(`opened, the game picker lists ${all.length} of ${catalogue.games.length} games`);
+        const box = await page.evaluate<{ scrolls: boolean; inside: boolean }>(`(() => { const list = document.querySelector(".options"); const at = list.getBoundingClientRect(); return { scrolls: list.scrollHeight > list.clientHeight, inside: at.top >= 0 && at.bottom <= innerHeight + 1 && at.height > 100 }; })()`);
+        if (!box.scrolls || !box.inside) problems.push(`the list of games ${box.inside ? "does not scroll" : "is not inside the window"}`);
+        const typed = chosen.title.slice(0, 5);
+        await page.evaluate(`(() => { const input = document.querySelector("[data-slot=select-input]"); input.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(typed)}); input.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+        await sleep(500);
+        const narrowed = await page.evaluate<string[]>(listed);
+        const expected = catalogue.games.filter((game) => game.title.toLowerCase().includes(typed.toLowerCase())).length;
+        if (narrowed.length === 0 || narrowed.length >= all.length || narrowed.length < expected || !narrowed.some((line) => line.startsWith(chosen.title))) problems.push(`after typing "${typed}" the picker lists ${narrowed.length} games; ${expected} titles hold it`);
+        await page.key("Escape", 27);
+        await sleep(400);
+        await page.evaluate(`document.querySelector("#pick-brand").click()`);
+        await sleep(600);
+        const brands = await page.evaluate<string[]>(listed);
+        if (brands.length !== catalogue.brands.length) problems.push(`opened, the brand picker lists ${brands.length} of ${catalogue.brands.length} brands`);
+        await page.key("Escape", 27);
+        await sleep(300);
+        return problems;
       });
 
       // 4. A step of the path opens what it removed, and only one is open at a time.
@@ -497,6 +545,15 @@ try {
               if ((await page.evaluate<string>(`document.querySelector(".sheet-title").textContent`)) !== name) problems.push(`${id} opens under another name than "${name}"`);
               if ((await page.evaluate<number>(`document.querySelector('[data-evidence-body="${id}"]').textContent.length`)) < 80) problems.push(`${id} opens empty`);
               problems.push(...(await page.evaluate<string[]>(LAYOUT)).map((problem) => `with "${name}" open: ${problem}`));
+              // A piece with several parts: each part opens under its own name, one at a time.
+              for (const part of await page.evaluate<string[]>(`[...document.querySelectorAll('[data-evidence-body="${id}"] [data-part]')].map((button) => button.dataset.part)`)) {
+                if (!(await page.evaluate<boolean>(`document.querySelector('[data-part="${part}"]').getAttribute("aria-expanded") === "true"`))) await page.evaluate(`document.querySelector('[data-part="${part}"]').click()`);
+                await page.waitFor(`document.querySelector('[data-part-body="${part}"]')?.getBoundingClientRect().height > 0`, `the part ${part}`);
+                await sleep(part === "what-if" ? 900 : 400);
+                if ((await page.evaluate<number>(`document.querySelectorAll("[data-part-body]").length`)) !== 1) problems.push(`with the part ${part} open, another part is open too`);
+                if ((await page.evaluate<number>(`document.querySelector('[data-part-body="${part}"]').textContent.length`)) < 80) problems.push(`the part ${part} opens empty`);
+                problems.push(...(await page.evaluate<string[]>(LAYOUT)).map((problem) => `with the part ${part} of "${name}" open: ${problem}`));
+              }
               await page.key("Escape", 27);
               await page.waitFor(`!document.querySelector("[data-evidence-body]") || document.querySelector(".sheet")?.getBoundingClientRect().height === 0 || document.querySelector(".sheet")?.matches("[data-closed]")`, `the evidence ${id} to close`);
               await sleep(500);
@@ -512,13 +569,13 @@ try {
       // 6. The keyboard alone: every control shows where focus is, and the what-if panel can be opened and moved.
       const before = service === undefined ? "" : hashTree(["eval", "data"]);
       const rings: string[] = [];
-      const focused = (): Promise<{ evidence: string; mark: string; ring: boolean; what: string }> =>
+      const focused = (): Promise<{ evidence: string; part: string; mark: string; ring: boolean; what: string }> =>
         page.evaluate(`(() => {
           const a = document.activeElement;
           const ringed = (element) => { if (!element) return false; const s = getComputedStyle(element); return s.outlineStyle === "solid" && parseFloat(s.outlineWidth) >= 2; };
-          return { evidence: a.dataset?.evidence ?? "", mark: a.closest?.("[data-mark]")?.dataset.mark ?? "", ring: ringed(a) || ringed(a.parentElement) || ringed(a.closest(".metal-fx-root")), what: a.tagName.toLowerCase() + (a.id ? "#" + a.id : "") + (a.className && typeof a.className === "string" ? "." + a.className.split(" ")[0] : "") + (a.getAttribute("role") ? "[" + a.getAttribute("role") + "]" : "") };
+          return { evidence: a.dataset?.evidence ?? "", part: a.dataset?.part ?? "", mark: a.closest?.("[data-mark]")?.dataset.mark ?? "", ring: ringed(a) || ringed(a.parentElement) || ringed(a.closest(".metal-fx-root")), what: a.tagName.toLowerCase() + (a.id ? "#" + a.id : "") + (a.className && typeof a.className === "string" ? "." + a.className.split(" ")[0] : "") + (a.getAttribute("role") ? "[" + a.getAttribute("role") + "]" : "") };
         })()`);
-      const tabTo = async (wanted: (element: { evidence: string; mark: string; what: string }) => boolean, what: string): Promise<void> => {
+      const tabTo = async (wanted: (element: { evidence: string; part: string; mark: string; what: string }) => boolean, what: string): Promise<void> => {
         for (let presses = 0; presses < 200; presses += 1) {
           await page.key("Tab", 9);
           const now = await focused();
@@ -531,7 +588,11 @@ try {
       await ask(`${at}: with the keyboard alone the what-if panel opens and moves, says what the gate reads, keeps focus, and changes no file${service === undefined ? " (files not hashed: the service is not this checkout's)" : ""}`, async () => {
         await arrive(page, "/?" + new URLSearchParams({ game: found[0]?.game ?? "", brand: found[0]?.brand ?? "", tab: "worth" }).toString());
         await page.evaluate("document.activeElement?.blur(); window.scrollTo(0, 0)");
-        await tabTo((element) => element.evidence === "what-if", "the what-if button");
+        await tabTo((element) => element.evidence === "gate", "the button of the release gate");
+        await page.key("Enter", 13, "\r");
+        await page.waitFor("document.querySelector('[data-part=what-if]')", "the release gate's evidence");
+        await sleep(600);
+        await tabTo((element) => element.part === "what-if", "the what-if part");
         await page.key("Enter", 13, "\r");
         await page.waitFor("document.querySelector('[data-what-if] .mark')", "the what-if panel");
         await sleep(600);
@@ -568,7 +629,7 @@ try {
           seen.add(now.what);
           if (!now.ring) rings.push(`${now.what} takes focus with no visible ring`);
         }
-        const missing = ["#pick-game", "#pick-brand", "#pick-version", "#examples-open", "[tab]", ".chip"].filter((part) => ![...seen].some((what) => what.includes(part)));
+        const missing = ["#pick-game", "#pick-brand", "#examples-open", "[tab]", ".chip"].filter((part) => ![...seen].some((what) => what.includes(part)));
         return [...new Set(rings), ...missing.map((part) => `Tab never reached a control like ${part}`)];
       });
 
@@ -605,6 +666,27 @@ try {
         }
       });
 
+      // A bar is as long as its number from the first frame: it is measured the moment the section is on the page, and again later.
+      await ask(`${at}: in "Worth it" every bar is as long as the figure beside it, from the first frame`, async () => {
+        const example = found[0];
+        await page.goto(`${base}${addressOf({ game: example?.game ?? "", brand: example?.brand ?? "", tab: "worth" }, catalogue.served.version)}`);
+        await page.waitFor(`document.querySelectorAll("[data-section=worth] table.race tbody tr").length > 0`, "the comparison of versions");
+        const measure = `[...document.querySelectorAll("[data-section=worth] table.race tbody tr")].map((row) => { const fill = row.querySelector(".fill").getBoundingClientRect(); const track = row.querySelector(".track").getBoundingClientRect(); const tick = row.querySelector(".at").getBoundingClientRect(); return { said: parseFloat(row.querySelector(".big").textContent), drawn: (fill.width / track.width) * 100, from: fill.left - track.left, tick: ((tick.left + tick.width / 2 - track.left) / track.width) * 100, track: track.width }; })`;
+        const problems: string[] = [];
+        for (const moment of ["at once", "after a second"]) {
+          const rows = await page.evaluate<{ said: number; drawn: number; from: number; tick: number; track: number }[]>(measure);
+          if (rows.length !== catalogue.versions.length) problems.push(`${moment}: ${rows.length} bars for ${catalogue.versions.length} versions`);
+          for (const row of rows) {
+            if (row.track < 100) problems.push(`${moment}: a bar is only ${Math.round(row.track)}px long, too short to read`);
+            if (Math.abs(row.drawn - row.said) > 0.6 || Math.abs(row.from) > 0.6) problems.push(`${moment}: the bar beside ${row.said}% starts at ${row.from.toFixed(1)}px and is ${row.drawn.toFixed(1)}% of its track`);
+          }
+          const marks = new Set(rows.map((row) => row.tick.toFixed(1)));
+          if (marks.size !== 1 || !/^\d/.test([...marks][0] ?? "")) problems.push(`${moment}: the pass-mark ticks are at ${[...marks].join(", ")}`);
+          await sleep(1000);
+        }
+        return problems;
+      });
+
       // 8. A bad address is reported for what it is.
       await ask(`${at}: a brand in the wrong case, and a brand with no game, are reported for what they are`, async () => {
         const example = found[0];
@@ -639,13 +721,41 @@ try {
           await probe.evaluate(`document.querySelectorAll("[role=tab]")[2].click()`);
           await probe.waitFor(SETTLED, "the third section");
           const problems = (await probe.evaluate<string>(`document.querySelector("[data-section]").dataset.section`)) === TABS[2].id ? [] : ["the section did not switch"];
-          // The marker of the open tab travels only once a tab has been chosen, and the bars are in the third section.
-          states.push(...(await probe.evaluate<string[]>(moving([".indicator", ".fill"]))));
-          if (!states.every((state) => state === (reduced ? "still" : "moves"))) problems.push(`results, section, metal, marker, bar: ${states.join(", ")}`);
+          // The marker of the open tab travels only once a tab has been chosen, and the steps are in the third section.
+          states.push(...(await probe.evaluate<string[]>(moving([".indicator", ".node"]))));
+          if (!states.every((state) => state === (reduced ? "still" : "moves"))) problems.push(`results, section, metal, marker, step: ${states.join(", ")}`);
           return [...problems, ...probe.errors];
         });
         everyAsked.push(...probe.requests);
         await probe.close();
+      }
+    }
+
+    // In a laptop window a section is one screen: nothing scrolls, for the landing page and for every example, in all four sections.
+    // An example that opens a step keeps it open, and what the step removed scrolls in its own box.
+    if (!options["first-screens"]) {
+      for (const view of [LAPTOP, LOW]) {
+        const page = await openPage(chrome.port, view);
+        await ask(`${view.name} ${view.width}x${view.height}: no section scrolls, for the landing page and every example (${(found.length + 1) * TABS.length} views)`, async () => {
+          const problems: string[] = [];
+          for (const [name, path] of [["landing", "/"], ...found.map((example) => [example.kind, example.href as string])] as [string, string][]) {
+            await arrive(page, path);
+            for (const tab of TABS) {
+              await page.evaluate(`[...document.querySelectorAll("[role=tab]")].find((tab) => tab.textContent.includes(${JSON.stringify(tab.name)})).click()`);
+              await page.waitFor(SETTLED, `the section ${tab.name}`);
+              await sleep(350);
+              const size = await page.evaluate<{ page: number; window: number; answer: number; column: number }>(`(() => { const answer = document.querySelector("[data-section=${tab.id}] .answer"); return { page: document.documentElement.scrollHeight, window: innerHeight, answer: answer.scrollHeight, column: answer.clientHeight }; })()`);
+              if (size.page > size.window) problems.push(`${name}, ${tab.name}: the page is ${size.page}px tall in a window ${size.window}px tall`);
+              // Only the supplier's text and what a step removed may scroll in a box of their own: the answer as a whole does not.
+              if (size.answer > size.column + 1) problems.push(`${name}, ${tab.name}: the answer is ${size.answer}px tall in a column ${size.column}px tall, so it scrolls`);
+              const pointed = await page.evaluate<string | null>(`(() => { const game = document.querySelector("[data-section=${tab.id}] li.focus"); if (!game) return null; const at = game.getBoundingClientRect(); const box = game.closest(".step-panel").getBoundingClientRect(); return at.top >= box.top && at.bottom <= box.bottom + 1 && box.bottom <= innerHeight ? null : "the game the address points at is not in view in the step that removed it"; })()`);
+              if (pointed !== null) problems.push(`${name}, ${tab.name}: ${pointed}`);
+            }
+          }
+          return problems;
+        });
+        everyAsked.push(...page.requests);
+        await page.close();
       }
     }
 
@@ -656,7 +766,7 @@ try {
         const page = await openPage(plain.port, WIDTHS[0]);
         await ask("desktop 1280x900, no WebGL2: the page is whole, its sections switch, and the open tab is marked without the metal effect", async () => {
           await arrive(page, "/");
-          const problems = await page.evaluate<string[]>(FIRST_SCREEN);
+          const problems = await page.evaluate<string[]>(firstScreen(true));
           const state = await page.evaluate<{ canvases: number; fallback: number; marked: boolean }>(`(() => { const pill = document.querySelector(".indicator .indicator-pill"); return { canvases: document.querySelectorAll("canvas").length, fallback: document.querySelectorAll(".metal-fx-fallback").length, marked: Boolean(pill) && pill.getBoundingClientRect().width > 20 && getComputedStyle(pill).boxShadow !== "none" }; })()`);
           if (state.canvases > 0) problems.push("a canvas is drawn though WebGL is off, so this run did not test the fallback");
           if (state.fallback < 2) problems.push("the metal effect did not fall back to the plain element");

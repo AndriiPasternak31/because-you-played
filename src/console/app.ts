@@ -8,7 +8,7 @@
  */
 import { Drawer, DrawerBackdrop, DrawerClose, DrawerContent, DrawerTitle } from "@ui-sdk/react/drawer";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@ui-sdk/react/popover";
-import { Select, SelectContent, SelectInput, SelectLabel, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
+import { Select, SelectContent, SelectEmpty, SelectInput, SelectItem, SelectLabel, SelectList, SelectTrigger } from "@ui-sdk/react/select";
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { MetalFx } from "metal-fx";
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -36,7 +36,7 @@ import {
   type TabId,
   type WhatIf,
 } from "./read.ts";
-import { AddressProblems, BadInput, EVIDENCE, Empty, Failed, Loading, OpenEvidence, SECTIONS, type EvidenceId } from "./view.ts";
+import { Actions, AddressProblems, BadInput, EVIDENCE, Empty, Failed, Loading, SECTIONS, type EvidenceId, type PageActions } from "./view.ts";
 
 /** Whether a media query matches, kept up to date. False where there is no window. */
 function useMedia(query: string): boolean {
@@ -131,10 +131,16 @@ export function App({ get }: { get: Get }): ReactNode {
 
   /** A choice made by hand: the pickers and the tabs change the request and keep everything else that still applies. */
   const go = useCallback((change: Partial<Address>) => setAddress((before) => (before === null ? before : { ...before, ...change, problems: [], empty: false })), []);
-  const openEvidence = useCallback((id: string, from: HTMLElement) => {
-    opener.current = from;
-    setEvidence({ id: id as EvidenceId, open: true });
-  }, []);
+  const actions = useMemo<PageActions>(
+    () => ({
+      openEvidence: (id, from) => {
+        opener.current = from;
+        setEvidence({ id: id as EvidenceId, open: true });
+      },
+      showVersion: (version) => go({ version: version as Version, focus: null }),
+    }),
+    [go],
+  );
 
   if (base !== null && "failed" in base) return h("main", { className: "page" }, h(Failed, { message: base.failed }));
   if (catalogue === null || address === null) return h("main", { className: "page", "aria-busy": "true" }, h("p", { className: "boot" }, "Because you played: the inspection view of a recommender. Loading what the service holds."));
@@ -142,6 +148,7 @@ export function App({ get }: { get: Get }): ReactNode {
   const served = catalogue.served.version;
   const current = request !== null && outcome !== null && sameRequest(outcome.request, request) ? outcome : null;
   const data = current !== null && "data" in current ? current.data : null;
+  // The example that is open, if the request is one: it is marked where the examples are chosen.
   const example = Array.isArray(examples) ? (examples.find((entry) => entry.found && entry.game === address.game && entry.brand === address.brand && (entry.version ?? served) === address.version && (entry.focus ?? null) === address.focus) ?? null) : null;
   const ready = request === null || current !== null;
 
@@ -150,22 +157,30 @@ export function App({ get }: { get: Get }): ReactNode {
     if (current === null) return h(Loading);
     if ("bad" in current) return h(BadInput, { message: current.bad });
     if ("failed" in current) return h(Failed, { message: current.failed });
-    return h(SECTIONS[tab], { data: current.data, evaluation, example, focus: address.focus });
+    return h(SECTIONS[tab], { data: current.data, evaluation, focus: address.focus });
   };
 
-  const games = gameOptions(catalogue, address.brand, address.game).map((entry) => ({ value: entry.value, label: entry.note ? `${entry.label} · ${entry.note}` : entry.label }));
-  const brands = catalogue.brands.map((entry) => ({ value: entry.brand, label: `${entry.brand} · ${entry.live} live` }));
+  // The closed picker shows the game's title alone; its status on the brand and the state of its record are in the open list.
+  const games = gameOptions(catalogue, address.brand, address.game);
+  const brands = catalogue.brands.map((entry) => ({ value: entry.brand, label: entry.brand }));
   const versions = catalogue.versions.map((version) => ({ value: version as string, label: `${versionName(version)} · ${version === served ? "served" : "inspection"}` }));
-  const picker = (id: string, name: string, items: { value: string; label: string }[], value: string | null, choose: (value: string) => void, search?: string): ReactNode =>
+  const picker = (id: string, name: string, items: { value: string; label: string; note?: string }[], value: string | null, choose: (value: string) => void, search?: string): ReactNode =>
     h(
       "div",
       { className: `field ${id}` },
       h(
         Select,
-        { items, value, onValueChange: (next: unknown) => typeof next === "string" && choose(next), placeholder: `Choose a ${id}` },
-        h(SelectLabel, { className: "field-label" }, name),
-        h(SelectTrigger, { className: "select", id: `pick-${id}` }, h(SelectValue, { className: "select-value" })),
-        h(SelectContent, { className: "menu" }, search === undefined ? null : h(SelectInput, { className: "search", placeholder: search, "aria-label": search })),
+        { value, onValueChange: (next: unknown) => typeof next === "string" && choose(next) },
+        h(SelectLabel, { className: "sr" }, name),
+        h(SelectTrigger, { className: "select", id: `pick-${id}` }, h("span", { className: "select-key", "aria-hidden": "true" }, name), h("span", { className: "select-value" }, items.find((item) => item.value === value)?.label ?? `Choose a ${id}`)),
+        h(
+          SelectContent,
+          { className: "menu" },
+          search === undefined ? null : h(SelectInput, { className: "search", placeholder: search, "aria-label": search }),
+          search === undefined ? null : h(SelectEmpty, { className: "small" }, "No game by that name."),
+          // In the open list an item carries its note; the closed control shows the chosen item's name alone.
+          h(SelectList, { className: "options" }, items.map((item) => h(SelectItem, { key: item.value, value: item.value, label: item.label, className: "option" }, h("span", null, item.label), item.note ? h("span", { className: "small" }, item.note) : null))),
+        ),
       ),
     );
 
@@ -204,39 +219,30 @@ export function App({ get }: { get: Get }): ReactNode {
       : h(Failed, { message: examples.failed });
 
   return h(
-    OpenEvidence.Provider,
-    { value: openEvidence },
+    Actions.Provider,
+    { value: actions },
     h(
       Tabs,
       { value: address.tab, onValueChange: (next: unknown) => typeof next === "string" && go({ tab: next as TabId }), className: "page" },
+      // The top panel, one row: the title, the four questions, the game and the brand, and the examples.
       h(
         "header",
         { className: "top" },
+        h("h1", null, "Because you played"),
         h(
-          "div",
-          { className: "topbar" },
-          h("div", { className: "id" }, h("h1", null, "Because you played"), h("p", { className: "kicker", "data-what": "" }, "Inspection view · not the screen a player would see")),
-          h(
-            TabsList,
-            { className: "tabs", "aria-label": "The four questions" },
-            TABS.map((tab, index) => h(TabsTab, { key: tab.id, value: tab.id, className: "tab" }, h("span", { className: "tab-n num" }, index + 1), tab.name)),
-            // The marker of the open section: a liquid-metal ring that glides from tab to tab. Without WebGL2 it is a plain green outline.
-            h(TabsIndicator, { className: "indicator" }, h(MetalFx, { variant: "button", preset: "silver", theme: "dark", paused: still, className: "indicator-metal", borderRadius: 999, children: h("span", { className: "indicator-pill" }) })),
-          ),
-          h("p", { className: "serving" }, "Serving ", h("strong", null, versionName(served)), ` · ${catalogue.games.length} games`),
+          TabsList,
+          { className: "tabs", "aria-label": "The four questions" },
+          TABS.map((tab, index) => h(TabsTab, { key: tab.id, value: tab.id, className: "tab" }, h("span", { className: "tab-n num" }, index + 1), tab.name)),
+          // The marker of the open section: a pill with a liquid-metal ring that glides from tab to tab. Without WebGL2 it is the plain pill.
+          h(TabsIndicator, { className: "indicator" }, h(MetalFx, { variant: "button", preset: "silver", theme: "dark", paused: still, className: "indicator-metal", borderRadius: 999, children: h("span", { className: "indicator-pill" }) })),
         ),
+        picker("game", "Game", games, address.game, (game) => go({ game, focus: null }), `Search ${catalogue.games.length} games`),
+        picker("brand", "Brand", brands, address.brand, (brand) => go({ brand, focus: null })),
         h(
-          "div",
-          { className: "request" },
-          picker("game", "Game played", games, address.game, (game) => go({ game, focus: null }), `Search ${catalogue.games.length} games`),
-          picker("brand", "Brand", brands, address.brand, (brand) => go({ brand, focus: null })),
-          picker("version", "Version of the index", versions, address.version, (version) => go({ version: version as Version, focus: null })),
-          h(
-            Popover,
-            { open: examplesOpen, onOpenChange: (open: boolean) => setExamplesOpen(open) },
-            h(MetalFx, { variant: "button", preset: "silver", theme: "dark", paused: still, normalizeHostStyles: false, className: "examples-metal", children: h(PopoverTrigger, { className: "examples-button", id: "examples-open" }, "Examples") }),
-            h(PopoverContent, { className: "popover", "aria-label": "Examples found in this catalogue" }, h(PopoverTitle, { className: "kicker" }, "Open an example found in this catalogue"), exampleList),
-          ),
+          Popover,
+          { open: examplesOpen, onOpenChange: (open: boolean) => setExamplesOpen(open) },
+          h(MetalFx, { variant: "button", preset: "silver", theme: "dark", paused: still, normalizeHostStyles: false, className: "examples-metal", children: h(PopoverTrigger, { className: "examples-button", id: "examples-open" }, "Examples") }),
+          h(PopoverContent, { className: "popover", "aria-label": "Examples found in this catalogue" }, h(PopoverTitle, { className: "kicker" }, "Open an example found in this catalogue"), exampleList),
         ),
       ),
       h(
@@ -245,7 +251,11 @@ export function App({ get }: { get: Get }): ReactNode {
         h(AddressProblems, { problems: address.problems }),
         TABS.map((tab) => h(TabsPanel, { key: tab.id, value: tab.id, className: "panel" }, body(tab.id))),
       ),
-      h("footer", null, "Every value on this page comes from this service's own responses. The service holds no key and calls no model."),
+      h(
+        "footer",
+        { "data-what": "" },
+        `The inspection view of a recommender, not the screen a player would see · serving ${versionName(served)} · ${catalogue.games.length} games · every value comes from this service's own responses; it holds no key and calls no model.`,
+      ),
       h(
         Drawer,
         { open: evidence?.open === true, onOpenChange: (open: boolean) => setEvidence((before) => (before === null ? before : { ...before, open })), side: narrow ? "bottom" : "right" },
@@ -259,7 +269,7 @@ export function App({ get }: { get: Get }): ReactNode {
                 Fragment,
                 null,
                 h("div", { className: "sheet-head" }, h(DrawerTitle, { className: "sheet-title" }, EVIDENCE[evidence.id]), h(DrawerClose, { className: "chip", id: "evidence-close" }, "Close")),
-                h("div", { className: "sheet-body", "data-evidence-body": evidence.id }, h(Evidence, { id: evidence.id, data, evaluation, whatIf: evaluation ? h(WhatIfPanel, { get, evaluation }) : undefined })),
+                h("div", { className: "sheet-body", "data-evidence-body": evidence.id }, h(Evidence, { id: evidence.id, data, evaluation, whatIf: evaluation ? h(WhatIfPanel, { get, evaluation }) : undefined, versionPicker: picker("version", "Show the page for", versions, address.version, (version) => go({ version: version as Version, focus: null })) })),
               ),
         ),
       ),

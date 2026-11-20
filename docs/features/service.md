@@ -19,7 +19,7 @@ flowchart LR
     I --> L
     O[/"offerings"/] --> L
     L --> C["recommend(): filter, score, floor, cap"]
-    C --> H["GET /api/…"] --> UI["console"]
+    C --> H["GET /api/…"] --> UI["the page"]
   end
 ```
 
@@ -51,11 +51,11 @@ All are `GET`. Any other method is a 405. Nothing writes a file.
 | Route | Returns |
 |---|---|
 | `/api/recommendations?game=&brand=[&limit=][&trace=1]` | Results or a decline, from the version the evaluation chose |
-| `/api/inspect?game=&brand=&version=` | The same core over any of the four versions, with a trace. For the console's comparison; never what a player is served |
-| `/api/catalogue` | Brands, games and each game's status per brand, for the console's pickers |
+| `/api/inspect?game=&brand=&version=` | The same core over any of the four versions, with a trace. For the page's comparison; never what a player is served |
+| `/api/catalogue` | Brands, games and each game's status per brand, for the page's pickers |
 | `/api/evaluation` | The verdict, the committed pass marks and the evaluation report, as read at the start |
 | `/api/what-if?min_precision=…` | The real gate applied to the measured numbers with the marks given in the request. Marked `what_if`; changes nothing |
-| `/` | The console |
+| `/` | The page, with its built script and stylesheet under `/console/` ([`interface.md`](interface.md#code-and-how-it-is-built)) |
 
 ## Starting, and refusing to start
 
@@ -139,11 +139,11 @@ The plan has the owner answer six of the reviewer's questions without sight of t
 - **no count includes them.** The control covers the other fifteen labels, the reviewer's totals the other twenty answers, and precision the decided labels;
 - the **verdict is reached without them:** the precision pass mark counts a held-back label as wrong.
 
-Change the six answers to anything and the report, the verdict and the console do not change by a byte (EV-6).
+Change the six answers to anything and the report, the verdict and the page do not change by a byte (EV-6).
 
 **One of the six is not blind.** Before the answers were held back, the owner was told in conversation the reviewer's answer to the disagreement question, `label.qfi-77843.adventure`. His answer to it is still collected and still reported, apart from the others: five answers given blind, one given after he had been told. He was also told the control total over all twenty labels; that gives no single answer away without the plan's side for a label, which is in the answer key and nowhere in the evaluation's output.
 
-**What the owner should not open before he answers:** the answer key under `data/generation/`, the earlier commits of the pull request that added this (they hold the six stored answers and the first reports), and the conversation in which the earlier results were reported. The report, the console and this file are safe to read.
+**What the owner should not open before he answers:** the answer key under `data/generation/`, the earlier commits of the pull request that added this (they hold the six stored answers and the first reports), and the conversation in which the earlier results were reported. The report, the page and this file are safe to read.
 
 ### Every run
 
@@ -204,7 +204,7 @@ One seed, `evaluation-v1`, drives every draw.
 
 ```sh
 npm run eval                 # score, write the report and the verdict: no key, no network
-npm run serve                # http://127.0.0.1:8787, console at /
+npm run serve                # http://127.0.0.1:8787, the page at /
 npm run serve -- --port 9000
 npm run owner-check          # the owner, at a terminal: six questions, written to eval/refs/owner-check.json
 OPENAI_API_KEY=... npm run eval -- --live    # ask the reviewer any question with no stored answer; stops before $1.00 in total
@@ -255,7 +255,7 @@ What each proof does:
 - **EV-6** runs the evaluation three times with the reviewer answering the six all yes, all no and all unclear, and compares the report and the verdict byte for byte. It runs it once more with an answer function that fails if one of the six is asked for. It puts a stored answer to one of them in a scratch tree and expects the command to stop, and runs a live evaluation through a stand-in for the network to see no call made. With the owner's answers given, it checks the blind and the not-blind counts, the message that says how to bring the six back, and that a live run then asks exactly those six.
 - **EV-7** plays a live call through a stand-in for the network at the limit, with two unreadable answers, and with a rejected key.
 
-Each proof was also checked the other way: one-line breaks of the service, the evaluation and the console were tried, one at a time. Of the first 26, 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own, and a second pass of 27 breaks turned every proof red. A third pass of 15 breaks, of what the review's fixes added, found one more: not recording a run at all stayed green, because the test started from a record that already held it. The test now starts from the record without its latest run.
+Each proof was also checked the other way: one-line breaks of the service, the evaluation and the page were tried, one at a time. Of the first 26, 25 turned their proof red at once. One did not: dropping the check that a verdict passed stayed green, because the test's failed verdict also named no version. That case is now its own, and a second pass of 27 breaks turned every proof red. A third pass of 15 breaks, of what the review's fixes added, found one more: not recording a run at all stayed green, because the test started from a record that already held it. The test now starts from the record without its latest run.
 
 Two proofs were also run against the code as it was before the fix they prove, and failed there: EV-6's "nothing the evaluation writes depends on the reviewer's answers", and SV-5's "a verdict edited by hand".
 

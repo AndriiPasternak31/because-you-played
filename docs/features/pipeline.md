@@ -61,7 +61,7 @@ What they are for is in [`eval/refs/evaluation-plan.md`](../../eval/refs/evaluat
 |---|---|
 | `data/pipeline/responses/enrichment/<prompt version>/<game id>.json` | Every stored model attempt for one record: outcome, seconds, tokens, and the body as received. Sealed (see below) |
 | `data/pipeline/responses/embeddings/<version>.json` | Every stored embedding response for one version, oldest first. Each call lists what it embedded, as game id and text hash in request order, beside the body as received. A text is looked up by that pair, so when texts change only those are sent again and every other vector keeps its bytes. Sealed |
-| `data/index/` | The index. Everything the service and the console read from the pipeline |
+| `data/index/` | The index. Everything the service and its page read from the pipeline |
 
 A new prompt version gets a new directory, so the answers to an earlier prompt are kept and still counted in what was spent.
 

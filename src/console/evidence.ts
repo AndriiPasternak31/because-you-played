@@ -4,11 +4,12 @@
  * Every piece is a plain function from the service's responses to React elements, drawn inside the
  * page's drawer. The page shows one piece at a time, under the name its button carries.
  */
+import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from "@ui-sdk/react/accordion";
 import { Slider, SliderControl, SliderIndicator, SliderThumb, SliderTrack } from "@ui-sdk/react/slider";
 import { createElement as h, Fragment, type ReactNode } from "react";
 import type { TraceAnchor } from "../service/recommend.ts";
-import { count, pct, plural, versionName, words, type Answer, type Evaluation, type Failure, type Loaded, type WhatIf } from "./read.ts";
-import { LIMITS, absent, bar, label, mono, small, tag, type EvidenceId } from "./view.ts";
+import { count, overlap, pct, plural, versionName, words, type Answer, type Evaluation, type Failure, type Loaded, type WhatIf } from "./read.ts";
+import { LIMITS, RANKED_RIGHT, absent, bar, label, mono, small, tag, type EvidenceId } from "./view.ts";
 
 const quote = (text: string): ReactNode => h("span", { className: "quote" }, `“${text}”`);
 const scroll = (table: ReactNode, name: string): ReactNode => h("div", { className: "scroll", tabIndex: 0, role: "region", "aria-label": name }, table);
@@ -164,9 +165,29 @@ function Steps({ anchor, version }: { anchor: TraceAnchor; version: string }): R
 // The same request in every version
 // ---------------------------------------------------------------------------
 
-export function Compare({ versions: responses, served }: { versions: Record<string, Answer>; served: string }): ReactNode {
+export interface CompareProps {
+  /** Every version's answer to the request on screen. */
+  versions: Record<string, Answer>;
+  /** The version the service serves. */
+  served: string;
+  /** The version the page is showing, whose list the others are counted against. */
+  shown: string;
+  evaluation?: Evaluation | undefined;
+  /** The control that puts another version on the page, supplied by the page. */
+  picker?: ReactNode;
+}
+
+export function Compare({ versions: responses, served, shown, evaluation, picker }: CompareProps): ReactNode {
   const versions = Object.keys(responses);
   const of = (version: string): Answer => responses[version] as Answer;
+  // How each other version's list compares with the list the page shows, counted from the service's answers.
+  const mine = (responses[shown]?.results ?? []).map((entry) => entry.game_id);
+  const lines = versions
+    .filter((version) => version !== shown)
+    .map((version) => {
+      const calls = (evaluation?.report.matching as Record<string, { cost: { model_calls: number } } | undefined> | undefined)?.[version]?.cost.model_calls;
+      return h("li", { key: version }, h("span", null, versionName(version), " ", calls === undefined ? null : small(calls === 0 ? "no model" : "model")), h("span", { className: "num" }, overlap(mine, of(version))));
+    });
   const games = new Map<string, Answer["results"][number]>();
   for (const version of versions) for (const entry of of(version).results) if (!games.has(entry.game_id)) games.set(entry.game_id, entry);
   const matrix =
@@ -218,6 +239,10 @@ export function Compare({ versions: responses, served }: { versions: Record<stri
     Fragment,
     null,
     h("p", { className: "lede" }, "What each version would return for the chosen game on the chosen brand, and the labels it holds. Only the served version answers players."),
+    picker ? h("div", { className: "version-picker" }, picker) : null,
+    h("h3", null, `Against the list of ${versionName(shown)}`),
+    h("ul", { className: "others", "data-others": "" }, lines),
+    h("p", { className: "small" }, "A different list is not a better list. Whether a version's lists are better is what the evaluation measures, over every game."),
     matrix,
     h("h3", null, "What each version holds, and returns"),
     h("p", { className: "small" }, "Each label keeps the words it was read from. ", tag("model", "blue"), " came from the model, ", tag("table", "plain"), " from the synonym table."),
@@ -303,6 +328,7 @@ function Numbers({ evaluation }: { evaluation: Evaluation }): ReactNode {
     null,
     h("p", { className: "lede" }, "Counts beside every rate. Verdict for index ", mono(verdict.index_hash.slice(0, 12)), "."),
     scroll(h("table", null, head(th("Version"), th("Pairs in the right order", true), th("Mean per game", true), th("Wrongly shown", true), th("Model calls", true), th("Estimated cost, USD", true), th("Call time", true)), h("tbody", null, detailRows)), "Every measured number"),
+    h("p", { className: "small" }, RANKED_RIGHT, " It shows direction, not how real players would judge a list."),
     h("p", { className: "small" }, `Check games on ${report.check_games.brand}: `, report.check_games.games.map((game, index) => h(Fragment, { key: game }, index === 0 ? "" : " ", mono(game))), ". A result is wrongly shown when the rule calls it unrelated and the reviewer also says no. A cost is an estimate from the calls a build made, not a bill."),
     h("h3", null, "Ranked right, by the condition of the record that was asked about"),
     h("p", { className: "small" }, "Pairwise accuracy, mean per game, split by what the record that was asked about had to offer."),
@@ -319,7 +345,6 @@ function Numbers({ evaluation }: { evaluation: Evaluation }): ReactNode {
         "A row is the kind of record that was asked about, and its rank depends on the text of every game it is compared with. So a version can differ on a row whose records the model never read, and a gap on a row is not evidence that the model read those records well.",
       ),
     ),
-    h("p", { className: "callout", "data-limits": "" }, h("span", null, label("neutral", "what this does not show"), " ", LIMITS)),
   );
 }
 
@@ -520,15 +545,47 @@ export function WhatIfView({ evaluation, whatIf, onMove, onReset, round = 0 }: W
 // One piece of evidence, by its name
 // ---------------------------------------------------------------------------
 
+/** The parts of the two pieces of evidence that hold more than one thing. Each part has its own name, and one is open at a time. */
+export const PARTS = {
+  gate: { verdict: "The verdict and every pass mark", "what-if": "What if the pass marks were different?" },
+  measures: {
+    numbers: "Every measured number, and the split by the condition of the record",
+    enrichment: "Is enrichment safe to automate? Label measures, tag conflicts and the reviewer",
+    gallery: "Failures: what went wrong, and what was planted on purpose",
+    limits: "What these numbers cannot show",
+  },
+} as const;
+export type PartId = keyof (typeof PARTS)["gate"] | keyof (typeof PARTS)["measures"];
+
 export interface EvidenceProps {
   id: EvidenceId;
   data: Loaded | null;
   evaluation: Evaluation | undefined;
   /** The what-if panel keeps state and asks the service, so the page supplies it. */
   whatIf?: ReactNode;
+  /** The control that puts another version on the page, supplied by the page. */
+  versionPicker?: ReactNode;
 }
 
-export function Evidence({ id, data, evaluation, whatIf }: EvidenceProps): ReactNode {
+/** One part of the evaluation's evidence. */
+export function Part({ id, evaluation, whatIf }: { id: PartId; evaluation: Evaluation; whatIf?: ReactNode }): ReactNode {
+  switch (id) {
+    case "verdict":
+      return h(Verdict, { evaluation });
+    case "what-if":
+      return whatIf ?? h("p", null, "The what-if panel needs the page.");
+    case "numbers":
+      return h(Numbers, { evaluation });
+    case "enrichment":
+      return h(Measures, { evaluation });
+    case "gallery":
+      return h(Gallery, { evaluation });
+    case "limits":
+      return h("p", { "data-limits": "" }, LIMITS);
+  }
+}
+
+export function Evidence({ id, data, evaluation, whatIf, versionPicker }: EvidenceProps): ReactNode {
   const none = (what: string): ReactNode => h("p", null, what);
   const anchor = data?.response.trace?.anchor ?? null;
   switch (id) {
@@ -541,16 +598,16 @@ export function Evidence({ id, data, evaluation, whatIf }: EvidenceProps): React
     case "raw-record":
       return anchor ? h(RawRecord, { anchor }) : none("The index holds no record for this game.");
     case "versions":
-      return data ? h(Compare, { versions: data.versions, served: evaluation?.verdict.ships ?? "" }) : none("No request is on screen.");
-    case "what-if":
-      return whatIf ?? none("The what-if panel needs the page.");
-    case "verdict":
-      return evaluation ? h(Verdict, { evaluation }) : none("The evaluation has not loaded.");
-    case "numbers":
-      return evaluation ? h(Numbers, { evaluation }) : none("The evaluation has not loaded.");
-    case "enrichment-measures":
-      return evaluation ? h(Measures, { evaluation }) : none("The evaluation has not loaded.");
-    case "gallery":
-      return evaluation ? h(Gallery, { evaluation }) : none("The evaluation has not loaded.");
+      return data ? h(Compare, { versions: data.versions, served: evaluation?.verdict.ships ?? "", shown: data.response.served.version, evaluation, picker: versionPicker }) : none("No request is on screen.");
+    case "gate":
+    case "measures": {
+      if (evaluation === undefined) return none("The evaluation has not loaded.");
+      const parts = Object.entries(PARTS[id]) as [PartId, string][];
+      return h(
+        Accordion,
+        { className: "parts", defaultValue: [parts[0]?.[0] ?? ""], collapsible: true },
+        parts.map(([part, name]) => h(AccordionItem, { key: part, value: part, className: "part" }, h(AccordionHeader, { render: h("h3", null) }, h(AccordionTrigger, { className: "part-name", ...{ "data-part": part } }, name)), h(AccordionPanel, { className: "part-body", ...{ "data-part-body": part } }, h(Part, { id: part, evaluation, whatIf })))),
+      );
+    }
   }
 }
