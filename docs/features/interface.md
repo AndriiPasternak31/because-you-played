@@ -101,7 +101,7 @@ Not used where they do not fit: tables, the list of results, the marked text and
 | UI-17 | A failure the evaluation found is shown where it happened, and nowhere else | `npm test -- "UI-17:"` | `a8620e7` |
 | UI-18 | A late answer is never shown for another request | `npm test -- "UI-18:"` | `a8620e7` |
 | UI-19 | A brand, a version, a section or a parameter the page does not know is reported for what it is, and nothing is replaced in silence | `npm test -- "UI-19:"` | `a8620e7` |
-| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the owner's check is described as it is, outstanding and answered | `npm test -- "UI-20:"` | - |
+| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the owner's check is described as it is, outstanding and answered | `npm test -- "UI-20:"` | `9b74c6e` |
 | UI-21 | UI-13 holds for every game on every brand: in the served version at 1366 by 657 and at 390 by 664, and in every other version at 390 by 664 | `node tools/console-check.ts --every-request` | `a8620e7` |
 | UI-22 | In a browser the page does what it says (the list under this table): by pointer and with the keyboard alone, with reduced motion, without WebGL2, and asking nothing outside this service | `node tools/console-check.ts` | `a8620e7` |
 
