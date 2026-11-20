@@ -250,11 +250,11 @@ The report then counts the reviewer's matches on the five blind answers, and rep
 | SV-6 | A game withdrawn in the offerings file is gone after a restart, and other results are still served. A malformed offerings file stops the start | `npm test -- "SV-6:"` | `aeffa05` |
 | SV-7 | A trace carries the record, what each step added with its quote, what each filter removed, the scores, the floor, the outcome and per-stage timings | `npm test -- "SV-7:"` | `aeffa05` |
 | SV-8 | Bad input is a 400 that says what was wrong, a decline is a 200, and only GET is answered: every other method, HEAD included, is a 405 | `npm test -- "SV-8:"` | `aeffa05` |
-| SV-9 | A taken port stops the start: exit 1, the port named as taken, the way to choose another, and no stack trace | `npm test -- "SV-9:"` | - |
-| SV-10 | Once it listens, the command prints the address to open and one request to try. The address is the one bound, the page answers there, and the request returns results | `npm test -- "SV-10:"` | - |
-| SV-11 | The version check names the version found, the version needed and how to get it, compares versions as numbers, and is silent on a version that will do | `npm test -- "SV-11:"` | - |
-| SV-12 | `npm start` runs `npm ci` when a declared package is missing or is not the locked version. When the install fails, or leaves the package missing, it says so and starts nothing | `npm test -- "SV-12:"` | - |
-| SV-13 | On a Node.js older than `engines` allows, every npm script and `npm install` exit non-zero and name the version found | `tools/old-node-check.sh` | - |
+| SV-9 | A taken port stops the start: exit 1, the port named as taken, the way to choose another, and no stack trace | `npm test -- "SV-9:"` | `d885f81` |
+| SV-10 | Once it listens, the command prints the address to open and one request to try. The address is the one bound, the page answers there, and the request returns results | `npm test -- "SV-10:"` | `d885f81` |
+| SV-11 | The version check names the version found, the version needed and how to get it, compares versions as numbers, and is silent on a version that will do | `npm test -- "SV-11:"` | `d885f81` |
+| SV-12 | `npm start` runs `npm ci` when a declared package is missing or is not the locked version. When the install fails, or leaves the package missing, it says so and starts nothing | `npm test -- "SV-12:"` | `d885f81` |
+| SV-13 | On a Node.js older than `engines` allows, every npm script and `npm install` exit non-zero and name the version found | `tools/old-node-check.sh` | `d885f81` |
 | EV-1 | The evaluation runs without a key over committed outputs, reproduces the committed report, verdict and record of runs byte for byte, adds its run to that record without dropping another, and exits non-zero when the gate fails or an input is missing or stale | `npm test -- "EV-1:"` | `aeffa05` |
 | EV-2 | Every pass mark is read from the owner's file. None is defined in code, and a file the gate does not fully understand is refused | `npm test -- "EV-2:"` | `aeffa05` |
 | EV-3 | The ship rule picks the simplest passing version within the margin of the best passing one, and nothing when none passes | `npm test -- "EV-3:"` | `aeffa05` |
