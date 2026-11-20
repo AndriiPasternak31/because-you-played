@@ -82,28 +82,28 @@ Not used where they do not fit: tables, the list of results, the marked text and
 
 | ID | Invariant | Proof command | Last proved |
 |---|---|---|---|
-| UI-1 | Everything the page shows for a request comes from the service's response to that request. The page asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | `ef47daf` |
-| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure. An address that names an unknown game reaches that decline | `npm test -- "UI-2:"` | `ef47daf` |
-| UI-3 | The page is served, and for every brand, game and version every section renders, with its evidence | `npm test -- "UI-3:"` | `ef47daf` |
-| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | `ef47daf` |
-| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | `ef47daf` |
-| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | `ef47daf` |
-| UI-7 | A quote is marked where it sits in the record's own text, a quote that cannot be placed is said and not dropped, and a bar is as long as the number the response carries | `npm test -- "UI-7:"` | `ef47daf` |
-| UI-8 | Each section states one question with one short line, answers it in one sentence, and keeps everything else out of sight under at most three buttons, each named for what it opens | `npm test -- "UI-8:"` | `ef47daf` |
-| UI-9 | What a result is said to have in common with the game played is held by both records, and is never offered as the cause of the score | `npm test -- "UI-9:"` | `ef47daf` |
-| UI-10 | What the other versions return is counted as the service answered; the measured numbers are the report's; each bar is as long as its rate, from zero; a cost reads as an estimate; a different list is not called a better one | `npm test -- "UI-10:"` | `ef47daf` |
-| UI-11 | The path shows the trace's own counts in the trace's order, availability first, as three different things; says what the floor is; names a game that cleared the floor and is not shown; and points out a game at the step that removed it | `npm test -- "UI-11:"` | `ef47daf` |
-| UI-12 | The examples are found in the data, each shows what it says, no game is named in the page's files, and the examples change or say "none" when the data changes | `npm test -- "UI-12:"` | `ef47daf` |
-| UI-13 | On arrival, with no scrolling, the top panel, the question and the sentence that answers it are on screen, for the landing page and every example, at 1280 by 900, 1366 by 657, 390 by 844 and 390 by 664. In the two desktop windows so is the first thing of the answer; on a phone the rest scrolls | `node tools/console-check.ts --first-screens` | `ef47daf` |
-| UI-14 | The script and stylesheet the service serves are what the source builds, are in the repository, carry the notices of the packages inside them, and fetch from no other host | `npm test -- "UI-14:"` | `ef47daf` |
-| UI-15 | A returned game is described as above the similarity floor and live on the brand, and is never called related | `npm test -- "UI-15:"` | `ef47daf` |
-| UI-16 | What the page says the lookup table and the model found is read from the record, in every version | `npm test -- "UI-16:"` | `ef47daf` |
-| UI-17 | A failure the evaluation found is shown where it happened, and nowhere else | `npm test -- "UI-17:"` | `ef47daf` |
-| UI-18 | A late answer is never shown for another request | `npm test -- "UI-18:"` | `ef47daf` |
-| UI-19 | A brand, a version, a section or a parameter the page does not know is reported for what it is, and nothing is replaced in silence | `npm test -- "UI-19:"` | `ef47daf` |
-| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the held-back answers are described as they are | `npm test -- "UI-20:"` | `ef47daf` |
-| UI-21 | UI-13 holds for every game on every brand: in the served version at 1366 by 657 and at 390 by 664, and in every other version at 390 by 664 | `node tools/console-check.ts --every-request` | `ef47daf` |
-| UI-22 | In a browser the page does what it says (the list under this table): by pointer and with the keyboard alone, with reduced motion, without WebGL2, and asking nothing outside this service | `node tools/console-check.ts` | `ef47daf` |
+| UI-1 | Everything the page shows for a request comes from the service's response to that request. The page asks only this service's own routes and makes no model call | `npm test -- "UI-1:"` | `a8620e7` |
+| UI-2 | A declined request shows the reason for the decline and no results, and does not look like a failure. An address that names an unknown game reaches that decline | `npm test -- "UI-2:"` | `a8620e7` |
+| UI-3 | The page is served, and for every brand, game and version every section renders, with its evidence | `npm test -- "UI-3:"` | `a8620e7` |
+| UI-4 | The what-if panel states that the gate reads only the committed file, shows each committed mark, flips pass and fail as a mark moves, and changes no file | `npm test -- "UI-4:"` | `a8620e7` |
+| UI-5 | Text from the catalogue and from a model reaches the page as text, never as markup | `npm test -- "UI-5:"` | `a8620e7` |
+| UI-6 | For a game whose tag contradicts its description, the page shows the conflict and how each version handled it | `npm test -- "UI-6:"` | `a8620e7` |
+| UI-7 | A quote is marked where it sits in the record's own text, a quote that cannot be placed is said and not dropped, and a bar is as long as the number the response carries | `npm test -- "UI-7:"` | `a8620e7` |
+| UI-8 | Each section states one question with one short line, answers it in one sentence, and keeps everything else out of sight under at most three buttons, each named for what it opens | `npm test -- "UI-8:"` | `a8620e7` |
+| UI-9 | What a result is said to have in common with the game played is held by both records, and is never offered as the cause of the score | `npm test -- "UI-9:"` | `a8620e7` |
+| UI-10 | What the other versions return is counted as the service answered; the measured numbers are the report's; each bar is as long as its rate, from zero; a cost reads as an estimate; a different list is not called a better one | `npm test -- "UI-10:"` | `a8620e7` |
+| UI-11 | The path shows the trace's own counts in the trace's order, availability first, as three different things; says what the floor is; names a game that cleared the floor and is not shown; and points out a game at the step that removed it | `npm test -- "UI-11:"` | `a8620e7` |
+| UI-12 | The examples are found in the data, each shows what it says, no game is named in the page's files, and the examples change or say "none" when the data changes | `npm test -- "UI-12:"` | `a8620e7` |
+| UI-13 | On arrival, with no scrolling, the top panel, the question and the sentence that answers it are on screen, for the landing page and every example, at 1280 by 900, 1366 by 657, 390 by 844 and 390 by 664. In the two desktop windows so is the first thing of the answer; on a phone the rest scrolls | `node tools/console-check.ts --first-screens` | `a8620e7` |
+| UI-14 | The script and stylesheet the service serves are what the source builds, are in the repository, carry the notices of the packages inside them, and fetch from no other host | `npm test -- "UI-14:"` | `a8620e7` |
+| UI-15 | A returned game is described as above the similarity floor and live on the brand, and is never called related | `npm test -- "UI-15:"` | `a8620e7` |
+| UI-16 | What the page says the lookup table and the model found is read from the record, in every version | `npm test -- "UI-16:"` | `a8620e7` |
+| UI-17 | A failure the evaluation found is shown where it happened, and nowhere else | `npm test -- "UI-17:"` | `a8620e7` |
+| UI-18 | A late answer is never shown for another request | `npm test -- "UI-18:"` | `a8620e7` |
+| UI-19 | A brand, a version, a section or a parameter the page does not know is reported for what it is, and nothing is replaced in silence | `npm test -- "UI-19:"` | `a8620e7` |
+| UI-20 | The split by record condition is not offered as the model's work, the limits are the plan's, and the held-back answers are described as they are | `npm test -- "UI-20:"` | `a8620e7` |
+| UI-21 | UI-13 holds for every game on every brand: in the served version at 1366 by 657 and at 390 by 664, and in every other version at 390 by 664 | `node tools/console-check.ts --every-request` | `a8620e7` |
+| UI-22 | In a browser the page does what it says (the list under this table): by pointer and with the keyboard alone, with reduced motion, without WebGL2, and asking nothing outside this service | `node tools/console-check.ts` | `a8620e7` |
 
 What each proof does:
 
