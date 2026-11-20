@@ -14,14 +14,16 @@ import { createService } from "./http.ts";
 import { recommend } from "./recommend.ts";
 import { DEFAULT_PATHS, NotServing, loadService, type Service } from "./state.ts";
 
-/** A request that returns results from what was loaded. It is found by asking, so a rebuilt index cannot leave a dead example on the screen. */
+/** The first request that returns the most results from what was loaded. It is found by asking, so a rebuilt index cannot leave a dead example on the screen. */
 function requestWithResults(service: Service): string | undefined {
+  let best: { path: string; results: number } | undefined;
   for (const record of service.index.records) {
     for (const brand of service.offerings.brands) {
-      if (recommend(service.served, { gameId: record.game_id, brand }).outcome === "results") return `/api/recommendations?game=${encodeURIComponent(record.game_id)}&brand=${encodeURIComponent(brand)}`;
+      const results = recommend(service.served, { gameId: record.game_id, brand }).results.length;
+      if (results > (best?.results ?? 0)) best = { path: `/api/recommendations?game=${encodeURIComponent(record.game_id)}&brand=${encodeURIComponent(brand)}`, results };
     }
   }
-  return undefined;
+  return best?.path;
 }
 
 /** The address a browser on this machine reaches the listener at: one bound to every interface is reached through the loopback address. */
